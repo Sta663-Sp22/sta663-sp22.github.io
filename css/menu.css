@@ -1,0 +1,47 @@
+.home-menu {
+    padding: 0em;
+    text-align: center;
+    box-shadow: 0 1px 1px rgba(0,0,0, 0.10);
+    vertical-align: middle;
+    background: #385D6F;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.pure-menu.pure-menu-fixed {
+    border-bottom: none;
+    z-index: 4;
+}
+
+.home-menu div,
+.home-menu ul {
+    color: white;
+    padding: 10px;
+    text-transform: none;
+}
+
+.home-menu #class {
+    display: inline-block; 
+    font-size: 0.9em;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.home-menu #semester {
+    font-size: 0.75em;
+}
+
+.home-menu a,
+.home-menu a:visited {
+    color: #FFFFFF  ;
+    padding: 10px 10px;
+}
+
+.home-menu li a:hover,
+.home-menu li a:focus {
+    background: none;
+    border: none;
+    color: #AECFE5;
+}
+

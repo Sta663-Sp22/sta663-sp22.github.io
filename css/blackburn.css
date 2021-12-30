@@ -1,0 +1,111 @@
+#main {
+  padding-top: 4em;
+}
+
+body {
+    color: #555;
+}
+
+/* =============================================================================
+   Section stuff
+   ========================================================================== */
+header {
+  padding-bottom: 1em;
+}
+
+section {
+  padding-top: 2em;
+}
+
+section p {
+  font-size: 0.9em;
+  line-height: 1.2em;
+  padding: 0em 0em 0em 1em;
+}
+
+section ul {
+  font-size: 0.9em;
+  line-height: 1.2em;
+  margin: 0.5em 0em;
+}
+
+section li {
+  padding-bottom: 0.3em;
+}
+
+section h4 {
+  margin: 1.5em 0em 0em 0em;
+}
+
+.active {
+  color: #262626;
+}
+
+.inactive {
+  color: #E5E5E5
+}
+
+.youtube {
+  color: #ED3324;
+}
+
+
+.pure-img-responsive {
+    max-width: 100%;
+    height: auto;
+}
+
+.content {
+    margin: 0 auto;
+    padding: 0 2em;
+    max-width: 1000px;
+    margin-bottom: 50px;
+    line-height: 1.6em;
+}
+
+.header {
+     margin: 0;
+     text-align: left;
+     padding: 0.5em 2em 0;
+     border-bottom: 1px solid #eee;
+ }
+
+.header h1 {
+    margin: 0.2em 0;
+    font-size: 3em;
+    font-weight: 300;
+}
+
+.header h2 {
+    font-weight: 300;
+    color: #ccc;
+    padding: 0;
+    margin-top: 0;
+}
+
+.content-subhead {
+    margin: 50px 0 20px 0;
+    font-weight: 300;
+    color: #888;
+}
+
+
+.header {
+  font-family: "Raleway", Helvetica, Arial, sans-serif;
+  font-weight: bold;
+  font-size: 0.75em;
+}
+
+a {
+  color: #0680CD; 
+  text-decoration: none;
+}
+
+a:visited {
+  color: #0680CD;
+}
+
+i {
+  display: inline-block;
+  margin-right: 0.2em;
+}

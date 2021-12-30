@@ -1,0 +1,87 @@
+/* =============================================================================
+   SCHEDULE
+   ========================================================================== */
+
+.schedule-tbl {
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.15);
+}
+
+.schedule-tbl table {
+  border-collapse: collapse;
+  font-size: 1em;
+  width: 100%;
+  background: #fff;
+}
+
+.schedule-tbl tbody tr:nth-child(2n+2) {
+  background: #f6f6f6;
+}
+
+.schedule-tbl tbody tr:hover {
+  background: #fffde1;
+}
+
+.schedule-tbl td,
+.schedule-tbl th {
+  position: relative;
+  padding: 10px 10px;
+  font-size: 1em;
+  line-height: 1em;
+  text-align: left;
+  border-bottom: 1px solid #e7e7e7;
+}
+
+.schedule-tbl th {
+  color: #2b2b2b;
+  font-size: 1em;
+  font-weight: bolder;
+}
+
+.schedule-tbl td {
+  font-size: 0.9em;
+  line-height: 1.2em;
+}
+
+
+.schedule-tbl .schedule-week {
+  white-space: nowrap;
+  font-size: 0.8em;
+  text-align: center;
+}
+
+
+.schedule-tbl .schedule-date {
+  white-space: nowrap;
+  font-size: 0.8em;
+}
+
+.schedule-tbl .schedule-slides {
+  white-space: nowrap;
+  font-size: 1em;
+}
+
+.schedule-tbl .schedule-title {
+  white-space: nowrap;
+}
+  
+.schedule-tbl .schedule-readings ul {
+  padding: 0;
+  padding-left: 15px;
+  margin: 0;
+  text-indent: -0.4em;
+  font-size: 0.8em;
+  line-height: 1.3em;
+}
+
+.schedule-tbl .schedule-readings li {
+  padding-top: 0.1em;
+  padding-bottom: 0.1em;
+}
+
+.schedule-tbl .schedule-notes {
+  font-size: 0.8em;
+}

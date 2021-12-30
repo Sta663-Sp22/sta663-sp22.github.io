@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Tags on Statistical Computing and Computation</title>
+    <link>/tags/</link>
+    <description>Recent content in Tags on Statistical Computing and Computation</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <copyright>&amp;copy; 2021. All rights reserved.</copyright>
+    
+	<atom:link href="/tags/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+  </channel>
+</rss>
