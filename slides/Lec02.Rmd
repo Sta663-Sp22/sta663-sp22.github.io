@@ -1,0 +1,706 @@
+---
+title: "Lec 02 - (A very brief)<br/>Introduction to Python"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{r setup, message=FALSE, warning=FALSE, include=FALSE}
+options(
+  htmltools.dir.version = FALSE, # for blogdown
+  width=80
+)
+
+```
+
+---
+class: middle, center
+count: false
+
+# Basic types
+
+---
+
+## Type system basics
+
+Like R, Python is a dynamically typed language but the implementation details are very different (as it makes extensive use of an object oriented class system for implementation, more on this later).
+
+Some of the core types,
+
+.pull-left[
+```{python}
+True
+1
+1.0
+1+1j
+"string"
+```
+]
+
+.pull-right[
+```{python}
+type(True)
+type(1)
+type(1.0)
+type(1+1j)
+type("string")
+```
+]
+
+.footnote[
+Note - all of these types are for *scalar* values.
+]
+
+---
+
+## Dynamic types
+
+As just mentioned, Python is dynamically typed langiage so most basic operations will attempt to coerce object to a consistent type appropriate for the operation.
+
+.small[
+.pull-left[
+**Boolean operations:**
+```{python}
+1 and True
+0 or 1
+not 0
+not (0+0j)
+not (0+1j)
+```
+]
+]
+
+--
+
+.small[
+.pull-right[
+**Comparisons:**
+```{python error=TRUE}
+5. > 1
+5. == 5
+1 > True
+(1+0j) == 1
+"abc" < "ABC"
+"abc" > 5
+```
+]
+]
+
+---
+
+## Mathematical operations
+
+.pull-left[
+```{python}
+1 + 5
+1 + 5.
+1 * 5.
+True * 5
+(1+0j) - (1+1j)
+```
+]
+
+--
+
+.pull-right[
+```{python}
+5 / 1.
+5 / 2
+5 // 2
+5 % 2
+7 ** 2
+```
+]
+
+---
+
+## Math ops and strings
+
+```{python error=TRUE}
+"abc" + 5
+"abc" + str(5)
+```
+
+--
+
+```{python error=TRUE}
+"abc" ** 2
+```
+
+--
+
+```{python error=TRUE}
+"abc" * 3
+```
+
+--
+
+<br/>
+
+More on why this happens in a little bit...
+
+
+---
+
+## Casting
+
+Explicit casting between types can be achieved via using the types as functions, e.g. `int()`, `float()`, `bool()`, or `str()`.
+
+.pull-left[
+```{python error=TRUE}
+float("0.5")
+float(True)
+int(1.1)
+int("2")
+int("2.1")
+```
+]
+
+--
+
+.pull-right[
+```{python error=TRUE}
+bool(0)
+bool("hello")
+str(3.14159)
+str(True)
+```
+]
+
+---
+
+## Variable assignment
+
+When using Python it is important to think of variable assignment as the process of attaching a name to an object (literal, data structure, etc.)
+
+.pull-left[
+```{python}
+x = 100
+x
+
+x = "hello"
+x
+
+ß = 1 + 2 / 3
+ß
+```
+]
+
+--
+
+.pull-right[
+```{python}
+a = b = 5
+```
+```{python}
+a
+b
+```
+]
+
+--
+
+.footnote[
+Python variable names can be of any length, and must only contain letters, numbers and underscores. They may not begin with a number nor conflict with language keywords. Python 3 supports a subset of unicode for variable names.
+]
+
+---
+
+## string literals
+
+Strings can be defined using a couple of different ways,
+
+```{python}
+'allows embedded "double" quotes'
+"allows embedded 'single' quotes"
+```
+
+strings can also be triple quoted, using single or double quotes, which allows the string to span multiple lines.
+
+```{python}
+"""line one
+line two
+line three"""
+```
+
+---
+
+## Special values
+
+By default Python does not support missing values and non-finite floating point values are available but somewhat awkward to use. There is a `None` type which is similar in spirit and functionality to `NULL` in R.
+
+.pull-left[
+```{python error=TRUE}
+1/0
+1./0
+float("nan")
+float("-inf")
+```
+]
+
+.pull-right[
+```{python}
+5 > float("inf")
+5 > float("-inf")
+None
+type(None)
+```
+]
+
+
+.footnote[
+We will not be using these values much currently, but they will be relevant when discussing pandas down the road
+]
+
+---
+class: middle, center
+count: false
+
+# Sequence types
+
+---
+
+## lists
+
+Python lists are a *heterogenous*, *ordered*, *mutable* containers of objects (they behave very similarly to lists in R).
+
+```{python}
+[0,1,1,0]
+[0, True, "abc"]
+[0, [1,2], [3,[4]]]
+```
+
+--
+
+```{python}
+x = [0,1,1,0]
+type(x)
+
+y = [0, True, "abc"]
+type(y)
+```
+
+---
+
+## Common operations
+
+.pull-left[
+```{python}
+x = [0,1,1,0]
+
+2 in x
+2 not in x
+x + [3,4,5]
+x * 2
+```
+]
+
+.pull-right[
+```{python}
+len(x)
+max(x)
+x.count(1)
+x.count("1")
+```
+]
+
+.footnote[
+See [here](https://docs.python.org/3/library/stdtypes.html#common-sequence-operations) and [here](https://docs.python.org/3/library/stdtypes.html#mutable-sequence-types) for a more complete listings.
+]
+
+---
+
+## list subsetting 
+
+Elements of a list can be accessed using the `[]` method, element position is indicated using 0-based indexing, and ranges of values can be specified using a slice (`start:stop:step`).
+
+.small[
+```{python}
+x = [1,2,3,4,5,6,7,8,9]
+```
+]
+
+.small[
+.pull-left[
+```{python}
+x[0]
+x[3]
+x[0:3]
+x[3:]
+x[-3:]
+x[:3]
+```
+]
+]
+
+--
+
+.small[
+.pull-right[
+```{python}
+x[0:5:2]
+x[0:6:3]
+x[0:len(x):2]
+x[0::2]
+x[::2]
+x[::-1]
+```
+]
+]
+
+
+---
+
+## mutability
+
+Since lists are mutable the stored values can be changed,
+
+.pull-left[
+```{python}
+x = [1,2,3,4,5]
+```
+
+```{python}
+x[0] = -1
+x
+
+del x[0]
+x
+
+x.append(7)
+x
+```
+]
+
+
+--
+
+.pull-right[
+```{python}
+x.insert(3, -5)
+x
+
+x.pop()
+x
+
+x.clear()
+x
+```
+]
+
+---
+
+## lists, assignment, and mutability
+
+When assigning an object a name (`x = ...`) you do not necessarily end up with an entirely new object, see the example below where both `x` and `y` are names that are attached to the same underlying object in memory.
+
+```{python}
+x = [0,1,1,0]
+y = x
+
+x.append(2)
+```
+
+--
+
+```{python}
+x
+y
+```
+
+---
+
+## lists, assignment, and mutability
+
+To avoid this we need to make an explicit copy of the object pointed to by `x` and point to it with the name `y`.
+
+```{python}
+x = [0,1,1,0]
+y = x.copy()
+
+x.append(2)
+```
+
+```{python}
+x
+y
+```
+
+.footnote[
+More on `.copy()` and `.deepcopy()` methods later on in the course.
+]
+
+---
+
+## Exercise 1
+
+Come up with a slice that will subset the following list to obtain the elements requested:
+
+```{python}
+d = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+```
+
+* Select only the odd values in this list
+
+* Select every 3rd value starting from the 2nd element.
+
+* Select every other value, in reverse order, starting from the 9th element.
+
+* Select the 3rd element, the 5th element, and the 10th element
+
+---
+
+## Value unpacking
+
+lists (and other sequence types) can be unpacking into multiple variables when doing assignment,
+
+.pull-left[
+```{python}
+x, y = [1,2]
+x
+y
+
+x, y = [1, [2, 3]]
+x
+y
+```
+]
+
+--
+
+.pull-right[
+```{python}
+x, y = [[0,1], [2, 3]]
+x
+y
+
+(x1,y1), (x2,y2) = [[0,1], [2, 3]]
+x1
+y1
+x2
+y2
+```
+]
+
+---
+
+## Extended unpacking
+
+
+It is also possible to use extended unpacking via the `*` operator in Python 3
+
+.pull-left[
+```{python error=TRUE}
+x, *y = [1,2,3]
+x
+y
+```
+]
+
+.pull-right[
+```{python error=TRUE}
+*x, y = [1,2,3]
+x
+y
+```
+]
+
+--
+
+<br/>
+
+```{python error=TRUE}
+x, y = [1,2,3]
+```
+
+
+</div>
+
+---
+
+## tuples
+
+Python tuples are a *heterogenous*, *ordered*, *immutable* containers of values. 
+
+They are nearly identical to lists except that their values cannot be changed - you will most often encounter them as a tool for combining multiple objects when returning from a function.
+
+
+```{python}
+(1,2,3)
+(1,True,"abc")
+(1,(2,3))
+```
+
+---
+
+## tuples are immutable
+
+```{python error=TRUE}
+x = (1,2,3)
+
+x[2] = 5
+
+del x[2]
+
+x.clear()
+```
+
+---
+
+## Casting sequences 
+
+It is possible to cast between different sequence types
+
+```{python}
+x = [1,2,3]
+y = (3,2,1)
+```
+
+```{python}
+tuple(x)
+list(y)
+```
+
+```{python}
+tuple(x) == x
+list(tuple(x)) == x
+```
+
+
+---
+
+## Ranges
+
+These are the last type sequence type and are a bit special - ranges are a *homogenous*, *ordered*, *immutable* "containers" of **integers**.
+
+.pull-left[
+```{python}
+range(10)
+range(0,10)
+range(0,10,2)
+range(10,0,-1)
+```
+]
+
+.pull-right[
+```{python}
+list(range(10))
+list(range(0,10))
+list(range(0,10,2))
+list(range(10,0,-1))
+```
+]
+
+
+
+.footnote[
+What makes ranges special is that `range(1000000)` does not store 1 million integers in memory but rather just three 3$^*$.
+]
+
+---
+
+## Strings as sequences
+
+In most of the ways that count we can actually think about Python strings as being ordered, immutable, containers of unicode characters and so much of the functionality we just saw can be applied to them.
+
+```{python}
+x = "abc"
+```
+
+.pull-left[
+```{python}
+x[0]
+x[-1]
+x[2:]
+x[::-1]
+```
+]
+
+--
+
+.pull-right[
+```{python}
+len(x)
+"a" in x
+"bc" in x
+x[0] + x[2] 
+```
+]
+
+--
+
+```{python error=TRUE}
+x[2] = "c"
+```
+
+---
+
+## String Methods
+
+Because string processing is a common and important programming task, the class implements a number of specific methods for these tasks.
+
+```{python}
+x = "Hello world! 1234"
+```
+
+.pull-left[
+```{python}
+x.find("!")
+x.isalnum()
+x.isascii()
+x.lower()
+```
+]
+
+--
+
+.pull-right[
+```{python}
+x.swapcase()
+x.title()
+x.split(" ")
+"|".join(x.split(" "))
+```
+]
+
+
+.footnote[
+More complete list [here](https://docs.python.org/3/library/stdtypes.html#string-methods)
+]
+
+---
+
+## Exercise 2
+
+String processing - take the given string below and apply the necessary methods to create the target string.
+
+**Source:**
+```{python}
+"the quick  Brown   fox Jumped  over   a Lazy  dog"
+```
+
+**Target:**
+```{python}
+"The quick brown fox jumped over a lazy dog."
+```
+
+.footnote[
+Hardcoding w/ magic numbers is perfectly acceptable here.
+]
+
+---
+
+## Set and Mapping types
+
+We will discuss sets (`set`) and dictionaries (`dict`) in more detail next week.
+
+Specifically we will discuss the underlying data structure behind these types (as well as lists and tuples) and when it is most appropriate to use each.

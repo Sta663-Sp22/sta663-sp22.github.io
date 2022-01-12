@@ -1,0 +1,1782 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 02 - (A very brief) Introduction to Python</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 02 - (A very brief)<br/>Introduction to Python
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+
+---
+class: middle, center
+count: false
+
+# Basic types
+
+---
+
+## Type system basics
+
+Like R, Python is a dynamically typed language but the implementation details are very different (as it makes extensive use of an object oriented class system for implementation, more on this later).
+
+Some of the core types,
+
+.pull-left[
+
+```python
+True
+```
+
+```
+## True
+```
+
+```python
+1
+```
+
+```
+## 1
+```
+
+```python
+1.0
+```
+
+```
+## 1.0
+```
+
+```python
+1+1j
+```
+
+```
+## (1+1j)
+```
+
+```python
+"string"
+```
+
+```
+## 'string'
+```
+]
+
+.pull-right[
+
+```python
+type(True)
+```
+
+```
+## &lt;class 'bool'&gt;
+```
+
+```python
+type(1)
+```
+
+```
+## &lt;class 'int'&gt;
+```
+
+```python
+type(1.0)
+```
+
+```
+## &lt;class 'float'&gt;
+```
+
+```python
+type(1+1j)
+```
+
+```
+## &lt;class 'complex'&gt;
+```
+
+```python
+type("string")
+```
+
+```
+## &lt;class 'str'&gt;
+```
+]
+
+.footnote[
+Note - all of these types are for *scalar* values.
+]
+
+---
+
+## Dynamic types
+
+As just mentioned, Python is dynamically typed langiage so most basic operations will attempt to coerce object to a consistent type appropriate for the operation.
+
+.small[
+.pull-left[
+**Boolean operations:**
+
+```python
+1 and True
+```
+
+```
+## True
+```
+
+```python
+0 or 1
+```
+
+```
+## 1
+```
+
+```python
+not 0
+```
+
+```
+## True
+```
+
+```python
+not (0+0j)
+```
+
+```
+## True
+```
+
+```python
+not (0+1j)
+```
+
+```
+## False
+```
+]
+]
+
+--
+
+.small[
+.pull-right[
+**Comparisons:**
+
+```python
+5. &gt; 1
+```
+
+```
+## True
+```
+
+```python
+5. == 5
+```
+
+```
+## True
+```
+
+```python
+1 &gt; True
+```
+
+```
+## False
+```
+
+```python
+(1+0j) == 1
+```
+
+```
+## True
+```
+
+```python
+"abc" &lt; "ABC"
+```
+
+```
+## False
+```
+
+```python
+"abc" &gt; 5
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: '&gt;' not supported between instances of 'str' and 'int'
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+]
+]
+
+---
+
+## Mathematical operations
+
+.pull-left[
+
+```python
+1 + 5
+```
+
+```
+## 6
+```
+
+```python
+1 + 5.
+```
+
+```
+## 6.0
+```
+
+```python
+1 * 5.
+```
+
+```
+## 5.0
+```
+
+```python
+True * 5
+```
+
+```
+## 5
+```
+
+```python
+(1+0j) - (1+1j)
+```
+
+```
+## -1j
+```
+]
+
+--
+
+.pull-right[
+
+```python
+5 / 1.
+```
+
+```
+## 5.0
+```
+
+```python
+5 / 2
+```
+
+```
+## 2.5
+```
+
+```python
+5 // 2
+```
+
+```
+## 2
+```
+
+```python
+5 % 2
+```
+
+```
+## 1
+```
+
+```python
+7 ** 2
+```
+
+```
+## 49
+```
+]
+
+---
+
+## Math ops and strings
+
+
+```python
+"abc" + 5
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: can only concatenate str (not "int") to str
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+```python
+"abc" + str(5)
+```
+
+```
+## 'abc5'
+```
+
+--
+
+
+```python
+"abc" ** 2
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: unsupported operand type(s) for ** or pow(): 'str' and 'int'
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+--
+
+
+```python
+"abc" * 3
+```
+
+```
+## 'abcabcabc'
+```
+
+--
+
+&lt;br/&gt;
+
+More on why this happens in a little bit...
+
+
+---
+
+## Casting
+
+Explicit casting between types can be achieved via using the types as functions, e.g. `int()`, `float()`, `bool()`, or `str()`.
+
+.pull-left[
+
+```python
+float("0.5")
+```
+
+```
+## 0.5
+```
+
+```python
+float(True)
+```
+
+```
+## 1.0
+```
+
+```python
+int(1.1)
+```
+
+```
+## 1
+```
+
+```python
+int("2")
+```
+
+```
+## 2
+```
+
+```python
+int("2.1")
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): ValueError: invalid literal for int() with base 10: '2.1'
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+]
+
+--
+
+.pull-right[
+
+```python
+bool(0)
+```
+
+```
+## False
+```
+
+```python
+bool("hello")
+```
+
+```
+## True
+```
+
+```python
+str(3.14159)
+```
+
+```
+## '3.14159'
+```
+
+```python
+str(True)
+```
+
+```
+## 'True'
+```
+]
+
+---
+
+## Variable assignment
+
+When using Python it is important to think of variable assignment as the process of attaching a name to an object (literal, data structure, etc.)
+
+.pull-left[
+
+```python
+x = 100
+x
+```
+
+```
+## 100
+```
+
+```python
+x = "hello"
+x
+```
+
+```
+## 'hello'
+```
+
+```python
+ß = 1 + 2 / 3
+ß
+```
+
+```
+## 1.6666666666666665
+```
+]
+
+--
+
+.pull-right[
+
+```python
+a = b = 5
+```
+
+```python
+a
+```
+
+```
+## 5
+```
+
+```python
+b
+```
+
+```
+## 5
+```
+]
+
+--
+
+.footnote[
+Python variable names can be of any length, and must only contain letters, numbers and underscores. They may not begin with a number nor conflict with language keywords. Python 3 supports a subset of unicode for variable names.
+]
+
+---
+
+## string literals
+
+Strings can be defined using a couple of different ways,
+
+
+```python
+'allows embedded "double" quotes'
+```
+
+```
+## 'allows embedded "double" quotes'
+```
+
+```python
+"allows embedded 'single' quotes"
+```
+
+```
+## "allows embedded 'single' quotes"
+```
+
+strings can also be triple quoted, using single or double quotes, which allows the string to span multiple lines.
+
+
+```python
+"""line one
+line two
+line three"""
+```
+
+```
+## 'line one\nline two\nline three'
+```
+
+---
+
+## Special values
+
+By default Python does not support missing values and non-finite floating point values are available but somewhat awkward to use. There is a `None` type which is similar in spirit and functionality to `NULL` in R.
+
+.pull-left[
+
+```python
+1/0
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): ZeroDivisionError: division by zero
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+```python
+1./0
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): ZeroDivisionError: float division by zero
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+```python
+float("nan")
+```
+
+```
+## nan
+```
+
+```python
+float("-inf")
+```
+
+```
+## -inf
+```
+]
+
+.pull-right[
+
+```python
+5 &gt; float("inf")
+```
+
+```
+## False
+```
+
+```python
+5 &gt; float("-inf")
+```
+
+```
+## True
+```
+
+```python
+None
+type(None)
+```
+
+```
+## &lt;class 'NoneType'&gt;
+```
+]
+
+
+.footnote[
+We will not be using these values much currently, but they will be relevant when discussing pandas down the road
+]
+
+---
+class: middle, center
+count: false
+
+# Sequence types
+
+---
+
+## lists
+
+Python lists are a *heterogenous*, *ordered*, *mutable* containers of objects (they behave very similarly to lists in R).
+
+
+```python
+[0,1,1,0]
+```
+
+```
+## [0, 1, 1, 0]
+```
+
+```python
+[0, True, "abc"]
+```
+
+```
+## [0, True, 'abc']
+```
+
+```python
+[0, [1,2], [3,[4]]]
+```
+
+```
+## [0, [1, 2], [3, [4]]]
+```
+
+--
+
+
+```python
+x = [0,1,1,0]
+type(x)
+```
+
+```
+## &lt;class 'list'&gt;
+```
+
+```python
+y = [0, True, "abc"]
+type(y)
+```
+
+```
+## &lt;class 'list'&gt;
+```
+
+---
+
+## Common operations
+
+.pull-left[
+
+```python
+x = [0,1,1,0]
+
+2 in x
+```
+
+```
+## False
+```
+
+```python
+2 not in x
+```
+
+```
+## True
+```
+
+```python
+x + [3,4,5]
+```
+
+```
+## [0, 1, 1, 0, 3, 4, 5]
+```
+
+```python
+x * 2
+```
+
+```
+## [0, 1, 1, 0, 0, 1, 1, 0]
+```
+]
+
+.pull-right[
+
+```python
+len(x)
+```
+
+```
+## 4
+```
+
+```python
+max(x)
+```
+
+```
+## 1
+```
+
+```python
+x.count(1)
+```
+
+```
+## 2
+```
+
+```python
+x.count("1")
+```
+
+```
+## 0
+```
+]
+
+.footnote[
+See [here](https://docs.python.org/3/library/stdtypes.html#common-sequence-operations) and [here](https://docs.python.org/3/library/stdtypes.html#mutable-sequence-types) for a more complete listings.
+]
+
+---
+
+## list subsetting 
+
+Elements of a list can be accessed using the `[]` method, element position is indicated using 0-based indexing, and ranges of values can be specified using a slice (`start:stop:step`).
+
+.small[
+
+```python
+x = [1,2,3,4,5,6,7,8,9]
+```
+]
+
+.small[
+.pull-left[
+
+```python
+x[0]
+```
+
+```
+## 1
+```
+
+```python
+x[3]
+```
+
+```
+## 4
+```
+
+```python
+x[0:3]
+```
+
+```
+## [1, 2, 3]
+```
+
+```python
+x[3:]
+```
+
+```
+## [4, 5, 6, 7, 8, 9]
+```
+
+```python
+x[-3:]
+```
+
+```
+## [7, 8, 9]
+```
+
+```python
+x[:3]
+```
+
+```
+## [1, 2, 3]
+```
+]
+]
+
+--
+
+.small[
+.pull-right[
+
+```python
+x[0:5:2]
+```
+
+```
+## [1, 3, 5]
+```
+
+```python
+x[0:6:3]
+```
+
+```
+## [1, 4]
+```
+
+```python
+x[0:len(x):2]
+```
+
+```
+## [1, 3, 5, 7, 9]
+```
+
+```python
+x[0::2]
+```
+
+```
+## [1, 3, 5, 7, 9]
+```
+
+```python
+x[::2]
+```
+
+```
+## [1, 3, 5, 7, 9]
+```
+
+```python
+x[::-1]
+```
+
+```
+## [9, 8, 7, 6, 5, 4, 3, 2, 1]
+```
+]
+]
+
+
+---
+
+## mutability
+
+Since lists are mutable the stored values can be changed,
+
+.pull-left[
+
+```python
+x = [1,2,3,4,5]
+```
+
+
+```python
+x[0] = -1
+x
+```
+
+```
+## [-1, 2, 3, 4, 5]
+```
+
+```python
+del x[0]
+x
+```
+
+```
+## [2, 3, 4, 5]
+```
+
+```python
+x.append(7)
+x
+```
+
+```
+## [2, 3, 4, 5, 7]
+```
+]
+
+
+--
+
+.pull-right[
+
+```python
+x.insert(3, -5)
+x
+```
+
+```
+## [2, 3, 4, -5, 5, 7]
+```
+
+```python
+x.pop()
+```
+
+```
+## 7
+```
+
+```python
+x
+```
+
+```
+## [2, 3, 4, -5, 5]
+```
+
+```python
+x.clear()
+x
+```
+
+```
+## []
+```
+]
+
+---
+
+## lists, assignment, and mutability
+
+When assigning an object a name (`x = ...`) you do not necessarily end up with an entirely new object, see the example below where both `x` and `y` are names that are attached to the same underlying object in memory.
+
+
+```python
+x = [0,1,1,0]
+y = x
+
+x.append(2)
+```
+
+--
+
+
+```python
+x
+```
+
+```
+## [0, 1, 1, 0, 2]
+```
+
+```python
+y
+```
+
+```
+## [0, 1, 1, 0, 2]
+```
+
+---
+
+## lists, assignment, and mutability
+
+To avoid this we need to make an explicit copy of the object pointed to by `x` and point to it with the name `y`.
+
+
+```python
+x = [0,1,1,0]
+y = x.copy()
+
+x.append(2)
+```
+
+
+```python
+x
+```
+
+```
+## [0, 1, 1, 0, 2]
+```
+
+```python
+y
+```
+
+```
+## [0, 1, 1, 0]
+```
+
+.footnote[
+More on `.copy()` and `.deepcopy()` methods later on in the course.
+]
+
+---
+
+## Exercise 1
+
+Come up with a slice that will subset the following list to obtain the elements requested:
+
+
+```python
+d = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+```
+
+* Select only the odd values in this list
+
+* Select every 3rd value starting from the 2nd element.
+
+* Select every other value, in reverse order, starting from the 9th element.
+
+* Select the 3rd element, the 5th element, and the 10th element
+
+---
+
+## Value unpacking
+
+lists (and other sequence types) can be unpacking into multiple variables when doing assignment,
+
+.pull-left[
+
+```python
+x, y = [1,2]
+x
+```
+
+```
+## 1
+```
+
+```python
+y
+```
+
+```
+## 2
+```
+
+```python
+x, y = [1, [2, 3]]
+x
+```
+
+```
+## 1
+```
+
+```python
+y
+```
+
+```
+## [2, 3]
+```
+]
+
+--
+
+.pull-right[
+
+```python
+x, y = [[0,1], [2, 3]]
+x
+```
+
+```
+## [0, 1]
+```
+
+```python
+y
+```
+
+```
+## [2, 3]
+```
+
+```python
+(x1,y1), (x2,y2) = [[0,1], [2, 3]]
+x1
+```
+
+```
+## 0
+```
+
+```python
+y1
+```
+
+```
+## 1
+```
+
+```python
+x2
+```
+
+```
+## 2
+```
+
+```python
+y2
+```
+
+```
+## 3
+```
+]
+
+---
+
+## Extended unpacking
+
+
+It is also possible to use extended unpacking via the `*` operator in Python 3
+
+.pull-left[
+
+```python
+x, *y = [1,2,3]
+x
+```
+
+```
+## 1
+```
+
+```python
+y
+```
+
+```
+## [2, 3]
+```
+]
+
+.pull-right[
+
+```python
+*x, y = [1,2,3]
+x
+```
+
+```
+## [1, 2]
+```
+
+```python
+y
+```
+
+```
+## 3
+```
+]
+
+--
+
+&lt;br/&gt;
+
+
+```python
+x, y = [1,2,3]
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): ValueError: too many values to unpack (expected 2)
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+
+&lt;/div&gt;
+
+---
+
+## tuples
+
+Python tuples are a *heterogenous*, *ordered*, *immutable* containers of values. 
+
+They are nearly identical to lists except that their values cannot be changed - you will most often encounter them as a tool for combining multiple objects when returning from a function.
+
+
+
+```python
+(1,2,3)
+```
+
+```
+## (1, 2, 3)
+```
+
+```python
+(1,True,"abc")
+```
+
+```
+## (1, True, 'abc')
+```
+
+```python
+(1,(2,3))
+```
+
+```
+## (1, (2, 3))
+```
+
+---
+
+## tuples are immutable
+
+
+```python
+x = (1,2,3)
+
+x[2] = 5
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: 'tuple' object does not support item assignment
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+```python
+del x[2]
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: 'tuple' object doesn't support item deletion
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+```python
+x.clear()
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): AttributeError: 'tuple' object has no attribute 'clear'
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+---
+
+## Casting sequences 
+
+It is possible to cast between different sequence types
+
+
+```python
+x = [1,2,3]
+y = (3,2,1)
+```
+
+
+```python
+tuple(x)
+```
+
+```
+## (1, 2, 3)
+```
+
+```python
+list(y)
+```
+
+```
+## [3, 2, 1]
+```
+
+
+```python
+tuple(x) == x
+```
+
+```
+## False
+```
+
+```python
+list(tuple(x)) == x
+```
+
+```
+## True
+```
+
+
+---
+
+## Ranges
+
+These are the last type sequence type and are a bit special - ranges are a *homogenous*, *ordered*, *immutable* "containers" of **integers**.
+
+.pull-left[
+
+```python
+range(10)
+```
+
+```
+## range(0, 10)
+```
+
+```python
+range(0,10)
+```
+
+```
+## range(0, 10)
+```
+
+```python
+range(0,10,2)
+```
+
+```
+## range(0, 10, 2)
+```
+
+```python
+range(10,0,-1)
+```
+
+```
+## range(10, 0, -1)
+```
+]
+
+.pull-right[
+
+```python
+list(range(10))
+```
+
+```
+## [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+```
+
+```python
+list(range(0,10))
+```
+
+```
+## [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+```
+
+```python
+list(range(0,10,2))
+```
+
+```
+## [0, 2, 4, 6, 8]
+```
+
+```python
+list(range(10,0,-1))
+```
+
+```
+## [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+```
+]
+
+
+
+.footnote[
+What makes ranges special is that `range(1000000)` does not store 1 million integers in memory but rather just three 3$^*$.
+]
+
+---
+
+## Strings as sequences
+
+In most of the ways that count we can actually think about Python strings as being ordered, immutable, containers of unicode characters and so much of the functionality we just saw can be applied to them.
+
+
+```python
+x = "abc"
+```
+
+.pull-left[
+
+```python
+x[0]
+```
+
+```
+## 'a'
+```
+
+```python
+x[-1]
+```
+
+```
+## 'c'
+```
+
+```python
+x[2:]
+```
+
+```
+## 'c'
+```
+
+```python
+x[::-1]
+```
+
+```
+## 'cba'
+```
+]
+
+--
+
+.pull-right[
+
+```python
+len(x)
+```
+
+```
+## 3
+```
+
+```python
+"a" in x
+```
+
+```
+## True
+```
+
+```python
+"bc" in x
+```
+
+```
+## True
+```
+
+```python
+x[0] + x[2] 
+```
+
+```
+## 'ac'
+```
+]
+
+--
+
+
+```python
+x[2] = "c"
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: 'str' object does not support item assignment
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+---
+
+## String Methods
+
+Because string processing is a common and important programming task, the class implements a number of specific methods for these tasks.
+
+
+```python
+x = "Hello world! 1234"
+```
+
+.pull-left[
+
+```python
+x.find("!")
+```
+
+```
+## 11
+```
+
+```python
+x.isalnum()
+```
+
+```
+## False
+```
+
+```python
+x.isascii()
+```
+
+```
+## True
+```
+
+```python
+x.lower()
+```
+
+```
+## 'hello world! 1234'
+```
+]
+
+--
+
+.pull-right[
+
+```python
+x.swapcase()
+```
+
+```
+## 'hELLO WORLD! 1234'
+```
+
+```python
+x.title()
+```
+
+```
+## 'Hello World! 1234'
+```
+
+```python
+x.split(" ")
+```
+
+```
+## ['Hello', 'world!', '1234']
+```
+
+```python
+"|".join(x.split(" "))
+```
+
+```
+## 'Hello|world!|1234'
+```
+]
+
+
+.footnote[
+More complete list [here](https://docs.python.org/3/library/stdtypes.html#string-methods)
+]
+
+---
+
+## Exercise 2
+
+String processing - take the given string below and apply the necessary methods to create the target string.
+
+**Source:**
+
+```python
+"the quick  Brown   fox Jumped  over   a Lazy  dog"
+```
+
+```
+## 'the quick  Brown   fox Jumped  over   a Lazy  dog'
+```
+
+**Target:**
+
+```python
+"The quick brown fox jumped over a lazy dog."
+```
+
+```
+## 'The quick brown fox jumped over a lazy dog.'
+```
+
+.footnote[
+Hardcoding w/ magic numbers is perfectly acceptable here.
+]
+
+---
+
+## Set and Mapping types
+
+We will discuss sets (`set`) and dictionaries (`dict`) in more detail next week.
+
+Specifically we will discuss the underlying data structure behind these types (as well as lists and tuples) and when it is most appropriate to use each.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
