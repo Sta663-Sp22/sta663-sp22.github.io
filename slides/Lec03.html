@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 03 - Control flow, list comprehensions and functions</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 03 - Control flow, list comprehensions<br/>and functions
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+
+---
+class: middle, center
+count: false
+
+# Control Flow
+
+---
+
+## Conditionals
+
+Python supports tradition if / else style conditional expressions,
+
+.pull-left[
+
+```python
+x = 42
+
+if x &lt; 0:
+    print("X is negative")
+elif x &gt; 0:
+    print("X is positive")
+else:
+    print("X is zero")
+```
+
+```
+## X is positive
+```
+]
+
+.pull-right[
+
+```python
+x = 0
+
+if x &lt; 0:
+    print("X is negative")
+elif x &gt; 0:
+    print("X is positive")
+else:
+    print("X is zero")
+```
+
+```
+## X is zero
+```
+]
+
+---
+
+## Significant whitespace
+
+This is a fairly unique feature of Python - expressions are grouped together via *indenting*. This is relevant for control flow (`if`, `for`, `while`, etc.) as well as function and class definitions and many other aspects of the language.
+
+Indenting should be 2 or more spaces (4 is the preferred based on [PEP 8](https://www.python.org/dev/peps/pep-0008/)) or tab characters - generally your IDE will handle this for you.
+
+--
+
+If there are not multple expression then indenting is optional, e.g.
+
+
+```python
+if x == 0: print("X is zero")
+```
+
+```
+## X is zero
+```
+
+---
+
+## Conditional scope
+
+Conditional expressions do not have their own scope, so variables defined within will be accessible outside of the conditional. This is also true for other control flow constructs (e.g. `for`, `while`, etc.)
+
+
+```python
+s = 0
+if True:
+    s = 3
+
+s
+```
+
+```
+## 3
+```
+
+---
+
+## While loops
+
+Repeat until the given condition evaluates to `False`,
+
+
+```python
+i = 17
+seq = [i]
+
+while i != 1:
+    if i % 2 == 0:
+        i /= 2
+    else:
+        i = 3*i + 1
+        
+    seq.append(i)
+
+seq
+```
+
+```
+## [17, 52, 26.0, 13.0, 40.0, 20.0, 10.0, 5.0, 16.0, 8.0, 4.0, 2.0, 1.0]
+```
+
+.footnote[Anyone recognize what this is an example of?]
+
+---
+
+## For loops
+
+Iterates over the elements of a sequence
+
+
+.pull-left[
+
+```python
+for w in ["Hello", "world!"]:
+    print(w, len(w))
+```
+
+```
+## Hello 5
+## world! 6
+```
+
+
+```python
+
+sum = 0
+for v in (1,2,3,4):
+    sum += v
+sum
+```
+
+```
+## 10
+```
+]
+
+.pull-right[
+
+```python
+res = []
+for c in "abc123def567":
+    if (c.isnumeric()):
+        res.append(int(c))
+res
+```
+
+```
+## [1, 2, 3, 5, 6, 7]
+```
+
+```python
+res = []
+for i in range(0,10):
+    res += [i]
+res
+```
+
+```
+## [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+```
+]
+
+---
+
+## `break` and `continue`
+
+Allow early loop exit or step to next iteration respectively,
+
+
+.pull-left[
+
+```python
+for i in range(10):
+    if i == 5:
+        break
+    print(i, end=" ")
+```
+
+```
+## 0 1 2 3 4
+```
+
+```python
+print()
+```
+]
+
+.pull-right[
+
+```python
+for i in range(10):
+    if i % 2 == 0:
+        continue
+    
+    print(i, end=" ")
+```
+
+```
+## 1 3 5 7 9
+```
+
+```python
+print()
+```
+]
+
+---
+
+## loops and `else`?
+
+Both `for` and `while` loops can also have `else` clauses which execute when the loop is terminated by fully iterating (`for`) or meetings the `while` condition, i.e. when `break` does not execute.
+
+
+```python
+# From python tutorial - Section 4.4
+for n in range(2, 10):
+    for x in range(2, n):
+        if n % x == 0:
+            print(n, 'equals', x, '*', n//x)
+            break
+    else:
+        print(n, 'is a prime number')
+```
+
+```
+## 2 is a prime number
+## 3 is a prime number
+## 4 equals 2 * 2
+## 5 is a prime number
+## 6 equals 2 * 3
+## 7 is a prime number
+## 8 equals 2 * 4
+## 9 equals 3 * 3
+```
+
+---
+
+## `pass`
+
+This is a expression that does nothing, it can be used when an expression is needed syntaxtically.
+
+
+```python
+x = -3
+
+if x &lt; 0:
+    pass
+elif x % 2 == 0:
+    print("x is even")
+elif x % 2 == 1:
+    print("x is odd")
+```
+
+---
+class: middle, center
+count: false
+
+# List comprehensions
+
+---
+
+## Basics
+
+List comprehensions provides a concise syntax for generating lists
+
+.pull-left[
+
+```python
+res = []
+for x in range(10):
+    res.append(x**2)
+```
+]
+
+.pull-right[
+
+```python
+[x**2 for x in range(10)]
+```
+
+```
+## [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+```
+]
+
+--
+
+Since it uses the for loop syntax, any sequence is fair game:
+
+
+```python
+[x**2 for x in [1,2,3]]
+```
+
+```
+## [1, 4, 9]
+```
+
+```python
+[x**2 for x in (1,2,3)]
+```
+
+```
+## [1, 4, 9]
+```
+
+```python
+[c.lower() for c in "Hello World!"]
+```
+
+```
+## ['h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '!']
+```
+
+---
+
+## Using `if`
+
+List comprehensions can include a conditional clause,
+
+
+```python
+[x**2 for x in range(10) if x % 2 == 0]
+```
+
+```
+## [0, 4, 16, 36, 64]
+```
+
+```python
+[x**2 for x in range(10) if x % 2 == 1]
+```
+
+```
+## [1, 9, 25, 49, 81]
+```
+
+--
+
+The comprehension can include multiple `if` statements, 
+
+
+```python
+[x**2 for x in range(10) if x % 2 == 0 if x % 3 ==0]
+```
+
+```
+## [0, 36]
+```
+
+```python
+[x**2 for x in range(10) if x % 2 == 0 and x % 3 ==0]
+```
+
+```
+## [0, 36]
+```
+
+---
+
+## Multiple `for`s
+
+Similarly, the comprehension can also contain multiple `for` statements,
+
+.pull-left[
+
+```python
+[(x, y) for x in range(3) for y in range(3)]
+```
+
+```
+## [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
+```
+]
+
+--
+
+.pull-right[
+
+```python
+res = []
+for x in range(3):
+    for y in range(3):
+        res.append((x,y))
+res
+```
+
+```
+## [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
+```
+]
+
+---
+
+## `zip`
+
+This is a useful function for "joining" elements of a sequence,
+
+
+```python
+x = [1,2,3]
+y = [3,2,1]
+```
+
+
+```python
+z = zip(x, y)
+z
+```
+
+```
+## &lt;zip object at 0x10ef0e400&gt;
+```
+
+
+```python
+list(z)
+```
+
+```
+## [(1, 3), (2, 2), (3, 1)]
+```
+
+--
+
+
+```python
+[a**b for a,b in zip(x,y)]
+```
+
+```
+## [1, 4, 3]
+```
+
+```python
+[b**a for a,b in zip(x,y)]
+```
+
+```
+## [3, 4, 1]
+```
+
+---
+
+## `zip` and length mismatches
+
+If the length of the shortest sequence will be used, additional elements will be ignored (silently)
+
+
+```python
+x = [1,2,3,4]
+y = range(3)
+z = "ABCDE"
+
+list(zip(x,y))
+```
+
+```
+## [(1, 0), (2, 1), (3, 2)]
+```
+
+```python
+list(zip(x,z))
+```
+
+```
+## [(1, 'A'), (2, 'B'), (3, 'C'), (4, 'D')]
+```
+
+```python
+list(zip(x,y,z))
+```
+
+```
+## [(1, 0, 'A'), (2, 1, 'B'), (3, 2, 'C')]
+```
+
+---
+
+## Exercise 1
+
+Using list comprehensions, complete the following tasks:
+
+* Create a list containing tuples of x and y coordinates of all points of a regular grid for `\(x \in [0, 10]\)` and `\(y \in [0, 10]\)`.
+
+* Count the number of points where `\(y &gt; x\)`.
+
+* Count the number of points `\(x\)` or `\(y\)` is prime.
+
+---
+class: middle, center
+count: false
+
+# Functions
+
+---
+
+## Basic functions
+
+Functions are defined using `def`, arguments can be defined with out without default values.
+
+
+```python
+def f(x, y=2, z=3):
+    print(f"x={x}, y={y}, z={z}")
+```
+
+.pull-left[
+
+```python
+f(1)
+```
+
+```
+## x=1, y=2, z=3
+```
+
+```python
+f(1,z=-1)
+```
+
+```
+## x=1, y=2, z=-1
+```
+
+```python
+f("abc", y=True)
+```
+
+```
+## x=abc, y=True, z=3
+```
+]
+
+.pull-right[
+
+```python
+f(z=-1, x=0)
+```
+
+```
+## x=0, y=2, z=-1
+```
+
+```python
+f()
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: f() missing 1 required positional argument: 'x'
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+]
+
+---
+
+## `return` statements
+
+Functions must explicitly include a `return` statement to return a value.
+
+.pull-left[
+
+```python
+def f(x):
+    x**2
+```
+]
+
+.pull-right[
+
+```python
+def g(x):
+    return x**2
+```
+]
+
+--
+
+&lt;div&gt;
+
+.pull-left[
+
+```python
+f(2)
+```
+
+
+```python
+type(f(2))
+```
+
+```
+## &lt;class 'NoneType'&gt;
+```
+]
+
+.pull-right[
+
+
+```python
+g(2)
+```
+
+```
+## 4
+```
+
+```python
+type(g(2))
+```
+
+```
+## &lt;class 'int'&gt;
+```
+]
+&lt;/div&gt;
+
+--
+
+Functions can contain multiple `return` statements
+
+
+```python
+def is_odd(x):
+    if x % 2 == 0: return False
+    else:          return True
+    
+is_odd(2)
+```
+
+```
+## False
+```
+
+```python
+is_odd(3)
+```
+
+```
+## True
+```
+
+---
+
+## Multiple return values
+
+Functions can return multiple values using a tuple or list,
+
+
+```python
+def f():
+    return (1,2,3)
+
+f()
+```
+
+```
+## (1, 2, 3)
+```
+
+
+```python
+def g():
+    return [1,2,3]
+
+g()
+```
+
+```
+## [1, 2, 3]
+```
+
+--
+
+If multiple values are present and not in a sequence, then it will default to a tuple,
+
+
+```python
+def h():
+    return 1,2,3
+
+h()
+```
+
+```
+## (1, 2, 3)
+```
+
+
+```python
+def i():
+    return 1, [2, 3]
+
+i()
+```
+
+```
+## (1, [2, 3])
+```
+
+
+---
+
+## Doc strings
+
+A common practice in Python is to document a function (and other objects) using a doc string - this is a short concise summary of the objects purpose. Doc strings are specified by supplying a string as the very line in the function definition.
+
+
+
+```python
+def f():
+    "Hello."
+    
+    pass
+
+f.__doc__
+```
+
+```
+## 'Hello.'
+```
+
+--
+
+
+```python
+def g():
+    """This function does
+    absolutely nothing.
+    """
+    
+    pass
+
+g.__doc__
+```
+
+```
+## 'This function does\n    absolutely nothing.\n    '
+```
+
+---
+
+## Variadic arguments
+
+If the number of arguments is unknown it is possible to define to define variadic functions
+
+
+```python
+def paste(*args, sep=" "):
+    return sep.join(args)
+```
+
+--
+
+
+```python
+paste("A")
+```
+
+```
+## 'A'
+```
+
+```python
+paste("A","B","C")
+```
+
+```
+## 'A B C'
+```
+
+```python
+paste("1","2","3",sep=",")
+```
+
+```
+## '1,2,3'
+```
+
+
+---
+
+## Positional and/or keyword arguments
+
+.small[
+```
+def f(pos1, pos2, /, pos_or_kwd, *, kwd1, kwd2):
+      -----------    ----------     ----------
+        |             |                  |
+        |        Positional or keyword   |
+        |                                - Keyword only
+         -- Positional only
+```
+]
+
+.footnote[
+Based on Python tutorial [Sec 4.8.3](https://docs.python.org/3/tutorial/controlflow.html#special-parameters)
+]
+
+--
+
+.small[
+For the following function `x` can only be passed by position and `z` only by name
+
+
+```python
+def f(x, /, y, *, z):
+    print(f"x={x}, y={y}, z={z}")
+```
+]
+
+--
+
+.small[
+
+```python
+f(1,1,1)
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: f() takes 2 positional arguments but 3 were given
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+```python
+f(x=1,y=1,z=1)
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: f() got some positional-only arguments passed as keyword arguments: 'x'
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+]
+
+--
+
+.small[
+
+```python
+f(1,1,z=1)
+```
+
+```
+## x=1, y=1, z=1
+```
+
+```python
+f(1,y=1,z=1)
+```
+
+```
+## x=1, y=1, z=1
+```
+]
+
+
+
+
+
+---
+
+## Anonymous functions
+
+Can be defined using the `lambda` keyword, they are intended to be used for very short functions (syntactically limited to a single expression, and not return statement)
+
+.pull-left[
+
+```python
+def f(x,y):
+    return x**2 + y**2
+
+f(2,3)
+```
+
+```
+## 13
+```
+
+```python
+type(f)
+```
+
+```
+## &lt;class 'function'&gt;
+```
+]
+
+.pull-right[
+
+```python
+g = lambda x, y: x**2 + y**2
+
+
+g(2,3)
+```
+
+```
+## 13
+```
+
+```python
+type(g)
+```
+
+```
+## &lt;class 'function'&gt;
+```
+]
+
+---
+
+## Function annotations (type hinting)
+
+Python nows supports syntax for providing metadata around the expected type of arguments and the return value of a function. 
+
+
+
+```python
+def f(x: str, y: str, z: str) -&gt; str:
+    return x + y + z
+```
+
+--
+
+These annotations are stored in the `__annotations__` attribute
+
+
+```python
+f.__annotations__
+```
+
+```
+## {'x': &lt;class 'str'&gt;, 'y': &lt;class 'str'&gt;, 'z': &lt;class 'str'&gt;, 'return': &lt;class 'str'&gt;}
+```
+
+--
+
+But doesn't actually do anything at runtime: 
+
+
+```python
+f("A","B","C")
+```
+
+```
+## 'ABC'
+```
+
+
+```python
+f(1,2,3)
+```
+
+```
+## 6
+```
+
+---
+
+## Exercise 2
+
+1. Write a function, `kg_to_lb`, that converts a list of weights in kilograms to a list of weights in pounds (there a 1 kg = 2.20462 lbs). Include a doc string and function annotations.
+
+2. Write a second function, `total_lb`, that calculates the total weight in pounds of an order, the input arguments should be a list of item weights in kilograms and a list of the number of each item ordered.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

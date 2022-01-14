@@ -1,0 +1,648 @@
+---
+title: "Lec 03 - Control flow, list comprehensions<br/>and functions"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{r setup, message=FALSE, warning=FALSE, include=FALSE}
+options(
+  htmltools.dir.version = FALSE, # for blogdown
+  width=80
+)
+
+```
+
+---
+class: middle, center
+count: false
+
+# Control Flow
+
+---
+
+## Conditionals
+
+Python supports tradition if / else style conditional expressions,
+
+.pull-left[
+```{python}
+x = 42
+
+if x < 0:
+    print("X is negative")
+elif x > 0:
+    print("X is positive")
+else:
+    print("X is zero")
+```
+]
+
+.pull-right[
+```{python}
+x = 0
+
+if x < 0:
+    print("X is negative")
+elif x > 0:
+    print("X is positive")
+else:
+    print("X is zero")
+```
+]
+
+---
+
+## Significant whitespace
+
+This is a fairly unique feature of Python - expressions are grouped together via *indenting*. This is relevant for control flow (`if`, `for`, `while`, etc.) as well as function and class definitions and many other aspects of the language.
+
+Indenting should be 2 or more spaces (4 is the preferred based on [PEP 8](https://www.python.org/dev/peps/pep-0008/)) or tab characters - generally your IDE will handle this for you.
+
+--
+
+If there are not multple expression then indenting is optional, e.g.
+
+```{python}
+if x == 0: print("X is zero")
+```
+
+---
+
+## Conditional scope
+
+Conditional expressions do not have their own scope, so variables defined within will be accessible outside of the conditional. This is also true for other control flow constructs (e.g. `for`, `while`, etc.)
+
+```{python}
+s = 0
+if True:
+    s = 3
+
+s
+```
+
+---
+
+## While loops
+
+Repeat until the given condition evaluates to `False`,
+
+```{python}
+i = 17
+seq = [i]
+
+while i != 1:
+    if i % 2 == 0:
+        i /= 2
+    else:
+        i = 3*i + 1
+        
+    seq.append(i)
+
+seq
+```
+
+.footnote[Anyone recognize what this is an example of?]
+
+---
+
+## For loops
+
+Iterates over the elements of a sequence
+
+
+.pull-left[
+```{python}
+for w in ["Hello", "world!"]:
+    print(w, len(w))
+```
+
+```{python}
+
+sum = 0
+for v in (1,2,3,4):
+    sum += v
+sum
+```
+]
+
+.pull-right[
+```{python}
+res = []
+for c in "abc123def567":
+    if (c.isnumeric()):
+        res.append(int(c))
+res
+
+res = []
+for i in range(0,10):
+    res += [i]
+res
+```
+]
+
+---
+
+## `break` and `continue`
+
+Allow early loop exit or step to next iteration respectively,
+
+
+.pull-left[
+```{python}
+for i in range(10):
+    if i == 5:
+        break
+    print(i, end=" ")
+print()
+```
+]
+
+.pull-right[
+```{python}
+for i in range(10):
+    if i % 2 == 0:
+        continue
+    
+    print(i, end=" ")
+print()
+```
+]
+
+---
+
+## loops and `else`?
+
+Both `for` and `while` loops can also have `else` clauses which execute when the loop is terminated by fully iterating (`for`) or meetings the `while` condition, i.e. when `break` does not execute.
+
+```{python}
+# From python tutorial - Section 4.4
+for n in range(2, 10):
+    for x in range(2, n):
+        if n % x == 0:
+            print(n, 'equals', x, '*', n//x)
+            break
+    else:
+        print(n, 'is a prime number')
+```
+
+---
+
+## `pass`
+
+This is a expression that does nothing, it can be used when an expression is needed syntaxtically.
+
+```{python}
+x = -3
+
+if x < 0:
+    pass
+elif x % 2 == 0:
+    print("x is even")
+elif x % 2 == 1:
+    print("x is odd")
+```
+
+---
+class: middle, center
+count: false
+
+# List comprehensions
+
+---
+
+## Basics
+
+List comprehensions provides a concise syntax for generating lists
+
+.pull-left[
+```{python}
+res = []
+for x in range(10):
+    res.append(x**2)
+```
+]
+
+.pull-right[
+```{python}
+[x**2 for x in range(10)]
+```
+]
+
+--
+
+Since it uses the for loop syntax, any sequence is fair game:
+
+```{python}
+[x**2 for x in [1,2,3]]
+
+[x**2 for x in (1,2,3)]
+
+[c.lower() for c in "Hello World!"]
+```
+
+---
+
+## Using `if`
+
+List comprehensions can include a conditional clause,
+
+```{python}
+[x**2 for x in range(10) if x % 2 == 0]
+
+[x**2 for x in range(10) if x % 2 == 1]
+```
+
+--
+
+The comprehension can include multiple `if` statements, 
+
+```{python}
+[x**2 for x in range(10) if x % 2 == 0 if x % 3 ==0]
+
+[x**2 for x in range(10) if x % 2 == 0 and x % 3 ==0]
+```
+
+---
+
+## Multiple `for`s
+
+Similarly, the comprehension can also contain multiple `for` statements,
+
+.pull-left[
+```{python}
+[(x, y) for x in range(3) for y in range(3)]
+```
+]
+
+--
+
+.pull-right[
+```{python}
+res = []
+for x in range(3):
+    for y in range(3):
+        res.append((x,y))
+res
+```
+]
+
+---
+
+## `zip`
+
+This is a useful function for "joining" elements of a sequence,
+
+```{python}
+x = [1,2,3]
+y = [3,2,1]
+```
+
+```{python}
+z = zip(x, y)
+z
+```
+
+```{python}
+list(z)
+```
+
+--
+
+```{python}
+[a**b for a,b in zip(x,y)]
+
+[b**a for a,b in zip(x,y)]
+```
+
+---
+
+## `zip` and length mismatches
+
+If the length of the shortest sequence will be used, additional elements will be ignored (silently)
+
+```{python}
+x = [1,2,3,4]
+y = range(3)
+z = "ABCDE"
+
+list(zip(x,y))
+list(zip(x,z))
+
+list(zip(x,y,z))
+```
+
+---
+
+## Exercise 1
+
+Using list comprehensions, complete the following tasks:
+
+* Create a list containing tuples of x and y coordinates of all points of a regular grid for $x \in [0, 10]$ and $y \in [0, 10]$.
+
+* Count the number of points where $y > x$.
+
+* Count the number of points $x$ or $y$ is prime.
+
+---
+class: middle, center
+count: false
+
+# Functions
+
+---
+
+## Basic functions
+
+Functions are defined using `def`, arguments can be defined with out without default values.
+
+```{python}
+def f(x, y=2, z=3):
+    print(f"x={x}, y={y}, z={z}")
+```
+
+.pull-left[
+```{python}
+f(1)
+f(1,z=-1)
+f("abc", y=True)
+```
+]
+
+.pull-right[
+```{python error=TRUE}
+f(z=-1, x=0)
+f()
+```
+]
+
+---
+
+## `return` statements
+
+Functions must explicitly include a `return` statement to return a value.
+
+.pull-left[
+```{python}
+def f(x):
+    x**2
+```
+]
+
+.pull-right[
+```{python}
+def g(x):
+    return x**2
+```
+]
+
+--
+
+<div>
+
+.pull-left[
+```{python}
+f(2)
+```
+
+```{python}
+type(f(2))
+```
+]
+
+.pull-right[
+
+```{python}
+g(2)
+type(g(2))
+```
+]
+</div>
+
+--
+
+Functions can contain multiple `return` statements
+
+```{python}
+def is_odd(x):
+    if x % 2 == 0: return False
+    else:          return True
+    
+is_odd(2)
+is_odd(3)
+```
+
+---
+
+## Multiple return values
+
+Functions can return multiple values using a tuple or list,
+
+```{python}
+def f():
+    return (1,2,3)
+
+f()
+```
+
+```{python}
+def g():
+    return [1,2,3]
+
+g()
+```
+
+--
+
+If multiple values are present and not in a sequence, then it will default to a tuple,
+
+```{python}
+def h():
+    return 1,2,3
+
+h()
+```
+
+```{python}
+def i():
+    return 1, [2, 3]
+
+i()
+```
+
+
+---
+
+## Doc strings
+
+A common practice in Python is to document a function (and other objects) using a doc string - this is a short concise summary of the objects purpose. Doc strings are specified by supplying a string as the very line in the function definition.
+
+
+```{python}
+def f():
+    "Hello."
+    
+    pass
+
+f.__doc__
+```
+
+--
+
+```{python}
+def g():
+    """This function does
+    absolutely nothing.
+    """
+    
+    pass
+
+g.__doc__
+```
+
+---
+
+## Variadic arguments
+
+If the number of arguments is unknown it is possible to define to define variadic functions
+
+```{python}
+def paste(*args, sep=" "):
+    return sep.join(args)
+```
+
+--
+
+```{python}
+paste("A")
+paste("A","B","C")
+paste("1","2","3",sep=",")
+```
+
+
+---
+
+## Positional and/or keyword arguments
+
+.small[
+```
+def f(pos1, pos2, /, pos_or_kwd, *, kwd1, kwd2):
+      -----------    ----------     ----------
+        |             |                  |
+        |        Positional or keyword   |
+        |                                - Keyword only
+         -- Positional only
+```
+]
+
+.footnote[
+Based on Python tutorial [Sec 4.8.3](https://docs.python.org/3/tutorial/controlflow.html#special-parameters)
+]
+
+--
+
+.small[
+For the following function `x` can only be passed by position and `z` only by name
+
+```{python}
+def f(x, /, y, *, z):
+    print(f"x={x}, y={y}, z={z}")
+```
+]
+
+--
+
+.small[
+```{python error=TRUE}
+f(1,1,1)
+f(x=1,y=1,z=1)
+```
+]
+
+--
+
+.small[
+```{python}
+f(1,1,z=1)
+f(1,y=1,z=1)
+```
+]
+
+
+
+
+
+---
+
+## Anonymous functions
+
+Can be defined using the `lambda` keyword, they are intended to be used for very short functions (syntactically limited to a single expression, and not return statement)
+
+.pull-left[
+```{python}
+def f(x,y):
+    return x**2 + y**2
+
+f(2,3)
+type(f)
+```
+]
+
+.pull-right[
+```{python}
+g = lambda x, y: x**2 + y**2
+
+
+g(2,3)
+type(g)
+```
+]
+
+---
+
+## Function annotations (type hinting)
+
+Python nows supports syntax for providing metadata around the expected type of arguments and the return value of a function. 
+
+
+```{python}
+def f(x: str, y: str, z: str) -> str:
+    return x + y + z
+```
+
+--
+
+These annotations are stored in the `__annotations__` attribute
+
+```{python}
+f.__annotations__
+```
+
+--
+
+But doesn't actually do anything at runtime: 
+
+```{python}
+f("A","B","C")
+```
+
+```{python}
+f(1,2,3)
+```
+
+---
+
+## Exercise 2
+
+1. Write a function, `kg_to_lb`, that converts a list of weights in kilograms to a list of weights in pounds (there a 1 kg = 2.20462 lbs). Include a doc string and function annotations.
+
+2. Write a second function, `total_lb`, that calculates the total weight in pounds of an order, the input arguments should be a list of item weights in kilograms and a list of the number of each item ordered.
