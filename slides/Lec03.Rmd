@@ -24,7 +24,6 @@ options(
 
 ---
 class: middle, center
-count: false
 
 # Control Flow
 
@@ -214,7 +213,6 @@ elif x % 2 == 1:
 
 ---
 class: middle, center
-count: false
 
 # List comprehensions
 
@@ -355,7 +353,6 @@ Using list comprehensions, complete the following tasks:
 
 ---
 class: middle, center
-count: false
 
 # Functions
 
