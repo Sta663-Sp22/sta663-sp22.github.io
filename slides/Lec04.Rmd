@@ -1,0 +1,464 @@
+---
+title: "Lec 04 - Data structures "
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{r setup, message=FALSE, warning=FALSE, include=FALSE}
+options(
+  htmltools.dir.version = FALSE, # for blogdown
+  width=80
+)
+
+```
+
+---
+class: middle, center
+
+# Other containers
+
+---
+
+## Dictionaries
+
+Python `dict`s are a *heterogenous*, *ordered* <sup>\*</sup>, *mutable* containers of key value pairs.
+
+Each entry consists of a key (an immutable object) and a value (any object) - they are designed around the efficient lookup of values using a key. More on how this works in a bit.
+
+--
+
+A `dict` is constructed using `{}` with `:` or via `dict()`,
+
+```{python}
+{'abc': 123, 'def': 456}
+dict([('abc', 123), ('def', 456)])
+```
+
+--
+
+if all keys are strings then it is also possible use the key value pairs as keyword arguments to `dict()`,
+
+```{python}
+dict(hello=123, world=456) # cant use def here as it is reserved
+```
+
+
+---
+
+## Allowed key values
+
+As just mentioned, key values for a `dict` must be an immutable object (number, string, or tuple) and keys do not need to be of a consistent type.
+
+```{python}
+{1: "abc", 1.1: (1,1), "one": ["a","n"], (1,1): lambda x: x**2}
+```
+
+--
+
+Using a mutable object (e.g. a list) will result in an error,
+
+```{python error=TRUE}
+{[1]: "bad"}
+```
+
+when using a tuple, you need to be careful that all elements are also immutable,
+
+```{python error=TRUE}
+{(1, [2]): "bad"}
+```
+
+---
+
+## dict "subsetting"
+
+The `[]` operator exists for `dict`s but is used for value look up using a key,
+
+```{python}
+x = {1: 'abc', 'y': 'hello', (1,1): 3.14159}
+```
+
+```{python}
+x[1]
+x['y']
+x[(1,1)]
+```
+
+```{python error=TRUE}
+x[0]
+x['def']
+```
+
+---
+
+## Value inserts & replacement
+
+As `dict`s are mutable it is possible to insert new key value pairs as well as replace values associated with a key.
+
+```{python}
+x = {1: 'abc', 'y': 'hello', (1,1): 3.14159}
+```
+
+--
+
+```{python}
+# Insert
+x['def'] = -1
+x
+```
+
+--
+
+```{python}
+# Replace
+x['y'] = 'goodbye'
+x
+```
+
+--
+
+```{python}
+# Delete
+del x[(1,1)]
+x
+
+x.clear()
+x
+```
+
+---
+
+## Common methods
+
+```{python}
+x = {1: 'abc', 'y': 'hello'}
+```
+
+.pull-left[
+```{python}
+len(x)
+list(x)
+tuple(x)
+1 in x
+'hello' in x
+```
+]
+
+--
+
+.pull-right[
+```{python}
+x.keys()
+x.values()
+x.items()
+x | {(1,1): 3.14159}
+x | {'y': 'goodbye'}
+```
+]
+
+.footnote[
+See more about view objects [here](https://docs.python.org/3/library/stdtypes.html#dictionary-view-objects)
+]
+
+---
+
+## Sets
+
+In Python `set`s are a *heterogenous*, *unordered*, *mutable* containers of unique immutable elements.
+
+`dict`s are constructed using `{}` (without a `:`) or via `set()`,
+
+```{python}
+{1,2,3,4,1,2}
+set((1,2,3,4,1,2))
+set("mississippi")
+```
+
+--
+
+all of the elements must be immutable (and therefore hashable),
+
+```{python error=TRUE}
+{1,2,[1,2]}
+```
+
+---
+
+## Subsetting sets
+
+Sets do not make use of the `[]` operator for element checking or removal,
+
+```{python}
+x = set(range(5))
+x
+```
+
+```{python error=TRUE}
+x[4]
+del x[4]
+```
+
+
+---
+
+## Modifying sets
+
+Sets have their own special methods for adding and removing elements,
+
+```{python}
+x = set(range(5))
+x
+```
+
+```{python error=TRUE}
+x.add(9)
+x
+```
+
+```{python error=TRUE}
+x.remove(9)
+x.remove(8)
+x
+```
+
+```{python error=TRUE}
+x.discard(0)
+x.discard(8)
+x
+```
+
+---
+
+## Set operations
+
+```{python}
+x = set(range(5))
+x
+```
+
+--
+
+.small[
+.pull-left[
+```{python}
+3 in x
+x.isdisjoint({1,2})
+x <= set(range(6))
+x >= set(range(3))
+
+x | set(range(10))
+x & set(range(-3,3))
+x - set(range(2,4))
+x ^ set(range(3,9))
+```
+]
+
+.pull-right[
+```{python}
+5 in x
+x.isdisjoint({5})
+x.issubset(range(6))
+x.issuperset(range(3))
+
+x.union(range(10))
+x.intersection(range(-3,3))
+x.difference(range(2,4))
+x.symmetric_difference(range(3,9))
+```
+]
+]
+
+---
+
+## more comprehensions
+
+It is possible to use comprehensions with either a `set` or a `dict`,
+
+```{python}
+# Set
+{x.lower() for x in "The quick brown fox jumped a lazy dog"}
+
+# Dict
+names = ["Alice", "Bob", "Carol", "Dave"]
+grades = ["A", "A-", "A-", "B"]
+
+{name: grade for name, grade in zip(names, grades)}
+```
+
+--
+
+Note that `tuple` comprehensions do not exist, 
+
+```{python}
+# Not a tuple
+(x**2 for x in range(5))
+
+# Is a tuple - cast a list to tuple
+tuple([x**2 for x in range(5)])
+```
+
+---
+
+## deques (double ended queue)
+
+These are *heterogenous*, *ordered*, *mutable* collections of elements and behave in much the same way as `list`s. They are designed to be efficient for adding and removing elements from the beginning and end of the collection.
+
+These are not part of the base language and are available as part of the built-in `collections` library. More on libraries next time, but to get access we will need to import the library or just the `deque` function from the library.
+
+```{python}
+import collections
+collections.deque([1,2,3])
+```
+
+```{python}
+from collections import deque
+deque(("A",2,True))
+```
+
+---
+
+## growing and shrinking
+
+```{python}
+x = deque(range(3))
+```
+
+--
+
+Values may be added via `.appendleft()` and `.append()` to the beginning and end respectively,
+
+```{python}
+x.appendleft(-1)
+x.append(3)
+x
+```
+
+--
+
+values can be removed via `.popleft()` and `.pop()`,
+
+```{python}
+x.popleft()
+x.pop()
+x
+```
+
+---
+
+## `maxlen`
+
+`deque`s can be constructed with an options `maxlen` argument which determines their maximum size - if this is exceeded values from the opposite side will be removed.
+
+```{python}
+x = deque(range(3), maxlen=4)
+x
+```
+
+--
+
+.pull-left[
+```{python}
+x.append(0)
+x
+x.append(0)
+x
+x.append(0)
+x
+```
+]
+
+--
+
+.pull-right[
+```{python}
+x.appendleft(-1)
+x
+x.appendleft(-1)
+x
+x.appendleft(-1)
+x
+```
+]
+
+---
+class: middle, center
+
+# Basics of algorithms <br/> and data structures
+
+---
+
+## Big-O notation
+
+This is a tool that is used to describe the complexity, usually in time but also in space / memory, of an algorithm. The goal is to broadly group algorithms based on how their complexity grows as the size of an input grows.
+
+Consider a mathematical function that exactly captures this relationship (e.g. the number of steps in a given algorithm given an input of size n). The Big-O value for that algorithm will then be the largest term involving n in that function.
+
+
+| Complexity  | Big-O      |
+|-------------|------------|
+| Constant    | O(1)       |
+| Logarithmic | O(log n)   |
+| Linear      | O(n)       |
+| Quasilinear | O(n log n) |
+| Quadratic   | O($n^2$)   |
+| Cubic       | O($n^3$)   |
+| Exponential | O($2^n$)   | 
+
+Generally algorithms will vary depending on the exact nature of the data and so often we talk about Big-O in terms of expected complexity and worse case complexity, we also often consider amortization for these worst cases..
+
+---
+
+## Vector / Array
+
+
+---
+
+## Linked List
+
+
+---
+
+## Hash table
+
+---
+
+## Time complexity in Python
+
+| Operation        | list        | dict (& set) | deque        |
+|------------------|-------------|--------------|--------------|
+| Copy             | O(n)        | O(n)         | O(n)         |
+| Append           | O(1)        | ---          | O(1)         |
+| Insert           | O(n)        | O(1)         | O(n)         |
+| Get item         | O(1)        | O(1)         | O(n)         |
+| Set item         | O(1)        | O(1)         | O(n)         |
+| Delete item      | O(n)        | O(1)         | O(n)         |
+| `x in s`         | O(n)        | O(1)         | O(n)         |
+| `pop()`          | O(1)        | ---          | O(1)         |
+| `pop(0)`         | O(n)        | ---          | O(1)         |
+
+.footnote[
+All of the values presented represented reflect the *average* Big O time complexity.
+]
+
+---
+
+## Exercise 2
+
+For each of the following scenarios, which is the most appropriate data structure and why?
+
+* A fixed collection of 100 integers.
+
+* A stack (first in last out) of customer records.
+
+* A queue (first in first out) of customer records.
+
+* A count of word occurances within a document.

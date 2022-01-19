@@ -6,11 +6,19 @@ body {
   font-family: 'Source Sans Pro', sans-serif;
   color: #333333;
 }
+
+
+
 p {
   padding: 0;
   margin-top: 12px;
   margin-bottom: 12px;
 }
+
+pre+p {
+  margin-top: 0.75em;
+}
+
 h2 {
   font-family: 'Source Sans Pro', sans-serif;
   font-weight: bold;

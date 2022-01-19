@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 04 - Data structures</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 04 - Data structures
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+
+---
+class: middle, center
+
+# Other containers
+
+---
+
+## Dictionaries
+
+Python `dict`s are a *heterogenous*, *ordered* &lt;sup&gt;\*&lt;/sup&gt;, *mutable* containers of key value pairs.
+
+Each entry consists of a key (an immutable object) and a value (any object) - they are designed around the efficient lookup of values using a key. More on how this works in a bit.
+
+--
+
+A `dict` is constructed using `{}` with `:` or via `dict()`,
+
+
+```python
+{'abc': 123, 'def': 456}
+```
+
+```
+## {'abc': 123, 'def': 456}
+```
+
+```python
+dict([('abc', 123), ('def', 456)])
+```
+
+```
+## {'abc': 123, 'def': 456}
+```
+
+--
+
+if all keys are strings then it is also possible use the key value pairs as keyword arguments to `dict()`,
+
+
+```python
+dict(hello=123, world=456) # cant use def here as it is reserved
+```
+
+```
+## {'hello': 123, 'world': 456}
+```
+
+
+---
+
+## Allowed key values
+
+As just mentioned, key values for a `dict` must be an immutable object (number, string, or tuple) and keys do not need to be of a consistent type.
+
+
+```python
+{1: "abc", 1.1: (1,1), "one": ["a","n"], (1,1): lambda x: x**2}
+```
+
+```
+## {1: 'abc', 1.1: (1, 1), 'one': ['a', 'n'], (1, 1): &lt;function &lt;lambda&gt; at 0x108c3db80&gt;}
+```
+
+--
+
+Using a mutable object (e.g. a list) will result in an error,
+
+
+```python
+{[1]: "bad"}
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: unhashable type: 'list'
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+when using a tuple, you need to be careful that all elements are also immutable,
+
+
+```python
+{(1, [2]): "bad"}
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: unhashable type: 'list'
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+---
+
+## dict "subsetting"
+
+The `[]` operator exists for `dict`s but is used for value look up using a key,
+
+
+```python
+x = {1: 'abc', 'y': 'hello', (1,1): 3.14159}
+```
+
+
+```python
+x[1]
+```
+
+```
+## 'abc'
+```
+
+```python
+x['y']
+```
+
+```
+## 'hello'
+```
+
+```python
+x[(1,1)]
+```
+
+```
+## 3.14159
+```
+
+
+```python
+x[0]
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): KeyError: 0
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+```python
+x['def']
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): KeyError: 'def'
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+---
+
+## Value inserts &amp; replacement
+
+As `dict`s are mutable it is possible to insert new key value pairs as well as replace values associated with a key.
+
+
+```python
+x = {1: 'abc', 'y': 'hello', (1,1): 3.14159}
+```
+
+--
+
+
+```python
+# Insert
+x['def'] = -1
+x
+```
+
+```
+## {1: 'abc', 'y': 'hello', (1, 1): 3.14159, 'def': -1}
+```
+
+--
+
+
+```python
+# Replace
+x['y'] = 'goodbye'
+x
+```
+
+```
+## {1: 'abc', 'y': 'goodbye', (1, 1): 3.14159, 'def': -1}
+```
+
+--
+
+
+```python
+# Delete
+del x[(1,1)]
+x
+```
+
+```
+## {1: 'abc', 'y': 'goodbye', 'def': -1}
+```
+
+```python
+x.clear()
+x
+```
+
+```
+## {}
+```
+
+---
+
+## Common methods
+
+
+```python
+x = {1: 'abc', 'y': 'hello'}
+```
+
+.pull-left[
+
+```python
+len(x)
+```
+
+```
+## 2
+```
+
+```python
+list(x)
+```
+
+```
+## [1, 'y']
+```
+
+```python
+tuple(x)
+```
+
+```
+## (1, 'y')
+```
+
+```python
+1 in x
+```
+
+```
+## True
+```
+
+```python
+'hello' in x
+```
+
+```
+## False
+```
+]
+
+--
+
+.pull-right[
+
+```python
+x.keys()
+```
+
+```
+## dict_keys([1, 'y'])
+```
+
+```python
+x.values()
+```
+
+```
+## dict_values(['abc', 'hello'])
+```
+
+```python
+x.items()
+```
+
+```
+## dict_items([(1, 'abc'), ('y', 'hello')])
+```
+
+```python
+x | {(1,1): 3.14159}
+```
+
+```
+## {1: 'abc', 'y': 'hello', (1, 1): 3.14159}
+```
+
+```python
+x | {'y': 'goodbye'}
+```
+
+```
+## {1: 'abc', 'y': 'goodbye'}
+```
+]
+
+.footnote[
+See more about view objects [here](https://docs.python.org/3/library/stdtypes.html#dictionary-view-objects)
+]
+
+---
+
+## Sets
+
+In Python `set`s are a *heterogenous*, *unordered*, *mutable* containers of unique immutable elements.
+
+`dict`s are constructed using `{}` (without a `:`) or via `set()`,
+
+
+```python
+{1,2,3,4,1,2}
+```
+
+```
+## {1, 2, 3, 4}
+```
+
+```python
+set((1,2,3,4,1,2))
+```
+
+```
+## {1, 2, 3, 4}
+```
+
+```python
+set("mississippi")
+```
+
+```
+## {'s', 'm', 'i', 'p'}
+```
+
+--
+
+all of the elements must be immutable (and therefore hashable),
+
+
+```python
+{1,2,[1,2]}
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: unhashable type: 'list'
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+---
+
+## Subsetting sets
+
+Sets do not make use of the `[]` operator for element checking or removal,
+
+
+```python
+x = set(range(5))
+x
+```
+
+```
+## {0, 1, 2, 3, 4}
+```
+
+
+```python
+x[4]
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: 'set' object is not subscriptable
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+```python
+del x[4]
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: 'set' object doesn't support item deletion
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+
+---
+
+## Modifying sets
+
+Sets have their own special methods for adding and removing elements,
+
+
+```python
+x = set(range(5))
+x
+```
+
+```
+## {0, 1, 2, 3, 4}
+```
+
+
+```python
+x.add(9)
+x
+```
+
+```
+## {0, 1, 2, 3, 4, 9}
+```
+
+
+```python
+x.remove(9)
+x.remove(8)
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): KeyError: 8
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+```python
+x
+```
+
+```
+## {0, 1, 2, 3, 4}
+```
+
+
+```python
+x.discard(0)
+x.discard(8)
+x
+```
+
+```
+## {1, 2, 3, 4}
+```
+
+---
+
+## Set operations
+
+
+```python
+x = set(range(5))
+x
+```
+
+```
+## {0, 1, 2, 3, 4}
+```
+
+--
+
+.small[
+.pull-left[
+
+```python
+3 in x
+```
+
+```
+## True
+```
+
+```python
+x.isdisjoint({1,2})
+```
+
+```
+## False
+```
+
+```python
+x &lt;= set(range(6))
+```
+
+```
+## True
+```
+
+```python
+x &gt;= set(range(3))
+```
+
+```
+## True
+```
+
+```python
+x | set(range(10))
+```
+
+```
+## {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+```
+
+```python
+x &amp; set(range(-3,3))
+```
+
+```
+## {0, 1, 2}
+```
+
+```python
+x - set(range(2,4))
+```
+
+```
+## {0, 1, 4}
+```
+
+```python
+x ^ set(range(3,9))
+```
+
+```
+## {0, 1, 2, 5, 6, 7, 8}
+```
+]
+
+.pull-right[
+
+```python
+5 in x
+```
+
+```
+## False
+```
+
+```python
+x.isdisjoint({5})
+```
+
+```
+## True
+```
+
+```python
+x.issubset(range(6))
+```
+
+```
+## True
+```
+
+```python
+x.issuperset(range(3))
+```
+
+```
+## True
+```
+
+```python
+x.union(range(10))
+```
+
+```
+## {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+```
+
+```python
+x.intersection(range(-3,3))
+```
+
+```
+## {0, 1, 2}
+```
+
+```python
+x.difference(range(2,4))
+```
+
+```
+## {0, 1, 4}
+```
+
+```python
+x.symmetric_difference(range(3,9))
+```
+
+```
+## {0, 1, 2, 5, 6, 7, 8}
+```
+]
+]
+
+---
+
+## more comprehensions
+
+It is possible to use comprehensions with either a `set` or a `dict`,
+
+
+```python
+# Set
+{x.lower() for x in "The quick brown fox jumped a lazy dog"}
+
+# Dict
+```
+
+```
+## {'f', 'b', 'n', 'q', ' ', 'p', 't', 'e', 'i', 'j', 'm', 'h', 'z', 'y', 'r', 'u', 'x', 'c', 'a', 'l', 'g', 'o', 'k', 'd', 'w'}
+```
+
+```python
+names = ["Alice", "Bob", "Carol", "Dave"]
+grades = ["A", "A-", "A-", "B"]
+
+{name: grade for name, grade in zip(names, grades)}
+```
+
+```
+## {'Alice': 'A', 'Bob': 'A-', 'Carol': 'A-', 'Dave': 'B'}
+```
+
+--
+
+Note that `tuple` comprehensions do not exist, 
+
+
+```python
+# Not a tuple
+(x**2 for x in range(5))
+
+# Is a tuple - cast a list to tuple
+```
+
+```
+## &lt;generator object &lt;genexpr&gt; at 0x108c2c350&gt;
+```
+
+```python
+tuple([x**2 for x in range(5)])
+```
+
+```
+## (0, 1, 4, 9, 16)
+```
+
+---
+
+## deques (double ended queue)
+
+These are *heterogenous*, *ordered*, *mutable* collections of elements and behave in much the same way as `list`s. They are designed to be efficient for adding and removing elements from the beginning and end of the collection.
+
+These are not part of the base language and are available as part of the built-in `collections` library. More on libraries next time, but to get access we will need to import the library or just the `deque` function from the library.
+
+
+```python
+import collections
+collections.deque([1,2,3])
+```
+
+```
+## deque([1, 2, 3])
+```
+
+
+```python
+from collections import deque
+deque(("A",2,True))
+```
+
+```
+## deque(['A', 2, True])
+```
+
+---
+
+## growing and shrinking
+
+
+```python
+x = deque(range(3))
+```
+
+--
+
+Values may be added via `.appendleft()` and `.append()` to the beginning and end respectively,
+
+
+```python
+x.appendleft(-1)
+x.append(3)
+x
+```
+
+```
+## deque([-1, 0, 1, 2, 3])
+```
+
+--
+
+values can be removed via `.popleft()` and `.pop()`,
+
+
+```python
+x.popleft()
+```
+
+```
+## -1
+```
+
+```python
+x.pop()
+```
+
+```
+## 3
+```
+
+```python
+x
+```
+
+```
+## deque([0, 1, 2])
+```
+
+---
+
+## `maxlen`
+
+`deque`s can be constructed with an options `maxlen` argument which determines their maximum size - if this is exceeded values from the opposite side will be removed.
+
+
+```python
+x = deque(range(3), maxlen=4)
+x
+```
+
+```
+## deque([0, 1, 2], maxlen=4)
+```
+
+--
+
+.pull-left[
+
+```python
+x.append(0)
+x
+```
+
+```
+## deque([0, 1, 2, 0], maxlen=4)
+```
+
+```python
+x.append(0)
+x
+```
+
+```
+## deque([1, 2, 0, 0], maxlen=4)
+```
+
+```python
+x.append(0)
+x
+```
+
+```
+## deque([2, 0, 0, 0], maxlen=4)
+```
+]
+
+--
+
+.pull-right[
+
+```python
+x.appendleft(-1)
+x
+```
+
+```
+## deque([-1, 2, 0, 0], maxlen=4)
+```
+
+```python
+x.appendleft(-1)
+x
+```
+
+```
+## deque([-1, -1, 2, 0], maxlen=4)
+```
+
+```python
+x.appendleft(-1)
+x
+```
+
+```
+## deque([-1, -1, -1, 2], maxlen=4)
+```
+]
+
+---
+class: middle, center
+
+# Basics of algorithms &lt;br/&gt; and data structures
+
+---
+
+## Big-O notation
+
+This is a tool that is used to describe the complexity, usually in time but also in space / memory, of an algorithm. The goal is to broadly group algorithms based on how their complexity grows as the size of an input grows.
+
+Consider a mathematical function that exactly captures this relationship (e.g. the number of steps in a given algorithm given an input of size n). The Big-O value for that algorithm will then be the largest term involving n in that function.
+
+
+| Complexity  | Big-O      |
+|-------------|------------|
+| Constant    | O(1)       |
+| Logarithmic | O(log n)   |
+| Linear      | O(n)       |
+| Quasilinear | O(n log n) |
+| Quadratic   | O($n^2$)   |
+| Cubic       | O($n^3$)   |
+| Exponential | O($2^n$)   | 
+
+Generally algorithms will vary depending on the exact nature of the data and so often we talk about Big-O in terms of expected complexity and worse case complexity, we also often consider amortization for these worst cases..
+
+---
+
+## Vector / Array
+
+
+---
+
+## Linked List
+
+
+---
+
+## Hash table
+
+---
+
+## Time complexity in Python
+
+| Operation        | list        | dict (&amp; set) | deque        |
+|------------------|-------------|--------------|--------------|
+| Copy             | O(n)        | O(n)         | O(n)         |
+| Append           | O(1)        | ---          | O(1)         |
+| Insert           | O(n)        | O(1)         | O(n)         |
+| Get item         | O(1)        | O(1)         | O(n)         |
+| Set item         | O(1)        | O(1)         | O(n)         |
+| Delete item      | O(n)        | O(1)         | O(n)         |
+| `x in s`         | O(n)        | O(1)         | O(n)         |
+| `pop()`          | O(1)        | ---          | O(1)         |
+| `pop(0)`         | O(n)        | ---          | O(1)         |
+
+.footnote[
+All of the values presented represented reflect the *average* Big O time complexity.
+]
+
+---
+
+## Exercise 2
+
+For each of the following scenarios, which is the most appropriate data structure and why?
+
+* A fixed collection of 100 integers.
+
+* A stack (first in last out) of customer records.
+
+* A queue (first in first out) of customer records.
+
+* A count of word occurances within a document.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
