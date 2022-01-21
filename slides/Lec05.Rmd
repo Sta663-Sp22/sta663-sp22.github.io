@@ -445,7 +445,7 @@ y = np.ones((2,2))
 y.resize((3,3), refcheck=False)
 y
 ```
-
+]
 .footnote[
 The `refcheck` argument should not generally be needed, here it is a side effect of using reticulate (I think).
 ]
