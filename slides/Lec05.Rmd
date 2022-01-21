@@ -1,0 +1,604 @@
+---
+title: "Lec 05 - NumPy Basics"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{r setup, message=FALSE, warning=FALSE, include=FALSE}
+options(
+  htmltools.dir.version = FALSE, # for blogdown
+  width=80
+)
+
+```
+
+---
+
+class: middle, center
+
+# NumPy Basics
+
+---
+
+## What is NumPy?
+
+> NumPy is the fundamental package for scientific computing in Python. It is a Python library that provides a multidimensional array object, various derived objects (such as masked arrays and matrices), and an assortment of routines for fast operations on arrays, including mathematical, logical, shape manipulation, sorting, selecting, I/O, discrete Fourier transforms, basic linear algebra, basic statistical operations, random simulation and much more.
+
+--
+
+```{python}
+import numpy as np
+```
+
+---
+
+## Arrays
+
+In general NumPy arrays are constructed from sequences (e.g. lists), nesting as necessary for the number of desired dimensions.
+
+.pull-left[
+```{python}
+np.array([1,2,3])
+np.array([[1,2],[3,4]])
+np.array([[[1,2],[3,4]], [[5,6],[7,8]]])
+```
+]
+
+.footnote[
+Note that NumPy stores data in row major order.
+]
+
+--
+
+.pull-right[
+Some properties of arrays:
+* Arrays have a fixed size at creation
+* All data must be homogeneous (consistent type)
+* Built to support vectorized operations
+* Avoids copying whenever possible
+
+```{python}
+np.array([True, False])
+np.array(["abc", "def"])
+```
+]
+
+---
+
+## dtype
+
+NumPy arrays will have a specific type used for storing their data, called their `dtype`. This is accessible via the `.dtype` attribute and can be set at creation using the `dtype` argument.
+
+.pull-left[
+```{python}
+np.array([1,1]).dtype
+np.array([1.1, 2.2]).dtype
+np.array([True, False]).dtype
+```
+]
+
+.pull-right[
+```{python}
+np.array([1,2,3], dtype = np.uint8)
+np.array([1,2,1000], dtype = np.uint8)
+np.array([3.14159, 2.33333], dtype = np.double)
+np.array([3.14159, 2.33333], dtype = np.float16)
+```
+]
+
+
+
+.footnote[
+See here for [here](https://numpy.org/doc/stable/user/basics.types.html#array-types-and-conversions-between-types) for a list of dtypes and [here](https://numpy.org/doc/stable/reference/arrays.dtypes.html) for a more detailed description of how they are implemented.
+]
+
+---
+
+## Creating 1d arrays
+
+Some common tools for creating useful 1d arrays:
+
+.pull-left[
+```{python}
+np.arange(10)
+np.arange(3, 5, 0.25)
+np.linspace(0, 1, 11)
+np.logspace(0, 2, 11)
+```
+]
+
+--
+
+.pull-right[
+```{python}
+np.ones(4)
+np.zeros(6)
+np.full(3, False)
+np.empty(4)
+```
+]
+
+
+
+.footnote[
+For the full list of creation functions see [here](https://numpy.org/doc/stable/reference/routines.array-creation.html)
+]
+
+---
+
+## Creating 2d arrays (matrices)
+
+Many of the same functions exist with some additional useful tools for common matrices,
+
+.pull-left[
+```{python}
+np.eye(3)
+np.identity(2)
+np.zeros((2,2))
+```
+]
+
+--
+
+.pull-right[
+```{python}
+np.diag([3,2,1])
+np.tri(3)
+np.triu(np.full((3,3),3))
+```
+]
+
+.footnote[
+The NumPy documentation references a `matrix` class and related functions - this is no longer recommended, use the `ndarray` class instead.
+]
+
+---
+
+## Creating nd arrays
+
+For higher dimensional arrays just add dimensions when constructing,
+
+.pull-left[
+```{python}
+np.zeros((2,3,2))
+```
+]
+
+
+.pull-right[
+```{python}
+np.ones((2,3,2,2))
+```
+]
+
+---
+
+## Subsetting
+
+Arrays are subsetted using the standard python syntax with either indexes or slices, different dimensions are separated by commas.
+
+```{python}
+x = np.array([[1,2,3],[4,5,6],[7,8,9]])
+x
+```
+
+--
+
+```{python}
+x[0]
+x[0,0]
+x[0][0]
+x[0:3:2, :]
+```
+
+```{python}
+x[0:3:2, :]
+x[0:3:2, ]
+x[1:, ::-1]
+```
+
+
+---
+
+## Views and copies
+
+Basic subsetting of ndarray objects does not result in a new object, but instead a "view" of the original object. There are a couple of ways that we can investigate this behavior,
+
+```{python}
+x = np.arange(10)
+y = x[2:5]
+z = x[2:5].copy()
+```
+
+.pull-left[
+```{python}
+print("x =", x, ", x.base =", x.base)
+print("y =", y, ", y.base =", y.base)
+print("z =", z, ", z.base =", z.base)
+```
+
+
+```{python}
+type(x); type(y); type(z)
+```
+]
+
+.pull-right[
+```{python}
+np.shares_memory(x,y)
+np.shares_memory(x,z)
+np.shares_memory(y,z)
+
+y.flags
+```
+]
+
+---
+
+## Subsetting with ...
+
+There is some special syntax available using `...` which expands to the number of `:` needed to account for all dimensions,
+
+
+.pull-left[
+```{python eval=FALSE}
+x = np.arange(16).reshape(2,2,2,2)
+x
+```
+]
+
+.pull-right[
+```{python echo=FALSE}
+x = np.arange(16).reshape(2,2,2,2)
+x
+```
+]
+
+
+<div>
+.pull-left[
+```{python}
+x[0, 1, ...]
+x[..., 1]
+```
+]
+
+.pull-right[
+```{python}
+x[0, 1, :, :]
+x[:, :, :, 1]
+```
+]
+</div>
+
+---
+
+## Subsetting with tuples
+
+Unlike lists, an ndarray can be subset by a tuple containing integers,
+
+
+.pull-left[
+```{python error=TRUE}
+x = np.arange(6)
+x
+
+x[(0,1,3),]
+x[(0,1,3)]
+```
+]
+
+.pull-right[
+```{python}
+x = np.arange(16).reshape((4,4))
+x
+
+x[(0,1,3), :]
+x[:, (0,1,3)]
+x[(0,1,3), (0,1,3)]
+```
+]
+
+
+.footnote[
+More next time on why `x[(0,1,3)]` does not work.
+]
+
+---
+
+## Subsetting assignment
+
+Most of the subsetting approaches we've just seen can also be used for assignment, just keep in mind that we cannot change the size or type of the ndarray,
+
+```{python}
+x = np.arange(9).reshape((3,3)); x
+```
+
+.pull-left[
+```{python}
+x[0,0] = -1
+x
+
+x[0, :] = -2
+x
+```
+]
+
+.pull-right[
+```{python}
+x[0:2,1:3] = -3
+x
+
+x[(0,1,2), (0,1,2)] = -4
+x
+```
+]
+
+---
+
+## Reshaping arrays
+
+The dimensions of an array can be retrieved via the `.shape` attribute, these values can changed by 
+
+```{python}
+x = np.arange(6)
+x
+```
+
+.pull-left[
+```{python}
+y = x.reshape((2,3))
+y
+
+np.shares_memory(x,y)
+```
+]
+
+
+.pull-right[
+```{python}
+z = x
+z.shape = (2,3)
+z
+x
+np.shares_memory(x,z)
+```
+]
+
+---
+
+## Implicit dimensions
+
+When reshaping an array, the value `-1` can be used to automatically calculate a dimension,
+
+```{python}
+x = np.arange(6)
+x
+```
+
+```{python error=TRUE}
+x.reshape((2,-1))
+x.reshape((-1,3,2))
+x.reshape(-1)
+x.reshape((-1,4))
+```
+
+---
+
+## Flattening arrays
+
+We've just seen the most common approach to flattening an array (`.reshape(-1)`), there are two additional methods / functions:
+* `ravel` which creates flattened *view* of the array and
+* `flatten` which creates a flattened *copy* of the array.
+
+```{python}
+x = np.arange(6).reshape((2,3))
+x
+```
+
+.pull-left[
+```{python}
+y = x.ravel()
+y
+
+np.shares_memory(x,y)
+```
+]
+
+
+.pull-right[
+```{python}
+z = x.flatten()
+z
+
+np.shares_memory(x,z)
+```
+]
+
+---
+
+## Resizing
+
+The size of an array cannot be changed but a new array with a different size can be created from an existing array via the resize function and method. Note these have different behaviors around what values the new entries will have.
+
+.pull-left[
+```{python}
+x = np.resize(np.ones((2,2)), (3,3))
+x
+```
+]
+
+
+.pull-right[
+```{python}
+y = np.ones((2,2))
+y.resize((3,3), refcheck=False)
+y
+```
+
+.footnote[
+The `refcheck` argument should not generally be needed, here it is a side effect of using reticulate (I think).
+]
+
+---
+
+## Joining arrays
+
+`concatenate()` is a general purpose function for this, with specialized versions `hstack()`, `vstack()`, and `dstack()` for rows, columns, and slices respectively.
+
+.small[
+.pull-left[
+```{python}
+x = np.arange(4).reshape((2,2)); x
+```
+]
+
+.pull-right[
+```{python}
+y = np.arange(4,8).reshape((2,2)); y
+```
+]
+]
+
+<div>
+.small[
+.pull-left[
+```{python error=TRUE}
+np.concatenate((x,y), axis=0)
+np.concatenate((x,y), axis=1)
+np.concatenate((x,y), axis=2)
+np.concatenate((x,y), axis=None)
+```
+]
+
+.pull-right[
+```{python}
+np.vstack((x,y))
+np.hstack((x,y))
+np.dstack((x,y))
+```
+]
+]
+</div>
+
+.footnote[
+See `block()` for a more efficient approach to constructing block matrices.
+]
+
+---
+class: middle, center
+
+# NumPy numerics
+
+---
+
+## Basic operators
+
+All of the basic mathematical operators in Python are implemented for arrays, they are applied element-wise to the array values.
+
+.pull-left[
+```{python}
+np.arange(3) + np.arange(3)
+np.arange(3) - np.arange(3)
+np.arange(3) + 2
+```
+]
+
+.pull-right[
+```{python}
+np.arange(3) * np.arange(3)
+np.arange(1,4) / np.arange(1,4)
+np.arange(3) * 3
+```
+]
+
+```{python error=TRUE}
+np.full((2,2), 2) ** np.arange(4).reshape((2,2))
+
+np.full((2,2), 2) ** np.arange(4)
+```
+
+---
+
+## Mathematical functions
+
+The package provides a [wide variety](https://numpy.org/doc/stable/reference/routines.math.html) of basic mathematical functions that are vectorized, in general they will be faster than their base equivalents (e.g. `np.sum()` vs `sum()`),
+
+```{python time_it=TRUE}
+np.sum(np.arange(1000))
+np.cumsum(np.arange(10))
+np.log10(np.arange(1,11))
+np.median(np.arange(10))
+```
+
+```{python time_it=TRUE}
+
+```
+
+---
+
+## Matrix multiplication
+
+Is supported using the `matmul()` function or the `@` operator,
+
+```{python}
+x = np.arange(6).reshape(3,2)
+y = np.tri(2,2)
+```
+
+```{python error=TRUE}
+x @ y
+
+y.T @ y
+
+np.matmul(x.T, x)
+
+y @ x
+```
+
+---
+
+## Other linear algebra functions
+
+All of the other common linear algebra functions are (mostly) implemented in the `linalg` submodule. See [here](https://numpy.org/doc/stable/reference/routines.linalg.html) for more details.
+
+```{python}
+np.linalg.det(y)
+
+np.linalg.eig(x.T @ x)
+
+np.linalg.inv(x.T @ x)
+
+np.linalg.cholesky(x.T @ x)
+```
+
+---
+
+## Random values
+
+NumPy has another submodule called `random` for functions used to generate random values,
+
+In order to use this, you should construct a generator via `default_rng()`, with or without a seed, and then use the generator's methods to obtain your desired random values.
+
+```{python}
+rng = np.random.default_rng(seed = 1234)
+
+rng.random(3) # ~ Uniform [0,1)
+rng.normal(0, 2, size = (2,2))
+rng.binomial(n=5, p=0.5, size = 10)
+```
+
+---
+class: middle, center
+
+## Example - Linear regression with NumPy
