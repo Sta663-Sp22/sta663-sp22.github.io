@@ -1,0 +1,563 @@
+---
+title: "Lec 06 - Advanced indexing & Broadcasting"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{python setup}
+import numpy as np
+
+np.set_printoptions(edgeitems=3, linewidth=180)
+```
+
+---
+
+class: middle, center
+
+# NumPy - Advanced Indexing
+
+---
+
+## From last time: subsetting with tuples
+
+Unlike lists, an ndarray can be subset by a tuple containing integers,
+
+
+.pull-left[
+```{python error=TRUE}
+x = np.arange(6)
+x
+
+x[(0,1,3),]
+x[(0,1,3)]
+x[0,1,3]
+```
+]
+
+.pull-right[
+```{python}
+x = np.arange(16).reshape((4,4))
+x
+
+x[(0,1,3), :]
+x[:, (0,1,3)]
+x[(0,1,3), (0,1,3)]
+```
+]
+
+
+.footnote[
+More next time on why `x[(0,1,3)]` does not work.
+]
+
+---
+
+## Integer array subsetting (lists)
+
+Lists of integers can be used to subset in the same way:
+
+.small[
+.pull-left[
+```{python error=TRUE}
+x = np.arange(6)
+x
+
+x[[0,1,3],]
+x[[0,1,3]]
+
+x[[1.,3.]]
+```
+]
+
+.pull-right[
+```{python}
+x = np.arange(16).reshape((4,4))
+x
+
+x[[1,3]]
+x[[1,3], ]
+x[:, [1,3]]
+x[[1,3], [1,3]]
+```
+]
+]
+
+.footnote[
+Note that the `,` is now optional
+]
+
+---
+
+## Integer array subsetting (ndarrays)
+
+Similarly we can also us integer ndarrays:
+
+.small[
+.pull-left[
+```{python error=TRUE}
+x = np.arange(6)
+y = np.array([0,1,3])
+z = np.array([1., 3.])
+
+x[y,]
+x[y]
+
+x[z]
+```
+]
+
+.pull-right[
+```{python}
+x = np.arange(16).reshape((4,4))
+x
+y = np.array([1,3])
+
+x[y]
+x[y, ]
+x[:, y]
+x[y, y]
+```
+]
+]
+
+.footnote[
+Again the `,` is now optional
+]
+
+---
+
+## Exercise 1
+
+Given the following matrix,
+
+```{python}
+x = np.arange(16).reshape((4,4))
+x
+```
+
+write an expression to obtaint the center 2x2 values (i.e. 5, 6, 9, 10 as a matrix).
+
+---
+
+## Boolean indexing
+
+Lists or ndarrays of boolean values can also be used to subset, positions with `True` are kept and `False` are discarded.
+
+.small[
+```{python}
+x = np.arange(6)
+x
+```
+
+```{python}
+x[[True, False, True, False, True, False]]
+x[np.array([True, True, False, False, True, False])]
+```
+]
+
+--
+
+the utility comes from vectorized comparison operations,
+.small[.pull-left[
+```{python}
+x > 3
+x[x>3]
+
+x % 2 == 1
+x[x % 2 == 1]
+```
+]
+
+.pull-right[
+```{python}
+y = np.arange(9).reshape((3,3))
+y % 2 == 0
+y[y % 2 == 0]
+```
+] ]
+
+---
+
+## NumPy and Boolean operators
+
+If we want to use a boolean operator on an array we need to use `&`, `|`, and `~` instead of `and`, `or`, and `not` respectively.
+
+```{python}
+x = np.arange(6)
+x
+
+y = x % 2 == 0
+y
+
+~y
+
+y & (x > 3)
+
+y | (x > 3)
+```
+
+---
+
+## meshgrid
+
+One other useful function in NumPy is `meshgrid()` which generates all possible combinations between the input vectors,
+
+```{python}
+pts = np.arange(3)
+x, y = np.meshgrid(pts, pts)
+x
+y
+
+np.sqrt(x**2 + y**2)
+```
+
+---
+
+## Exercise 2
+
+We will now use this to attempt a simple brute force approach to numerical optimization, define a grid of points using `meshgrid()` to approximate the minima the following function:
+
+$$
+f(x,y) = (1-x)^2 + 100(y-x^2)^2
+$$ 
+Considering values of $x,y \in (-1,3)$, which values of $x,y$ minimize this function?
+
+
+---
+
+```{r echo=FALSE, message=FALSE, out.width="60%", fig.align="center"}
+library(tidyverse)
+expand.grid(
+    x = seq(-1,3, length.out = 1000),
+    y = seq(-1,3, length.out = 1000)
+) %>%
+    mutate(
+        f = (1-x)^2 + 100*(y-x^2)^2
+    ) %>%
+    ggplot(aes(x=x,y=y,fill=log(f))) +
+        geom_raster() +
+        theme_minimal() +
+        labs(title = "Rosenbrock function (a=1, b=100)") +
+        coord_fixed()
+```
+
+---
+
+class: middle, center
+
+# NumPy - Broadcasting
+
+---
+
+## Broadcasting
+
+This is an approach for deciding how to generalize arithmetic operations between arrays with differing shapes.
+
+```{python}
+x = np.array([1, 2, 3])
+
+x * 2
+x * np.array([2])
+x * np.array([2,2,2])
+```
+
+In the first example `2` is equivalent to the array `np.array([2])` which is being broadcast across the longer array `x`.
+
+---
+
+## Efficiancy
+
+Using broadcasts can be much more efficient as it does not copy the underlying data,
+
+```{python eval = FALSE}
+x = np.arange(1e5)
+y = np.array([2]).repeat(1e5)
+```
+
+```python
+%timeit x * 2
+```
+```
+31.3 µs ± 1.3 µs per loop (mean ± std. dev. of 7 runs, 10,000 loops each)
+```
+
+```python
+%timeit x * y
+```
+```
+70.5 µs ± 2.93 µs per loop (mean ± std. dev. of 7 runs, 10,000 loops each)
+```
+
+---
+
+## General Broadcasting
+
+> When operating on two arrays, NumPy compares their shapes element-wise. It starts with the trailing (i.e. rightmost) dimensions and works its way left. Two dimensions are compatible when
+>    1. they are equal, or
+>
+>    2. one of them is 1
+> 
+> If these conditions are not met, a `ValueError: operands could not be broadcast together` exception is thrown, indicating that the arrays have incompatible shapes. The size of the resulting array is the size that is not 1 along each axis of the inputs.
+
+--
+
+.small[
+.pull-left[
+```{python}
+x = np.arange(12).reshape((4,3))
+x
+
+x + np.array([1,2,3])
+```
+]
+
+.pull-right[
+```{python error=TRUE}
+x = np.arange(12).reshape((3,4))
+x
+
+x + np.array([1,2,3])
+```
+]
+]
+
+---
+
+## A quick fix
+
+```{python error=TRUE}
+x = np.arange(12).reshape((3,4))
+x
+
+x + np.array([1,2,3])
+x + np.array([1,2,3]).reshape(3,1)
+```
+
+---
+
+## Mechanics
+
+.pull-left[
+```{python}
+x = np.arange(12).reshape((4,3))
+y = 1
+x+y
+```
+
+
+```
+
+x    (2d array): 4 x 3
+y    (1d array):     1 
+----------------------
+x+y  (2d array): 4 x 3
+```
+
+```{python}
+x = np.arange(12).reshape((4,3))
+y = np.array([1,2,3])
+x+y
+```
+
+
+```
+
+x    (2d array): 4 x 3
+y    (1d array):     3 
+----------------------
+x+y  (2d array): 4 x 3
+```
+]
+
+--
+
+.pull-right[
+```{python error=TRUE}
+x = np.arange(12).reshape((3,4))
+y = np.array([1,2,3])
+x+y
+```
+
+
+```
+
+x    (2d array): 3 x 4
+y    (1d array):     3 
+----------------------
+x+y  (2d array): Error
+```
+
+```{python}
+x = np.arange(12).reshape((3,4))
+y = np.array([1,2,3]).reshape((3,1))
+x+y
+```
+
+
+```
+
+x    (2d array): 3 x 4
+y    (1d array): 3 x 1 
+----------------------
+x+y  (2d array): 3 x 4
+```
+
+]
+
+---
+
+## Another example
+
+.small[
+.pull-left[
+```{python}
+a = np.array([0,10,20,30]).reshape((4,1))
+b = np.array([1,2,3])
+
+a
+b
+```
+]
+
+.pull-right[
+
+```{python}
+a+b
+```
+
+```
+
+a    (2d array): 4 x 1
+b    (1d array):     3 
+----------------------
+x+y  (2d array): 4 x 3
+```
+]
+]
+
+--
+
+```{r out.width="60%", fig.align="center", echo=FALSE}
+knitr::include_graphics("imgs/numpy_broadcasting.png")
+```
+
+.footnote[
+From NumPy user guide - [Broadcasting](https://numpy.org/doc/stable/user/basics.broadcasting.html)
+]
+
+---
+
+## Example - Standardizing
+
+Below we generate a data set with 3 columns of random normal values. Each column has a different mean and standard deviation which we can check with `mean()` and `std()`.
+
+```{python}
+rng = np.random.default_rng(1234)
+
+d = rng.normal(loc=[-1,0,1], scale=[1,2,3], size=(1000,3))
+d.mean(axis=0)
+d.std(axis=0)
+```
+
+Use broadcasting to standardize all three columns to have mean 0 and standard deviation 1. 
+
+Check the new data set using `mean()` and `std()`.
+
+---
+
+## Exercise 3
+
+For each of the following combinations determine what the resulting dimension will be:
+
+* A (128 x 128 x 3) + B (3)
+
+* A (8 x 1 x 6 x 1) + B (7 x 1 x 5)
+
+* A (2 x 1) + B (8 x 4 x 3)
+
+* A (3 x 1) + B (15 x 3 x 5)
+
+* A (3) + B (4)
+
+---
+
+## Broadcasting and assignment
+
+In addition to arithmetic operators, broadcasting can be used with assignment via array indexing,
+
+```{python error=TRUE}
+x = np.arange(12).reshape((3,4))
+y = -np.arange(4)
+z = -np.arange(3)
+```
+
+.pull-left[
+```{python}
+x[:] = y
+x
+x[...] = y
+x
+```
+]
+
+.pull-right[
+```{python error=TRUE}
+x[:] = z
+x[:] = z.reshape((3,1))
+x
+```
+]
+
+---
+
+class: middle, center
+
+# NumPy - Basic file IO
+
+---
+
+## Reading and writing arrays
+
+We will not spend much time on this as most data you will encounter is more likely to be a tabular format (e.g. data frame) and tools like Pandas are more appropriate.
+
+For basic saving and loading of NumPy arrays there are the `save()` and `load()` functions which use a built in binary format.
+
+```{python}
+x = np.arange(1e5)
+
+np.save("data/x.npy", x)
+
+new_x = np.load("data/x.npy")
+
+np.all(x == new_x)
+```
+
+Additional functions for saving (`savez()`, `savez_compressed()`, `savetxt()`) exist for saving multiple arrays or saving a text representation of an array.
+
+---
+
+## Reading delimited data
+
+While not particularly recommended, if you need to read delimited (csv, tsv, etc.) data into a NumPy array you can use `genfromtxt()`,
+
+```{r}
+options(width=300)
+```
+
+
+```{python}
+with open("data/mtcars.csv") as file:
+    mtcars = np.genfromtxt(file, delimiter=",", skip_header=True)
+    
+mtcars
+```
