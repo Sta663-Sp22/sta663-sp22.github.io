@@ -1,0 +1,716 @@
+---
+title: "Lec 06 - SciPy"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{python setup}
+import scipy
+import numpy as np
+import matplotlib.pyplot as plt
+
+np.set_printoptions(edgeitems=3, linewidth=180)
+```
+
+---
+
+## What is SciPy
+
+> Fundamental algorithms for scientific computing in Python
+
+<br/>
+
+.small[
+| Subpackage    | Description                                           |   | Subpackage    | Description            
+|:--------------|:------------------------------------------------------|---|:--------------|:-------------------------------------------
+| `cluster`     | Clustering algorithms                                 |   | `odr`         | Orthogonal distance regression       
+| `constants`   | Physical and mathematical constants                   |   | `optimize`    | Optimization and root-finding routines
+| `fftpack`     | Fast Fourier Transform routines                       |   | `signal`      | Signal processing    
+| `integrate`   | Integration and ordinary differential equation solvers|   | `sparse`      | Sparse matrices and associated routines
+| `interpolate` | Interpolation and smoothing splines                   |   | `spatial`     | Spatial data structures and algorithms
+| `io`          | Input and Output                                      |   | `special`     | Special functions
+| `linalg`      | Linear algebra                                        |   | `stats`       | Statistical distributions and functions
+| `ndimage`     | N-dimensional image processing                        |   | &nbsp;        | &nbsp;
+
+]
+
+---
+class: center, middle
+
+## Example 1 - k-means clustering
+
+---
+
+## Data
+
+```{python}
+rng = np.random.default_rng(seed = 1234)
+
+
+cl1 = rng.multivariate_normal([-2,-2], [[1,-0.5],[-0.5,1]], size=100)
+cl2 = rng.multivariate_normal([1,0], [[1,0],[0,1]], size=150)
+cl3 = rng.multivariate_normal([3,2], [[1,-0.7],[-0.7,1]], size=200)
+
+pts = np.concatenate((cl1,cl2,cl3))
+```
+
+--
+
+```{python fig.align="center", out.width="33%", echo=FALSE}
+plt.cla()
+plt.scatter(cl1[:,0], cl1[:,1], c="r", marker = ".")
+plt.scatter(cl2[:,0], cl2[:,1], c="b", marker = "*")
+plt.scatter(cl3[:,0], cl3[:,1], c="c", marker = "D")
+plt.show()
+```
+
+---
+
+## k-means clustering
+
+.pull-left[
+```{python}
+from scipy.cluster.vq import kmeans
+
+ctr, dist = kmeans(pts, 3)
+ctr
+dist
+```
+
+<br/>
+
+```{python}
+cl1.mean(axis=0)
+cl2.mean(axis=0)
+cl3.mean(axis=0)
+```
+]
+
+--
+
+.pull-right[
+```{python fig.align="center", out.width="90%", echo=FALSE}
+plt.cla()
+plt.scatter(cl1[:,0], cl1[:,1], c="r", marker = ".")
+plt.scatter(cl2[:,0], cl2[:,1], c="b", marker = "*")
+plt.scatter(cl3[:,0], cl3[:,1], c="c", marker = "D")
+plt.scatter(ctr[:,0], ctr[:,1], c="k", marker = "x", s = 200, linewidths=5)
+plt.show()
+```
+]
+
+---
+
+## k-means distortion plot
+
+> The mean (non-squared) Euclidean distance between the observations passed and the centroids generated.
+
+.pull-left[
+```{python}
+ks = range(1,6)
+dists = [kmeans(pts, k)[1] for k in ks]
+
+np.array(dists).reshape((-1,1))
+```
+]
+
+.pull-right[
+```{python echo=FALSE, out.width="90%"}
+plt.cla()
+p = plt.plot(ks, dists, "-ok")
+plt.show()
+```
+]
+
+---
+class: center, middle
+
+## Example 2 - Numerical integration
+
+---
+
+## Basic functions
+
+For general numeric integration in 1D we use `scipy.integrate.quad()`, which takes as arguments the function to be integrated and the lower and upper bounds of integration.
+
+```{python}
+from scipy.integrate import quad
+
+quad(lambda x: x, 0, 1)
+
+quad(np.sin, 0, np.pi)
+quad(np.sin, 0, 2*np.pi)
+
+quad(np.exp, 0, 1)
+```
+
+
+---
+
+## Normal PDF
+
+The PDF for a normal distribution is given by,
+
+$$ f(x) = \frac{1}{\sigma \sqrt{2 \pi}} \exp\left(-\frac{1}{2} \left(\frac{x-\mu}{\sigma}\right)^2  \right) $$
+
+
+```{python}
+def norm_pdf(x, μ, σ):
+  return (1/(σ * np.sqrt(2*np.pi))) * np.exp(-0.5 * ((x - μ)/σ)**2)
+```
+
+```{python}
+norm_pdf(0,0,1)
+norm_pdf(np.Inf, 0, 1)
+norm_pdf(-np.Inf, 0, 1)
+```
+
+---
+
+## Checking the DPF
+
+We can check that we've implemented a valid pdf by integrating the PDF from $-\inf$ to $\inf$,
+
+```{python error=TRUE}
+quad(norm_pdf, -np.inf, np.inf)
+```
+
+--
+
+```{python error=TRUE}
+quad(lambda x: norm_pdf(x, 0, 1), -np.inf, np.inf)
+```
+
+--
+
+```{python error=TRUE}
+quad(lambda x: norm_pdf(x, 17, 12), -np.inf, np.inf)
+```
+
+---
+
+## Truncated normals
+
+$$
+f(x) = \begin{cases}
+\frac{c}{\sigma \sqrt{2 \pi}} \exp\left(-\frac{1}{2} \left(\frac{x-\mu}{\sigma}\right)^2  \right), & \text{for } a \leq x \leq b \\
+0,                                            & \text{otherwise.} \\
+\end{cases}
+$$
+
+```{python}
+def trunc_norm_pdf(x, μ=0, σ=1, a=-np.inf, b=np.inf):
+  if (b < a):
+      raise ValueError("b must be greater than a")
+  x = np.asarray(x).reshape(-1)
+  full_pdf = (1/(σ * np.sqrt(2*np.pi))) * np.exp(-0.5 * ((x - μ)/σ)**2)
+  full_pdf[(x < a) | (x > b)] = 0
+  return full_pdf
+```
+
+---
+
+## Testing trunc_norm_pdf
+
+
+```{python}
+trunc_norm_pdf(0, a=-1, b=1)
+trunc_norm_pdf(2, a=-1, b=1)
+trunc_norm_pdf(-2, a=-1, b=1)
+trunc_norm_pdf([-2,1,0,1,2], a=-1, b=1)
+```
+
+--
+
+```{python}
+quad(lambda x: trunc_norm_pdf(x, a=-1, b=1), -np.inf, np.inf)
+
+quad(lambda x: trunc_norm_pdf(x, a=-3, b=3), -np.inf, np.inf)
+```
+
+
+---
+
+## Fixing trunc_norm_pdf
+
+```{python}
+def trunc_norm_pdf(x, μ=0, σ=1, a=-np.inf, b=np.inf):
+  if (b < a):
+      raise ValueError("b must be greater than a")
+  x = np.asarray(x).reshape(-1)
+  
+  nc = 1 / quad(lambda x: norm_pdf(x, μ, σ), a, b)[0]
+  
+  full_pdf = nc * (1/(σ * np.sqrt(2*np.pi))) * np.exp(-0.5 * ((x - μ)/σ)**2)
+  full_pdf[(x < a) | (x > b)] = 0
+  
+  return full_pdf
+```
+
+--
+
+.small[
+.pull-left[
+```{python}
+trunc_norm_pdf(0, a=-1, b=1)
+trunc_norm_pdf(2, a=-1, b=1)
+trunc_norm_pdf(-2, a=-1, b=1)
+trunc_norm_pdf([-2,1,0,1,2], a=-1, b=1)
+```
+]
+]
+
+--
+
+.small[
+.pull-right[
+```{python}
+quad(lambda x: trunc_norm_pdf(x, a=-1, b=1), -np.inf, np.inf)
+
+quad(lambda x: trunc_norm_pdf(x, a=-3, b=3), -np.inf, np.inf)
+```
+]
+]
+
+---
+
+## Multivariate normal
+
+$$
+f(\bf{x}) = \det{(2\pi\Sigma)}^{-1/2} \exp{\left(-\frac{1}{2} (\bf{x}-\mu)^T \Sigma^{-1}(\bf{x}-\mu) \right)}
+$$
+```{python}
+def mv_norm(x, μ, Σ):
+  x = np.asarray(x)
+  μ = np.asarray(μ)
+  Σ = np.asarray(Σ)
+  
+  return np.linalg.det(2*np.pi*Σ)**(-0.5) * np.exp(-0.5 * (x - μ).T @ np.linalg.solve(Σ, (x-μ)) )
+```
+
+--
+
+.small[
+.pull-left[
+```{python}
+norm_pdf(0,0,1)
+mv_norm([0], [0], [[1]])
+mv_norm([0,0], [0,0], [[1,0],[0,1]])
+mv_norm([0,0,0], [0,0,0], [[1,0,0],[0,1,0],[0,0,1]])
+```
+]
+]
+
+--
+
+.small[
+.pull-right[
+```{python cache=TRUE}
+from scipy.integrate import dblquad, tplquad
+
+dblquad(lambda y, x: mv_norm([x,y], [0,0], np.identity(2)), 
+        a=-np.inf, b=np.inf, 
+        gfun=lambda x: -np.inf,   hfun=lambda x: np.inf)
+        
+tplquad(lambda z, y, x: mv_norm([x,y,z], [0,0,0], np.identity(3)),
+        a=0, b=np.inf, 
+        gfun=lambda x:   0, hfun=lambda x:   np.inf,
+        qfun=lambda x,y: 0, rfun=lambda x,y: np.inf)
+```
+]
+]
+
+
+---
+class: center, middle
+
+## Example 3 - (Very) Basic optimization
+
+---
+
+## Scalar function minimization
+
+.pull-left[
+```{python}
+def f(x):
+    return x**4 + 3*(x-2)**3 - 15*(x)**2 + 1
+```
+
+```{python echo=FALSE, out.width="90%"}
+x = np.linspace(-8, 5, 100)
+plt.plot(x, f(x))
+```
+
+]
+
+--
+
+.pull-right[
+```{python}
+from scipy.optimize import minimize_scalar
+
+minimize_scalar(f, method="Brent")
+minimize_scalar(f, method="bounded", bounds=[0,6])
+minimize_scalar(f, method="bounded", bounds=[-8,6])
+```
+]
+
+---
+
+## Results
+
+```{python}
+res = minimize_scalar(f)
+
+type(res)
+dir(res)
+
+res.success
+res.x
+```
+
+---
+
+## More details
+
+.small[
+```{python}
+from scipy.optimize import show_options
+show_options(solver="minimize_scalar")
+```
+]
+
+---
+
+## Local minima
+
+.pull-left[
+```{python}
+def f(x):
+  return -np.sinc(x-5)
+```
+
+
+```{python echo=FALSE, out.width="90%"}
+x = np.linspace(-20, 20, 500)
+plt.cla()
+p = plt.plot(x, f(x));
+plt.show()
+```
+]
+
+--
+
+.pull-right[
+```{python}
+res = minimize_scalar(f)
+res
+```
+
+
+```{python echo=FALSE, out.width="90%"}
+x = np.linspace(-20, 20, 500)
+plt.cla()
+p = plt.plot(x, f(x));
+plt.axvline(res.x, c='red')
+plt.show()
+```
+]
+
+---
+
+## Random starts
+
+.pull-left[
+```{python}
+rng = np.random.default_rng(seed=1234)
+
+lower = rng.uniform(-20, 20, 100)
+upper = lower + 1
+
+sols = [minimize_scalar(f, bracket=(l,u)) for l,u in zip(lower, upper)]
+funs = [sol.fun for sol in sols]
+
+best = sols[np.argmin(funs)]
+best
+```
+]
+
+--
+
+.pull-right[
+```{python echo=FALSE, out.width="90%"}
+plt.cla()
+p = plt.plot(x, f(x));
+plt.axvline(best.x, c='red')
+plt.show()
+```
+]
+
+---
+
+## Back to Rosenbrock's function
+
+$$
+f(x,y) = (1-x)^2 + 100(y-x^2)^2
+$$ 
+
+```{python}
+def f(x):
+  return (1-x[0])**2 + 100*(x[1]-x[0]**2)**2
+```
+
+```{python}
+from scipy.optimize import minimize
+
+minimize(f, [0,0])
+
+minimize(f, [-1,-1]).x
+```
+
+---
+class: center, middle
+
+## Example 4 - Spatial Tools
+
+---
+
+## Nearest Neighbors
+
+.pull-left[
+```{python}
+rng = np.random.default_rng(seed=12345)
+pts = rng.multivariate_normal(
+  [0,0], [[1,.8],[.8,1]], 
+  size=10
+)
+
+pts
+```
+]
+
+.pull-right[
+```{python echo=FALSE, out.width="90%"}
+plt.cla()
+plt.scatter(pts[:,0], pts[:,1], c='w')
+
+for i in range(10):
+    plt.annotate(str(i), (pts[i,0], pts[i,1]), weight="bold", size=16, ha='center', va='center')
+
+plt.show()
+```
+]
+
+---
+
+## KD Trees
+
+.pull-left[
+```{python}
+from scipy.spatial import KDTree
+
+kd = KDTree(pts)
+kd
+dir(kd)
+```
+
+```{python}
+dist, i = kd.query(pts[6,:], k=3)
+dist
+i
+```
+
+```{python}
+dist, i = kd.query(pts[2,:], k=5)
+i
+```
+]
+
+.pull-right[
+```{python echo=FALSE, out.width="90%"}
+plt.cla()
+plt.scatter(pts[:,0], pts[:,1], c='w')
+
+for i in range(10):
+    plt.annotate(str(i), (pts[i,0], pts[i,1]), weight="bold", size=16, ha='center', va='center')
+
+plt.show()
+```
+]
+
+---
+
+## Convex hulls
+
+.pull-left[
+```{python}
+from scipy.spatial import ConvexHull
+
+hull = ConvexHull(pts)
+hull
+dir(hull)
+
+hull.simplices
+```
+]
+
+.pull-right[
+```{python out.width="90%"}
+scipy.spatial.convex_hull_plot_2d(hull)
+```
+]
+
+---
+
+## Delaunay triangulations
+
+.pull-left[
+```{python}
+from scipy.spatial import Delaunay
+
+tri = Delaunay(pts)
+tri
+dir(tri)
+
+tri.simplices
+```
+]
+
+.pull-right[
+```{python out.width="90%"}
+scipy.spatial.delaunay_plot_2d(tri)
+```
+]
+
+---
+
+## Voronoi diagrams
+
+.pull-left[
+```{python}
+from scipy.spatial import Voronoi
+
+vor = Voronoi(pts)
+vor
+dir(vor)
+
+vor.vertices
+```
+]
+
+.pull-right[
+```{python out.width="90%"}
+scipy.spatial.voronoi_plot_2d(vor)
+```
+]
+
+
+---
+
+class: center, middle
+
+## Example 5 - stats
+
+---
+
+## Distributions 
+
+Implements classes for 104 continuous and 19 discrete distributions,
+
+* `rvs`: Random Variates
+
+* `pdf`: Probability Density Function
+
+* `cdf`: Cumulative Distribution Function
+
+* `sf`: Survival Function (1-CDF)
+
+* `ppf`: Percent Point Function (Inverse of CDF)
+
+* `isf`: Inverse Survival Function (Inverse of SF)
+
+* `stats`: Return mean, variance, (Fisher’s) skew, or (Fisher’s) kurtosis
+
+* `moment`: non-central moments of the distribution
+
+---
+
+## Basic usage
+
+```{python}
+from scipy.stats import norm, gamma, binom, uniform
+
+norm().rvs(size=5)
+uniform.pdf([0,0.5,1,2])
+
+
+binom.mean(n=10, p=0.25)
+binom.median(n=10, p=0.25)
+
+gamma(a=1,scale=1).stats()
+norm().stats(moments="mvsk")
+```
+
+---
+
+## Freezing
+
+Model parameters can be passed to any of the methods directory, or a distribution can be constructed using a specific set of parameters, which is known as freezing.
+
+.pull-left[
+```{python}
+norm_rv = norm(loc=-1, scale=3)
+norm_rv.median()
+```
+
+```{python}
+unif_rv = uniform(loc=-1, scale=2)
+unif_rv.cdf([-2,-1,0,1,2])
+unif_rv.rvs(5)
+```
+]
+
+--
+
+.pull-right[
+```{python out.width="66%", fig.align="center"}
+g = gamma(a=2, loc=0, scale=1.2)
+
+x = np.linspace(0, 10, 100)
+plt.plot(x, g.pdf(x), "k-")
+plt.axvline(x=g.mean(), c="r")
+plt.axvline(x=g.median(), c="b")
+```
+]
+
+---
+
+## MLE
+
+Maximum likelihood estimation is possible via the `fit()` method,
+
+```{python}
+x = norm.rvs(loc=2.5, scale=2, size=1000, random_state=1234)
+norm.fit(x)
+norm.fit(x, loc=2.5) # provide a guess for the parameter
+```
+
+--
+
+```{python}
+x = gamma.rvs(a=2.5, size=1000)
+gamma.fit(x) # shape, loc, scale
+
+y = gamma.rvs(a=2.5, loc=-1, scale=2, size=1000)
+gamma.fit(y) # shape, loc, scale
+```

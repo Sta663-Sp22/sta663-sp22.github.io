@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 06 - SciPy</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs-2.11/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 06 - SciPy
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+```python
+import scipy
+import numpy as np
+import matplotlib.pyplot as plt
+
+np.set_printoptions(edgeitems=3, linewidth=180)
+```
+
+---
+
+## What is SciPy
+
+&gt; Fundamental algorithms for scientific computing in Python
+
+&lt;br/&gt;
+
+.small[
+| Subpackage    | Description                                           |   | Subpackage    | Description            
+|:--------------|:------------------------------------------------------|---|:--------------|:-------------------------------------------
+| `cluster`     | Clustering algorithms                                 |   | `odr`         | Orthogonal distance regression       
+| `constants`   | Physical and mathematical constants                   |   | `optimize`    | Optimization and root-finding routines
+| `fftpack`     | Fast Fourier Transform routines                       |   | `signal`      | Signal processing    
+| `integrate`   | Integration and ordinary differential equation solvers|   | `sparse`      | Sparse matrices and associated routines
+| `interpolate` | Interpolation and smoothing splines                   |   | `spatial`     | Spatial data structures and algorithms
+| `io`          | Input and Output                                      |   | `special`     | Special functions
+| `linalg`      | Linear algebra                                        |   | `stats`       | Statistical distributions and functions
+| `ndimage`     | N-dimensional image processing                        |   | &amp;nbsp;        | &amp;nbsp;
+
+]
+
+---
+class: center, middle
+
+## Example 1 - k-means clustering
+
+---
+
+## Data
+
+
+```python
+rng = np.random.default_rng(seed = 1234)
+
+
+cl1 = rng.multivariate_normal([-2,-2], [[1,-0.5],[-0.5,1]], size=100)
+cl2 = rng.multivariate_normal([1,0], [[1,0],[0,1]], size=150)
+cl3 = rng.multivariate_normal([3,2], [[1,-0.7],[-0.7,1]], size=200)
+
+pts = np.concatenate((cl1,cl2,cl3))
+```
+
+--
+
+&lt;img src="Lec07_files/figure-html/unnamed-chunk-2-1.png" width="33%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## k-means clustering
+
+.pull-left[
+
+```python
+from scipy.cluster.vq import kmeans
+
+ctr, dist = kmeans(pts, 3)
+ctr
+```
+
+```
+## array([[ 2.85409537,  1.94511779],
+##        [-2.03956666, -1.85662027],
+##        [ 0.89789235, -0.20527898]])
+```
+
+```python
+dist
+```
+
+```
+## 1.2206927437557962
+```
+
+&lt;br/&gt;
+
+
+```python
+cl1.mean(axis=0)
+```
+
+```
+## array([-2.00474615, -1.87275596])
+```
+
+```python
+cl2.mean(axis=0)
+```
+
+```
+## array([1.03849018, 0.01417119])
+```
+
+```python
+cl3.mean(axis=0)
+```
+
+```
+## array([2.94641907, 2.02514165])
+```
+]
+
+--
+
+.pull-right[
+&lt;img src="Lec07_files/figure-html/unnamed-chunk-5-3.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## k-means distortion plot
+
+&gt; The mean (non-squared) Euclidean distance between the observations passed and the centroids generated.
+
+.pull-left[
+
+```python
+ks = range(1,6)
+dists = [kmeans(pts, k)[1] for k in ks]
+
+np.array(dists).reshape((-1,1))
+```
+
+```
+## array([[2.5470307 ],
+##        [1.56992843],
+##        [1.22069274],
+##        [1.04591628],
+##        [0.95250652]])
+```
+]
+
+.pull-right[
+&lt;img src="Lec07_files/figure-html/unnamed-chunk-7-5.png" width="90%" /&gt;
+]
+
+---
+class: center, middle
+
+## Example 2 - Numerical integration
+
+---
+
+## Basic functions
+
+For general numeric integration in 1D we use `scipy.integrate.quad()`, which takes as arguments the function to be integrated and the lower and upper bounds of integration.
+
+
+```python
+from scipy.integrate import quad
+
+quad(lambda x: x, 0, 1)
+```
+
+```
+## (0.5, 5.551115123125783e-15)
+```
+
+```python
+quad(np.sin, 0, np.pi)
+```
+
+```
+## (2.0, 2.220446049250313e-14)
+```
+
+```python
+quad(np.sin, 0, 2*np.pi)
+```
+
+```
+## (2.0329956258200796e-16, 4.3998892617845996e-14)
+```
+
+```python
+quad(np.exp, 0, 1)
+```
+
+```
+## (1.7182818284590453, 1.9076760487502457e-14)
+```
+
+
+---
+
+## Normal PDF
+
+The PDF for a normal distribution is given by,
+
+$$ f(x) = \frac{1}{\sigma \sqrt{2 \pi}} \exp\left(-\frac{1}{2} \left(\frac{x-\mu}{\sigma}\right)^2  \right) $$
+
+
+
+```python
+def norm_pdf(x, μ, σ):
+  return (1/(σ * np.sqrt(2*np.pi))) * np.exp(-0.5 * ((x - μ)/σ)**2)
+```
+
+
+```python
+norm_pdf(0,0,1)
+```
+
+```
+## 0.3989422804014327
+```
+
+```python
+norm_pdf(np.Inf, 0, 1)
+```
+
+```
+## 0.0
+```
+
+```python
+norm_pdf(-np.Inf, 0, 1)
+```
+
+```
+## 0.0
+```
+
+---
+
+## Checking the DPF
+
+We can check that we've implemented a valid pdf by integrating the PDF from `\(-\inf\)` to `\(\inf\)`,
+
+
+```python
+quad(norm_pdf, -np.inf, np.inf)
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): TypeError: norm_pdf() missing 2 required positional arguments: 'μ' and 'σ'
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+##   File "/opt/homebrew/lib/python3.9/site-packages/scipy/integrate/quadpack.py", line 351, in quad
+##     retval = _quad(func, a, b, args, full_output, epsabs, epsrel, limit,
+##   File "/opt/homebrew/lib/python3.9/site-packages/scipy/integrate/quadpack.py", line 465, in _quad
+##     return _quadpack._qagie(func,bound,infbounds,args,full_output,epsabs,epsrel,limit)
+```
+
+--
+
+
+```python
+quad(lambda x: norm_pdf(x, 0, 1), -np.inf, np.inf)
+```
+
+```
+## (0.9999999999999997, 1.0178191380347127e-08)
+```
+
+--
+
+
+```python
+quad(lambda x: norm_pdf(x, 17, 12), -np.inf, np.inf)
+```
+
+```
+## (1.0000000000000002, 4.113136862574909e-09)
+```
+
+---
+
+## Truncated normals
+
+$$
+f(x) = \begin{cases}
+\frac{c}{\sigma \sqrt{2 \pi}} \exp\left(-\frac{1}{2} \left(\frac{x-\mu}{\sigma}\right)^2  \right), &amp; \text{for } a \leq x \leq b \\
+0,                                            &amp; \text{otherwise.} \\
+\end{cases}
+$$
+
+
+```python
+def trunc_norm_pdf(x, μ=0, σ=1, a=-np.inf, b=np.inf):
+  if (b &lt; a):
+      raise ValueError("b must be greater than a")
+  x = np.asarray(x).reshape(-1)
+  full_pdf = (1/(σ * np.sqrt(2*np.pi))) * np.exp(-0.5 * ((x - μ)/σ)**2)
+  full_pdf[(x &lt; a) | (x &gt; b)] = 0
+  return full_pdf
+```
+
+---
+
+## Testing trunc_norm_pdf
+
+
+
+```python
+trunc_norm_pdf(0, a=-1, b=1)
+```
+
+```
+## array([0.39894228])
+```
+
+```python
+trunc_norm_pdf(2, a=-1, b=1)
+```
+
+```
+## array([0.])
+```
+
+```python
+trunc_norm_pdf(-2, a=-1, b=1)
+```
+
+```
+## array([0.])
+```
+
+```python
+trunc_norm_pdf([-2,1,0,1,2], a=-1, b=1)
+```
+
+```
+## array([0.        , 0.24197072, 0.39894228, 0.24197072, 0.        ])
+```
+
+--
+
+
+```python
+quad(lambda x: trunc_norm_pdf(x, a=-1, b=1), -np.inf, np.inf)
+```
+
+```
+## (0.682689492137086, 2.0147661317082566e-11)
+```
+
+```python
+quad(lambda x: trunc_norm_pdf(x, a=-3, b=3), -np.inf, np.inf)
+```
+
+```
+## (0.9973002039367396, 7.451935936375609e-09)
+```
+
+
+---
+
+## Fixing trunc_norm_pdf
+
+
+```python
+def trunc_norm_pdf(x, μ=0, σ=1, a=-np.inf, b=np.inf):
+  if (b &lt; a):
+      raise ValueError("b must be greater than a")
+  x = np.asarray(x).reshape(-1)
+  
+  nc = 1 / quad(lambda x: norm_pdf(x, μ, σ), a, b)[0]
+  
+  full_pdf = nc * (1/(σ * np.sqrt(2*np.pi))) * np.exp(-0.5 * ((x - μ)/σ)**2)
+  full_pdf[(x &lt; a) | (x &gt; b)] = 0
+  
+  return full_pdf
+```
+
+--
+
+.small[
+.pull-left[
+
+```python
+trunc_norm_pdf(0, a=-1, b=1)
+```
+
+```
+## array([0.58436857])
+```
+
+```python
+trunc_norm_pdf(2, a=-1, b=1)
+```
+
+```
+## array([0.])
+```
+
+```python
+trunc_norm_pdf(-2, a=-1, b=1)
+```
+
+```
+## array([0.])
+```
+
+```python
+trunc_norm_pdf([-2,1,0,1,2], a=-1, b=1)
+```
+
+```
+## array([0.        , 0.35443745, 0.58436857, 0.35443745, 0.        ])
+```
+]
+]
+
+--
+
+.small[
+.pull-right[
+
+```python
+quad(lambda x: trunc_norm_pdf(x, a=-1, b=1), -np.inf, np.inf)
+```
+
+```
+## (1.0, 2.9512170485190836e-11)
+```
+
+```python
+quad(lambda x: trunc_norm_pdf(x, a=-3, b=3), -np.inf, np.inf)
+```
+
+```
+## (0.9999999999999998, 7.472109098127788e-09)
+```
+]
+]
+
+---
+
+## Multivariate normal
+
+$$
+f(\bf{x}) = \det{(2\pi\Sigma)}^{-1/2} \exp{\left(-\frac{1}{2} (\bf{x}-\mu)^T \Sigma^{-1}(\bf{x}-\mu) \right)}
+$$
+
+```python
+def mv_norm(x, μ, Σ):
+  x = np.asarray(x)
+  μ = np.asarray(μ)
+  Σ = np.asarray(Σ)
+  
+  return np.linalg.det(2*np.pi*Σ)**(-0.5) * np.exp(-0.5 * (x - μ).T @ np.linalg.solve(Σ, (x-μ)) )
+```
+
+--
+
+.small[
+.pull-left[
+
+```python
+norm_pdf(0,0,1)
+```
+
+```
+## 0.3989422804014327
+```
+
+```python
+mv_norm([0], [0], [[1]])
+```
+
+```
+## 0.3989422804014327
+```
+
+```python
+mv_norm([0,0], [0,0], [[1,0],[0,1]])
+```
+
+```
+## 0.15915494309189535
+```
+
+```python
+mv_norm([0,0,0], [0,0,0], [[1,0,0],[0,1,0],[0,0,1]])
+```
+
+```
+## 0.06349363593424098
+```
+]
+]
+
+--
+
+.small[
+.pull-right[
+
+```python
+from scipy.integrate import dblquad, tplquad
+
+dblquad(lambda y, x: mv_norm([x,y], [0,0], np.identity(2)), 
+        a=-np.inf, b=np.inf, 
+        gfun=lambda x: -np.inf,   hfun=lambda x: np.inf)
+        
+```
+
+```
+## (1.0000000000000322, 1.3150127836618008e-08)
+```
+
+```python
+tplquad(lambda z, y, x: mv_norm([x,y,z], [0,0,0], np.identity(3)),
+        a=0, b=np.inf, 
+        gfun=lambda x:   0, hfun=lambda x:   np.inf,
+        qfun=lambda x,y: 0, rfun=lambda x,y: np.inf)
+```
+
+```
+## (0.12500000000036066, 1.4697203688867502e-08)
+```
+]
+]
+
+
+---
+class: center, middle
+
+## Example 3 - (Very) Basic optimization
+
+---
+
+## Scalar function minimization
+
+.pull-left[
+
+```python
+def f(x):
+    return x**4 + 3*(x-2)**3 - 15*(x)**2 + 1
+```
+
+&lt;img src="Lec07_files/figure-html/unnamed-chunk-24-7.png" width="90%" /&gt;
+
+]
+
+--
+
+.pull-right[
+
+```python
+from scipy.optimize import minimize_scalar
+
+minimize_scalar(f, method="Brent")
+```
+
+```
+##      fun: -803.3955308825884
+##     nfev: 17
+##      nit: 11
+##  success: True
+##        x: -5.528801125219663
+```
+
+```python
+minimize_scalar(f, method="bounded", bounds=[0,6])
+```
+
+```
+##      fun: -54.21003937712762
+##  message: 'Solution found.'
+##     nfev: 12
+##   status: 0
+##  success: True
+##        x: 2.668865104039653
+```
+
+```python
+minimize_scalar(f, method="bounded", bounds=[-8,6])
+```
+
+```
+##      fun: -803.3955308825871
+##  message: 'Solution found.'
+##     nfev: 12
+##   status: 0
+##  success: True
+##        x: -5.528801009134004
+```
+]
+
+---
+
+## Results
+
+
+```python
+res = minimize_scalar(f)
+
+type(res)
+```
+
+```
+## &lt;class 'scipy.optimize.optimize.OptimizeResult'&gt;
+```
+
+```python
+dir(res)
+```
+
+```
+## ['fun', 'nfev', 'nit', 'success', 'x']
+```
+
+```python
+res.success
+```
+
+```
+## True
+```
+
+```python
+res.x
+```
+
+```
+## -5.528801125219663
+```
+
+---
+
+## More details
+
+.small[
+
+```python
+from scipy.optimize import show_options
+show_options(solver="minimize_scalar")
+```
+
+```
+## 
+## 
+## brent
+## =====
+## 
+## Options
+## -------
+## maxiter : int
+##     Maximum number of iterations to perform.
+## xtol : float
+##     Relative error in solution `xopt` acceptable for convergence.
+## 
+## Notes
+## -----
+## Uses inverse parabolic interpolation when possible to speed up
+## convergence of golden section method.
+## 
+## bounded
+## =======
+## 
+## Options
+## -------
+## maxiter : int
+##     Maximum number of iterations to perform.
+## disp: int, optional
+##     If non-zero, print messages.
+##         0 : no message printing.
+##         1 : non-convergence notification messages only.
+##         2 : print a message on convergence too.
+##         3 : print iteration results.
+## xatol : float
+##     Absolute error in solution `xopt` acceptable for convergence.
+## 
+## golden
+## ======
+## 
+## Options
+## -------
+## maxiter : int
+##     Maximum number of iterations to perform.
+## xtol : float
+##     Relative error in solution `xopt` acceptable for convergence.
+```
+]
+
+---
+
+## Local minima
+
+.pull-left[
+
+```python
+def f(x):
+  return -np.sinc(x-5)
+```
+
+
+&lt;img src="Lec07_files/figure-html/unnamed-chunk-29-9.png" width="90%" /&gt;
+]
+
+--
+
+.pull-right[
+
+```python
+res = minimize_scalar(f)
+res
+```
+
+```
+##      fun: -0.049029624014074166
+##     nfev: 15
+##      nit: 10
+##  success: True
+##        x: -1.4843871263953001
+```
+
+
+&lt;img src="Lec07_files/figure-html/unnamed-chunk-31-11.png" width="90%" /&gt;
+]
+
+---
+
+## Random starts
+
+.pull-left[
+
+```python
+rng = np.random.default_rng(seed=1234)
+
+lower = rng.uniform(-20, 20, 100)
+upper = lower + 1
+
+sols = [minimize_scalar(f, bracket=(l,u)) for l,u in zip(lower, upper)]
+funs = [sol.fun for sol in sols]
+
+best = sols[np.argmin(funs)]
+best
+```
+
+```
+##      fun: -1.0
+##     nfev: 12
+##      nit: 8
+##  success: True
+##        x: 5.000000000618556
+```
+]
+
+--
+
+.pull-right[
+&lt;img src="Lec07_files/figure-html/unnamed-chunk-33-13.png" width="90%" /&gt;
+]
+
+---
+
+## Back to Rosenbrock's function
+
+$$
+f(x,y) = (1-x)^2 + 100(y-x^2)^2
+$$ 
+
+
+```python
+def f(x):
+  return (1-x[0])**2 + 100*(x[1]-x[0]**2)**2
+```
+
+
+```python
+from scipy.optimize import minimize
+
+minimize(f, [0,0])
+```
+
+```
+##       fun: 2.844030241790906e-11
+##  hess_inv: array([[0.49482454, 0.98957635],
+##        [0.98957635, 1.98394216]])
+##       jac: array([ 3.98673382e-06, -2.84416264e-06])
+##   message: 'Optimization terminated successfully.'
+##      nfev: 72
+##       nit: 19
+##      njev: 24
+##    status: 0
+##   success: True
+##         x: array([0.99999467, 0.99998932])
+```
+
+```python
+minimize(f, [-1,-1]).x
+```
+
+```
+## array([0.99999553, 0.99999106])
+```
+
+---
+class: center, middle
+
+## Example 4 - Spatial Tools
+
+---
+
+## Nearest Neighbors
+
+.pull-left[
+
+```python
+rng = np.random.default_rng(seed=12345)
+pts = rng.multivariate_normal(
+  [0,0], [[1,.8],[.8,1]], 
+  size=10
+)
+
+pts
+```
+
+```
+## array([[ 0.951133  ,  1.75038506],
+##        [ 0.90794002,  0.74402448],
+##        [ 0.30576524, -0.16281136],
+##        [ 1.09240417,  1.50280001],
+##        [ 0.27501972, -0.96007933],
+##        [-2.53321395, -1.92068272],
+##        [ 0.43511779,  1.00571808],
+##        [ 0.46218239,  0.42379897],
+##        [-0.3509701 , -1.14575681],
+##        [-0.98870241, -0.1039104 ]])
+```
+]
+
+.pull-right[
+&lt;img src="Lec07_files/figure-html/unnamed-chunk-37-15.png" width="90%" /&gt;
+]
+
+---
+
+## KD Trees
+
+.pull-left[
+
+```python
+from scipy.spatial import KDTree
+
+kd = KDTree(pts)
+kd
+```
+
+```
+## &lt;scipy.spatial.kdtree.KDTree object at 0x11e5544c0&gt;
+```
+
+```python
+dir(kd)
+```
+
+```
+## ['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__pyx_vtable__', '__reduce__', '__reduce_cython__', '__reduce_ex__', '__repr__', '__setattr__', '__setstate__', '__setstate_cython__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_build_weights', 'boxsize', 'count_neighbors', 'data', 'indices', 'innernode', 'leafnode', 'leafsize', 'm', 'maxes', 'mins', 'n', 'node', 'query', 'query_ball_point', 'query_ball_tree', 'query_pairs', 'size', 'sparse_distance_matrix', 'tree']
+```
+
+
+```python
+dist, i = kd.query(pts[6,:], k=3)
+dist
+```
+
+```
+## array([0.        , 0.54041133, 0.58254815])
+```
+
+```python
+i
+```
+
+```
+## array([6, 1, 7])
+```
+
+
+```python
+dist, i = kd.query(pts[2,:], k=5)
+i
+```
+
+```
+## array([2, 7, 4, 1, 6])
+```
+]
+
+.pull-right[
+&lt;img src="Lec07_files/figure-html/unnamed-chunk-41-17.png" width="90%" /&gt;
+]
+
+---
+
+## Convex hulls
+
+.pull-left[
+
+```python
+from scipy.spatial import ConvexHull
+
+hull = ConvexHull(pts)
+hull
+```
+
+```
+## &lt;scipy.spatial.qhull.ConvexHull object at 0x16b63a8b0&gt;
+```
+
+```python
+dir(hull)
+```
+
+```
+## ['__class__', '__del__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_add_points', '_points', '_qhull', '_update', '_vertices', 'add_points', 'area', 'close', 'coplanar', 'equations', 'good', 'max_bound', 'min_bound', 'ndim', 'neighbors', 'npoints', 'nsimplex', 'points', 'simplices', 'vertices', 'volume']
+```
+
+```python
+hull.simplices
+```
+
+```
+## array([[0, 3],
+##        [4, 5],
+##        [9, 5],
+##        [9, 0],
+##        [1, 3],
+##        [1, 4]], dtype=int32)
+```
+]
+
+.pull-right[
+
+```python
+scipy.spatial.convex_hull_plot_2d(hull)
+```
+
+&lt;img src="Lec07_files/figure-html/unnamed-chunk-43-19.png" width="90%" /&gt;
+]
+
+---
+
+## Delaunay triangulations
+
+.pull-left[
+
+```python
+from scipy.spatial import Delaunay
+
+tri = Delaunay(pts)
+tri
+```
+
+```
+## &lt;scipy.spatial.qhull.Delaunay object at 0x16b640040&gt;
+```
+
+```python
+dir(tri)
+```
+
+```
+## ['__class__', '__del__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_add_points', '_points', '_qhull', '_transform', '_update', '_vertex_neighbor_vertices', '_vertex_to_simplex', 'add_points', 'close', 'convex_hull', 'coplanar', 'equations', 'find_simplex', 'furthest_site', 'good', 'lift_points', 'max_bound', 'min_bound', 'ndim', 'neighbors', 'npoints', 'nsimplex', 'paraboloid_scale', 'paraboloid_shift', 'plane_distance', 'points', 'simplices', 'transform', 'vertex_neighbor_vertices', 'vertex_to_simplex', 'vertices']
+```
+
+```python
+tri.simplices
+```
+
+```
+## array([[8, 9, 5],
+##        [4, 8, 5],
+##        [9, 8, 2],
+##        [8, 4, 2],
+##        [4, 1, 2],
+##        [6, 1, 3],
+##        [0, 6, 3],
+##        [6, 0, 9],
+##        [7, 9, 2],
+##        [7, 6, 9],
+##        [1, 7, 2],
+##        [7, 1, 6]], dtype=int32)
+```
+]
+
+.pull-right[
+
+```python
+scipy.spatial.delaunay_plot_2d(tri)
+```
+
+&lt;img src="Lec07_files/figure-html/unnamed-chunk-45-21.png" width="90%" /&gt;
+]
+
+---
+
+## Voronoi diagrams
+
+.pull-left[
+
+```python
+from scipy.spatial import Voronoi
+
+vor = Voronoi(pts)
+vor
+```
+
+```
+## &lt;scipy.spatial.qhull.Voronoi object at 0x16b65fdc0&gt;
+```
+
+```python
+dir(vor)
+```
+
+```
+## ['__class__', '__del__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_add_points', '_points', '_qhull', '_ridge_dict', '_update', 'add_points', 'close', 'furthest_site', 'max_bound', 'min_bound', 'ndim', 'npoints', 'point_region', 'points', 'regions', 'ridge_dict', 'ridge_points', 'ridge_vertices', 'vertices']
+```
+
+```python
+vor.vertices
+```
+
+```
+## array([[ -1.56917821,  -1.17533646],
+##        [  7.94738786, -27.97463108],
+##        [ -0.3550644 ,  -0.43215628],
+##        [ -0.18923926,  -0.54294902],
+##        [  1.98860973,  -0.62693469],
+##        [  0.83175084,   1.16435674],
+##        [  0.64483401,   1.41151497],
+##        [ -2.98645423,   3.92780753],
+##        [ -0.32091034,   0.31844817],
+##        [ -0.44985535,   0.67296975],
+##        [  1.15930838,  -0.07624587],
+##        [  0.58645847,   0.72116788]])
+```
+]
+
+.pull-right[
+
+```python
+scipy.spatial.voronoi_plot_2d(vor)
+```
+
+&lt;img src="Lec07_files/figure-html/unnamed-chunk-47-23.png" width="90%" /&gt;
+]
+
+
+---
+
+class: center, middle
+
+## Example 5 - stats
+
+---
+
+## Distributions 
+
+Implements classes for 104 continuous and 19 discrete distributions,
+
+* `rvs`: Random Variates
+
+* `pdf`: Probability Density Function
+
+* `cdf`: Cumulative Distribution Function
+
+* `sf`: Survival Function (1-CDF)
+
+* `ppf`: Percent Point Function (Inverse of CDF)
+
+* `isf`: Inverse Survival Function (Inverse of SF)
+
+* `stats`: Return mean, variance, (Fisher’s) skew, or (Fisher’s) kurtosis
+
+* `moment`: non-central moments of the distribution
+
+---
+
+## Basic usage
+
+
+```python
+from scipy.stats import norm, gamma, binom, uniform
+
+norm().rvs(size=5)
+```
+
+```
+## array([ 0.19212839, -1.00680151, -0.01626011, -1.55880124,  1.51465812])
+```
+
+```python
+uniform.pdf([0,0.5,1,2])
+
+```
+
+```
+## array([1., 1., 1., 0.])
+```
+
+```python
+binom.mean(n=10, p=0.25)
+```
+
+```
+## 2.5
+```
+
+```python
+binom.median(n=10, p=0.25)
+```
+
+```
+## 2.0
+```
+
+```python
+gamma(a=1,scale=1).stats()
+```
+
+```
+## (array(1.), array(1.))
+```
+
+```python
+norm().stats(moments="mvsk")
+```
+
+```
+## (array(0.), array(1.), array(0.), array(0.))
+```
+
+---
+
+## Freezing
+
+Model parameters can be passed to any of the methods directory, or a distribution can be constructed using a specific set of parameters, which is known as freezing.
+
+.pull-left[
+
+```python
+norm_rv = norm(loc=-1, scale=3)
+norm_rv.median()
+```
+
+```
+## -1.0
+```
+
+
+```python
+unif_rv = uniform(loc=-1, scale=2)
+unif_rv.cdf([-2,-1,0,1,2])
+```
+
+```
+## array([0. , 0. , 0.5, 1. , 1. ])
+```
+
+```python
+unif_rv.rvs(5)
+```
+
+```
+## array([-0.88660047, -0.34258174,  0.87026295, -0.21380837,  0.92175776])
+```
+]
+
+--
+
+.pull-right[
+
+```python
+g = gamma(a=2, loc=0, scale=1.2)
+
+x = np.linspace(0, 10, 100)
+plt.plot(x, g.pdf(x), "k-")
+plt.axvline(x=g.mean(), c="r")
+plt.axvline(x=g.median(), c="b")
+```
+
+&lt;img src="Lec07_files/figure-html/unnamed-chunk-51-25.png" width="66%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## MLE
+
+Maximum likelihood estimation is possible via the `fit()` method,
+
+
+```python
+x = norm.rvs(loc=2.5, scale=2, size=1000, random_state=1234)
+norm.fit(x)
+```
+
+```
+## (2.5314811643075235, 1.946132398754459)
+```
+
+```python
+norm.fit(x, loc=2.5) # provide a guess for the parameter
+```
+
+```
+## (2.5314811643075235, 1.946132398754459)
+```
+
+--
+
+
+```python
+x = gamma.rvs(a=2.5, size=1000)
+gamma.fit(x) # shape, loc, scale
+```
+
+```
+## (2.610822851762912, -0.010307518897718249, 0.953031751893052)
+```
+
+```python
+y = gamma.rvs(a=2.5, loc=-1, scale=2, size=1000)
+gamma.fit(y) # shape, loc, scale
+```
+
+```
+## (2.5458965207988244, -1.0662345432084512, 1.9814877591979505)
+```
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
