@@ -1,5 +1,5 @@
 ---
-title: "Lec 06 - SciPy"
+title: "Lec 07 - SciPy"
 subtitle: "<br/> Statistical Computing and Computation"
 author: "Sta 663 | Spring 2022"
 date: "<br/> Dr. Colin Rundel"

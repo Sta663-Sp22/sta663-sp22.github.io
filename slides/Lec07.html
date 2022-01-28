@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="" xml:lang="">
   <head>
-    <title>Lec 06 - SciPy</title>
+    <title>Lec 07 - SciPy</title>
     <meta charset="utf-8" />
     <meta name="author" content="Sta 663 | Spring 2022" />
     <script src="libs/header-attrs-2.11/header-attrs.js"></script>
@@ -11,7 +11,7 @@
     <textarea id="source">
 class: center, middle, inverse, title-slide
 
-# Lec 06 - SciPy
+# Lec 07 - SciPy
 ## <br/> Statistical Computing and Computation
 ### Sta 663 | Spring 2022
 ### <br/> Dr. Colin Rundel
@@ -91,8 +91,8 @@ ctr
 
 ```
 ## array([[ 2.85409537,  1.94511779],
-##        [-2.03956666, -1.85662027],
-##        [ 0.89789235, -0.20527898]])
+##        [ 0.89789235, -0.20527898],
+##        [-2.03956666, -1.85662027]])
 ```
 
 ```python
@@ -154,10 +154,10 @@ np.array(dists).reshape((-1,1))
 
 ```
 ## array([[2.5470307 ],
-##        [1.56992843],
+##        [1.57009105],
 ##        [1.22069274],
-##        [1.04591628],
-##        [0.95250652]])
+##        [1.04594861],
+##        [0.95269843]])
 ```
 ]
 
@@ -872,7 +872,7 @@ kd
 ```
 
 ```
-## &lt;scipy.spatial.kdtree.KDTree object at 0x11e5544c0&gt;
+## &lt;scipy.spatial.kdtree.KDTree object at 0x1026b44c0&gt;
 ```
 
 ```python
@@ -930,7 +930,7 @@ hull
 ```
 
 ```
-## &lt;scipy.spatial.qhull.ConvexHull object at 0x16b63a8b0&gt;
+## &lt;scipy.spatial.qhull.ConvexHull object at 0x14778d700&gt;
 ```
 
 ```python
@@ -978,7 +978,7 @@ tri
 ```
 
 ```
-## &lt;scipy.spatial.qhull.Delaunay object at 0x16b640040&gt;
+## &lt;scipy.spatial.qhull.Delaunay object at 0x1477a0fd0&gt;
 ```
 
 ```python
@@ -1032,7 +1032,7 @@ vor
 ```
 
 ```
-## &lt;scipy.spatial.qhull.Voronoi object at 0x16b65fdc0&gt;
+## &lt;scipy.spatial.qhull.Voronoi object at 0x1477c25b0&gt;
 ```
 
 ```python
@@ -1113,7 +1113,7 @@ norm().rvs(size=5)
 ```
 
 ```
-## array([ 0.19212839, -1.00680151, -0.01626011, -1.55880124,  1.51465812])
+## array([ 1.37773488, -0.19096664,  0.55300367,  1.10696328,  0.49030573])
 ```
 
 ```python
@@ -1189,7 +1189,7 @@ unif_rv.rvs(5)
 ```
 
 ```
-## array([-0.88660047, -0.34258174,  0.87026295, -0.21380837,  0.92175776])
+## array([ 0.05213907, -0.04603696,  0.29595061,  0.73380416, -0.37218791])
 ```
 ]
 
@@ -1242,7 +1242,7 @@ gamma.fit(x) # shape, loc, scale
 ```
 
 ```
-## (2.610822851762912, -0.010307518897718249, 0.953031751893052)
+## (2.717451544403441, -0.041437185161843526, 0.9293407167094078)
 ```
 
 ```python
@@ -1251,7 +1251,7 @@ gamma.fit(y) # shape, loc, scale
 ```
 
 ```
-## (2.5458965207988244, -1.0662345432084512, 1.9814877591979505)
+## (2.3325993640858007, -0.9659594238725819, 2.1028797903487417)
 ```
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
