@@ -1,0 +1,1004 @@
+---
+title: "Lec 08 - pandas"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{python setup}
+import scipy
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+np.set_printoptions(edgeitems=3, linewidth=180)
+```
+
+```{r hooks}
+local({
+  hook_old <- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_old(x, options)
+  })
+})
+```
+
+---
+
+## pandas?
+
+pandas is an implementation of data frames in Python - it takes much of its inspiration from R and NumPy.
+
+> pandas aims to be the fundamental high-level building block for doing practical, real world data analysis in Python. Additionally, it has the broader goal of becoming the most powerful and flexible open source data analysis / manipulation tool available in any language.
+
+--
+
+Key features:
+
+* DataFrame object class
+
+* Reading and writing tabular data
+
+* Data munging (filtering, grouping, summarizing, joining, etc.)
+
+* Data reshaping
+
+---
+
+## DataFrame
+
+```{python}
+import pandas as pd
+```
+
+.small[
+.pull-left[
+```{python}
+iris = pd.read_csv("data/iris.csv")
+iris
+```
+]
+
+
+.pull-right[
+```{python}
+print( type(iris) )
+```
+
+* Just like R a DataFrame is a collection of vectors with a common length
+
+* Column types can be heterogeneous
+
+* Both columns and rows can have names
+
+
+]
+]
+
+---
+
+## Series
+
+The columns of a DataFrame are constructed as Series - a 1d array like object containing values of the same type (similar to an ndarray).
+
+.pull-left[
+```{python}
+pd.Series([1,2,3,4])
+pd.Series(["C","B","A"])
+pd.Series([True])
+```
+]
+
+.pull-right[
+```{python}
+pd.Series(range(5))
+pd.Series([1,"A",True])
+```
+]
+
+---
+
+## Series methods
+
+Once constructed the components of a series can be accessed via `array()` and `index()` methods.
+
+```{python}
+s = pd.Series([4,2,1,3])
+s.array
+s.index
+```
+
+An index can also be explicitly provided when constructing a Series,
+
+```{python}
+t = pd.Series([4,2,1,3], index=["a","b","c","d"])
+```
+
+.pull-left[
+```{python}
+t
+```
+]
+
+.pull-right[
+```{python}
+t.array
+t.index
+```
+]
+
+---
+
+## Series + NumPy
+
+Series objects are compatible with NumPy like functions (vectorized)
+
+```{python}
+t = pd.Series([4,2,1,3], index=["a","b","c","d"])
+```
+
+```{python}
+t + 1
+
+np.log(t)
+
+np.exp(-t**2/2)
+```
+
+---
+
+## Series indexing
+
+Series can be indexed in the same was as NumPy arrays with the addition of being able to use label(s) when selecting elements.
+
+```{python}
+t = pd.Series([4,2,1,3], index=["a","b","c","d"])
+```
+
+.pull-left[
+```{python}
+t[1]
+t[[1,2]]
+t["c"]
+t[["a","d"]]
+```
+]
+
+
+.pull-right[
+```{python}
+t[t == 3]
+t[t % 2 == 0]
+t["d"] = 6
+t
+```
+]
+
+---
+
+## Index alignment
+
+When performing (arithmetic) operations on series, they will attempt to align by their index,
+
+```{python}
+m = pd.Series([1,2,3,4], index = ["a","b","c","d"])
+n = pd.Series([4,3,2,1], index = ["d","c","b","a"])
+o = pd.Series([1,1,1,1,1], index = ["b","d","a","c","e"])
+```
+
+--
+
+.pull-left[
+```{python}
+m + n
+```
+
+```{python}
+n + m
+```
+]
+
+--
+
+.pull-right[
+```{python}
+n + o
+```
+]
+
+
+---
+
+## Series and dicts
+
+Series can also be constructed from dicts, in which case the keys are used to form the index,
+
+```{python}
+d = {"anna": "A+", "bob": "B-", "carol": "C", "dave": "D+"}
+pd.Series(d)
+```
+
+Index order will follow key order, unless overriden by `index`,
+
+```{python}
+pd.Series(d, index = ["dave","carol","bob","anna"])
+```
+
+---
+
+## Missing values
+
+Pandas encodes missing values using NaN (mostly),
+
+.pull-left[
+```{python}
+s = pd.Series(
+  {"anna": "A+", "bob": "B-", "carol": "C", "dave": "D+"}, 
+  index = ["erin","dave","carol","bob","anna"]
+)
+```
+
+```{python}
+s
+pd.isna(s)
+```
+
+]
+
+--
+
+.pull-right[
+```{python}
+s = pd.Series(
+  {"anna": 97, "bob": 82, "carol": 75, "dave": 68}, 
+  index = ["erin","dave","carol","bob","anna"],
+  dtype = 'int64'
+)
+```
+
+```{python}
+s
+pd.isna(s)
+```
+]
+
+---
+
+## Aside - why `np.isna()`?
+
+```{python}
+s = pd.Series([1,2,3,None])
+s
+```
+
+.pull-left[
+```{python}
+pd.isna(s)
+s == np.nan
+```
+]
+
+--
+
+.pull-right[
+```{python}
+np.nan == np.nan
+np.nan != np.nan
+```
+]
+
+---
+
+## Native NAs
+
+Recent versions of pandas have attempted to adopt a more native missing value, particularly for integer and boolean types,
+
+.pull-left[
+```{python}
+pd.Series([1,2,3,None])
+pd.Series([True,False,None])
+```
+]
+
+.pull-right[
+```{python}
+pd.isna( pd.Series([1,2,3,None]) )
+pd.isna( pd.Series([True,False,None]) )
+```
+]
+
+--
+
+
+We can force things by setting the Series dtype,
+
+<div>
+.pull-left[
+```{python}
+pd.Series([1,2,3,None], dtype = pd.Int64Dtype())
+```
+]
+
+.pull-right[
+```{python}
+pd.Series([True, False,None], dtype = pd.BooleanDtype())
+```
+]
+</div>
+
+
+---
+
+## String series
+
+Series containing strings can be accessed via the `str` attribute,
+
+.pull-left[
+```{python}
+s = pd.Series(["the quick", "brown fox", "jumps over", "a lazy dog"])
+s
+
+s.str.upper()
+s.str.split(" ")
+```
+]
+
+--
+
+.pull-right[
+```{python error=TRUE}
+s.str.split(" ").str[1]
+
+pd.Series([1,2,3]).str
+```
+]
+
+---
+
+## Categorical Series
+
+
+.pull-left[ .small[
+```{python}
+pd.Series(["Mon", "Tue", "Wed", "Thur", "Fri"])
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+pd.Series(["Mon", "Tue", "Wed", "Thur", "Fri"], dtype="category")
+```
+] ]
+
+<div></div>
+
+.small[
+```{python}
+pd.Series(["Mon", "Tue", "Wed", "Thur", "Fri"], dtype=pd.CategoricalDtype(ordered=True))
+```
+
+```{python}
+pd.Series(
+  ["Tue", "Thur", "Mon", "Sat"], 
+  dtype=pd.CategoricalDtype(categories=["Mon", "Tue", "Wed", "Thur", "Fri"], ordered=True)
+)
+```
+
+]
+
+---
+
+## Constructing DataFrames
+
+We just saw reading a DataFrame in via `read_csv()`, but data frames can also be constructed via `DataFrame()`, general this is done via dict of columns:
+
+.footnote[
+See more io functions [here](https://pandas.pydata.org/docs/reference/io.html)
+]
+
+```{python}
+n = 5
+d = {
+  "id":     np.random.randint(100, 999, n),
+  "weight": np.random.normal(70, 20, n),
+  "height": np.random.normal(170, 15, n),
+  "date":   pd.date_range(start='2/1/2022', periods=n, freq='D')
+}
+d
+```
+
+--
+
+```{python}
+df = pd.DataFrame(d)
+df
+```
+
+---
+
+## DataFrame from nparray
+
+For 2d ndarrays it is also possible to construct a DataFrame - generally it is a good idea to provide column names and row names (indexes)
+
+.pull-left[
+```{python}
+pd.DataFrame(
+  np.diag([1,2,3]),
+  columns = ["x","y","z"]
+)
+```
+
+```{python}
+pd.DataFrame(
+  np.diag([1,2,3]),
+  columns = ["x","y","z"]
+)
+```
+]
+
+.pull-right[
+```{python}
+pd.DataFrame(
+  np.tri(5,3,-1),
+  columns = ["x","y","z"],
+  index = ["a","b","c","d","e"]
+)
+```
+]
+
+---
+
+## DataFrame indexing
+
+.small[
+```{python}
+df
+```
+]
+
+--
+
+.pull-left[ 
+.midi[Selecting a column,]
+.small[
+```{python error=TRUE}
+df[0]
+df["id"]
+df.id
+```
+] ]
+
+--
+
+.pull-right[ 
+.midi[Selecting rows, a single slice is assumed to refer to the rows]
+.small[
+```{python}
+df[1:3]
+df[0::2]
+```
+] ]
+
+---
+
+## Index by position
+
+.small[
+```{python}
+df
+```
+]
+
+.pull-left[ .small[
+```{python}
+df.iloc[1]
+df.iloc[[1]]
+df.iloc[0:2]
+df.iloc[lambda x: x.index % 2 != 0]
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+df.iloc[1:3,1:3]
+df.iloc[0:3, [0,3]]
+df.iloc[0:3, [True, True, False, False]]
+```
+] ]
+
+
+---
+
+## Index by name
+
+.small[
+```{python}
+df.index = (["anna","bob","carol", "dave", "erin"])
+df
+```
+]
+
+.pull-left[ .small[
+```{python}
+df.loc["anna"]
+df.loc[["anna"]]
+df.loc["bob":"dave"]
+df.loc[df.id < 300]
+```
+] ]
+
+.pull-right[ .small[
+```{python, error=TRUE}
+df.loc[:, "date"]
+df.loc[["bob","erin"], "weight":"height"]
+df.loc[0:2, "weight":"height"]
+```
+] ]
+
+---
+
+## Views vs. Copies
+
+In general most pandas operations will generate a new object but some will return views, mostly the later occurs with subsetting. 
+
+.pull-left[ .small[
+```{python}
+d = pd.DataFrame(np.arange(6).reshape(3,2), columns = ["x","y"])
+d
+
+v = d.iloc[0:2,0:2]
+v
+
+d.iloc[0,1] = -1
+v
+```
+] ]
+
+--
+
+.pull-right[ .small[
+```{python}
+v.iloc[0,0] = np.pi
+v
+d
+```
+] ]
+
+
+
+
+.footnote[See the documetation [here](http://pandas-docs.github.io/pandas-docs-travis/user_guide/indexing.html#indexing-view-versus-copy) for more details]
+---
+
+## Filtering rows
+
+The `query()` method can be used for filtering rows, it evaluates a string expression in the context of the data frame. 
+
+.small[
+```{python}
+df
+```
+]
+
+.pull-left[ .small[
+```{python}
+df.query('date == "2022-02-01"')
+df.query('weight > 50')
+```
+] ]
+
+
+.pull-right[ .small[
+```{python}
+df.query('weight > 50 & height < 165')
+
+qid = 414
+df.query('id == @qid')
+```
+] ]
+
+
+
+.footnote[For more details on query syntax see [here](https://pandas.pydata.org/docs/user_guide/indexing.html#indexing-query)]
+
+---
+
+## Element access
+
+.small[
+```{python}
+df
+```
+]
+
+.pull-left[ .small[
+```{python error=TRUE}
+df[0,0]
+df.iat[0,0]
+df.id[0]
+df[0:1].id[0]
+```
+] ]
+
+.pull-right[ .small[
+```{python, error=TRUE}
+df["anna", "id"]
+df.at["anna", "id"]
+df["id"]["anna"]
+df["id"][0]
+```
+] ]
+
+---
+
+## DataFrame properties
+
+```{python}
+df
+```
+
+.pull-left[
+```{python}
+df.size
+df.shape
+df.info()
+```
+]
+
+.pull-right[
+```{python}
+df.dtypes
+df.describe()
+```
+]
+
+---
+
+## Selecting Columns
+
+Beyond the use of `loc()` and `iloc()` there is also the `filter()` method which can be used to select columns (or indices) by name with pattern matching
+
+.small[
+```{python}
+df
+```
+]
+
+.pull-left[ .small[
+```{python}
+df.filter(items=["id","weight"])
+df.filter(like = "i")
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+df.filter(regex="ght$")
+df.filter(like="o", axis=0)
+```
+] ]
+
+
+
+---
+
+## Adding columns
+
+Indexing with assignment allows for inplace modification of a DataFrame, while `assign()` creates a new object (but is chainable)
+
+.small[
+```{python}
+df
+```
+]
+
+.pull-left[ .small[
+```{python}
+df['student'] = [True, True, True, False, None]
+df['age'] = [19, 22, 25, None, None]
+df
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+df.assign(
+  student = lambda x: np.where(x.student, "yes", "no"),
+  rand = np.random.rand(5)
+)
+df
+```
+] ]
+
+---
+
+## Removing columns (and rows)
+
+Columns can be dropped via the `drop()` method,
+
+.small[
+```{python}
+df
+```
+]
+
+.pull-left[ .small[
+```{python error=TRUE}
+df.drop(['student'])
+df.drop(['student'], axis=1)
+df.drop(['anna','dave'])
+```
+] ]
+
+.pull-right[ .small[
+```{python error=TRUE}
+df.drop(columns = df.columns == "age")
+df.drop(columns = df.columns[df.columns == "age"])
+df.drop(columns = df.columns[df.columns.str.contains("ght")])
+```
+] ]
+
+---
+
+## Dropping missing values
+
+Columns can be dropped via the `drop()` method,
+
+.small[
+```{python}
+df
+```
+]
+
+.pull-left[ .small[
+```{python error=TRUE}
+df.dropna()
+df.dropna(how="all")
+```
+] ]
+
+.pull-right[ .small[
+```{python error=TRUE}
+df.dropna(axis=1)
+df.dropna(axis=1, thresh=4)
+```
+] ]
+
+---
+
+## Sorting
+
+DataFrames can be sorted on one or more axes via `sort_values()`,
+
+```{python}
+df
+```
+```{python error=TRUE}
+df.sort_values(by=["student","id"], ascending=[True,False])
+```
+
+---
+
+## Row binds
+
+DataFrames can have their rows joined via the the `concat()` function (`append()` is also available but deprecated),
+
+.pull-left[ .small[
+```{python}
+df1 = pd.DataFrame(np.arange(6).reshape(3,2), columns=list("xy"))
+df1
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+df2 = pd.DataFrame(np.arange(12,6,-1).reshape(3,2), columns=list("xy"))
+df2
+```
+] ]
+
+--
+
+<div>
+
+.pull-left[ .small[
+```{python}
+pd.concat([df1,df2])
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+pd.concat([df1.loc[:,["y","x"]],df2])
+```
+] ]
+
+</div>
+
+---
+
+## Imputing columns
+
+```{python}
+df3 = pd.DataFrame(np.ones((3,3)), columns=list("xbz"))
+df3
+```
+
+```{python}
+pd.concat([df1,df3,df2])
+```
+
+---
+
+## Column binds
+
+Similarly, columns can be joined with `concat()` where `axis=1`,
+
+.pull-left[ .small[
+```{python}
+df1 = pd.DataFrame(np.arange(6).reshape(3,2), columns=list("xy"), index=list("abc"))
+df1
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+df2 = pd.DataFrame(np.arange(10,6,-1).reshape(2,2), columns=list("mn"), index=list("ac"))
+df2
+```
+] ]
+
+--
+
+<div>
+
+.pull-left[ .small[
+```{python}
+pd.concat([df1,df2], axis=1)
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+pd.concat([df1,df2], axis=1, join="inner")
+```
+] ]
+
+</div>
+
+---
+
+## Joining DataFrames
+
+Table joins are implemented via the `merge()` function or method,
+
+.pull-left[ .small[
+```{python}
+df1 = pd.DataFrame({'a': ['foo', 'bar'], 'b': [1, 2]})
+df1
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+df2 = pd.DataFrame({'a': ['foo', 'baz'], 'c': [3, 4]})
+df2
+```
+] ]
+
+--
+
+<div>
+
+.pull-left[ .small[
+```{python}
+pd.merge(df1,df2, how="inner")
+pd.merge(df1,df2, how="outer", on="a")
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+df1.merge(df2, how="left")
+df1.merge(df2, how="right")
+```
+] ]
+
+</div>
+
+---
+
+## join vs merge vs concat
+
+All three can be used to accomplish the same thing, in terms of "column bind" type operations.
+
+* `concat()` stacks DataFrames on either axis, with basic alignment based on (row) indexes. `join` argument only supports "inner" and "outer".
+
+* `merge()` aligns based on one or more shared columns. `how` supports "inner", "outer", "left", "right", and "cross".
+
+* `join()` uses `merge()` behind the scenes, but prefers to join based on (row) indexes. Also has different default `how` compared to `merge()`, "left" vs "inner".
+
+---
+
+## groupby and agg
+
+Groups can be created within a DataFrame via `groupby()` - these groups are then used by the standard summary methods (e.g. `sum()`, `mean()`, `std()`, etc.).
+
+```{python}
+df
+```
+
+```{python error=TRUE}
+df.groupby("student")
+```
+
+.pull-left[
+```{python error=TRUE}
+df.groupby("student").groups
+df.groupby("student").mean()
+```
+]
+
+.pull-right[
+```{python error=TRUE}
+df.groupby("student", dropna=False).groups
+df.groupby("student", dropna=False).mean()
+```
+]
+
+---
+
+## Selecting groups
+
+```{python}
+df
+```
+
+
+```{python error=TRUE}
+df.groupby("student").get_group(True)
+
+df.groupby("student").get_group(False)
+
+df.groupby("student", dropna=False).get_group(np.nan)
+```
+
+---
+
+## Aggregation
+
+.small[
+```{python}
+df = df.drop("date", axis=1)
+```
+]
+
+.small[
+```{python}
+df.groupby("student").agg("mean")
+df.groupby("student").agg([np.mean, np.std])
+```
+]
+
+--
+.small[
+```{python}
+df.groupby("student").agg([np.mean, np.std]).columns
+```
+]
+
+.footnote[More on multindexes and other aggregation/summary methods next time.]
+
