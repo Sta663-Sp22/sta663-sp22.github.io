@@ -1,0 +1,105 @@
+name,variable,estimate,moe
+Alabama,income,24476,136
+Alabama,rent,747,3
+Alaska,income,32940,508
+Alaska,rent,1200,13
+Arizona,income,27517,148
+Arizona,rent,972,4
+Arkansas,income,23789,165
+Arkansas,rent,709,5
+California,income,29454,109
+California,rent,1358,3
+Colorado,income,32401,109
+Colorado,rent,1125,5
+Connecticut,income,35326,195
+Connecticut,rent,1123,5
+Delaware,income,31560,247
+Delaware,rent,1076,10
+District of Columbia,income,43198,681
+District of Columbia,rent,1424,17
+Florida,income,25952,70
+Florida,rent,1077,3
+Georgia,income,27024,106
+Georgia,rent,927,3
+Hawaii,income,32453,218
+Hawaii,rent,1507,18
+Idaho,income,25298,208
+Idaho,rent,792,7
+Illinois,income,30684,83
+Illinois,rent,952,3
+Indiana,income,27247,117
+Indiana,rent,782,3
+Iowa,income,30002,143
+Iowa,rent,740,4
+Kansas,income,29126,208
+Kansas,rent,801,5
+Kentucky,income,24702,159
+Kentucky,rent,713,4
+Louisiana,income,25086,155
+Louisiana,rent,825,4
+Maine,income,26841,187
+Maine,rent,808,7
+Maryland,income,37147,152
+Maryland,rent,1311,5
+Massachusetts,income,34498,199
+Massachusetts,rent,1173,5
+Michigan,income,26987,82
+Michigan,rent,824,3
+Minnesota,income,32734,189
+Minnesota,rent,906,4
+Mississippi,income,22766,194
+Mississippi,rent,740,5
+Missouri,income,26999,113
+Missouri,rent,784,4
+Montana,income,26249,206
+Montana,rent,751,9
+Nebraska,income,30020,146
+Nebraska,rent,773,4
+Nevada,income,29019,213
+Nevada,rent,1017,6
+New Hampshire,income,33172,387
+New Hampshire,rent,1052,9
+New Jersey,income,35075,148
+New Jersey,rent,1249,4
+New Mexico,income,24457,214
+New Mexico,rent,809,6
+New York,income,31057,69
+New York,rent,1194,3
+North Carolina,income,26482,111
+North Carolina,rent,844,3
+North Dakota,income,32336,245
+North Dakota,rent,775,9
+Ohio,income,27435,94
+Ohio,rent,764,2
+Oklahoma,income,26207,101
+Oklahoma,rent,766,3
+Oregon,income,27389,146
+Oregon,rent,988,4
+Pennsylvania,income,28923,119
+Pennsylvania,rent,885,3
+Rhode Island,income,30210,259
+Rhode Island,rent,957,6
+South Carolina,income,25454,123
+South Carolina,rent,836,4
+South Dakota,income,28821,276
+South Dakota,rent,696,7
+Tennessee,income,25453,102
+Tennessee,rent,808,4
+Texas,income,28063,110
+Texas,rent,952,2
+Utah,income,27928,239
+Utah,rent,948,6
+Vermont,income,29351,361
+Vermont,rent,945,11
+Virginia,income,32545,202
+Virginia,rent,1166,5
+Washington,income,32318,113
+Washington,rent,1120,4
+West Virginia,income,23707,203
+West Virginia,rent,681,6
+Wisconsin,income,29868,135
+Wisconsin,rent,813,3
+Wyoming,income,30854,342
+Wyoming,rent,828,11
+Puerto Rico,income,NA,NA
+Puerto Rico,rent,464,6
