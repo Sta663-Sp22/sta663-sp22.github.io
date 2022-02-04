@@ -25,13 +25,19 @@ np.set_printoptions(edgeitems=3, linewidth=180)
 
 ```{r hooks}
 local({
-  hook_old <- knitr::knit_hooks$get("error")  # save the old hook
+  hook_err_old <- knitr::knit_hooks$get("error")  # save the old hook
   knitr::knit_hooks$set(error = function(x, options) {
     # now do whatever you want to do with x, and pass
     # the new x to the old hook
     x = sub("## \n## Detailed traceback:\n.*$", "", x)
     x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
-    hook_old(x, options)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old <- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("<string>:1: ", "", x)
+    hook_warn_old(x, options)
   })
 })
 ```
@@ -45,7 +51,7 @@ class: center, middle
 
 ## Columns and Indexes
 
-When constructing a DataFrame we specify the indexes for both the rows (`index`) and columns (`index`),
+When constructing a DataFrame we can specify the indexes for both the rows (`index`) and columns (`index`),
 
 .pull-left[
 ```{python}
@@ -78,7 +84,7 @@ df.index
 
 ## Index objects
 
-pandas' `Index` class and its subclasses provide the necessary infrastructure necessary for lookups, data alignment, and other related tasks. You can think of them as being an immutable *multiset* (duplicate values are allowed).
+pandas' `Index` class and its subclasses provide the infrastructure necessary for lookups, data alignment, and other related tasks. You can think of them as being an immutable *multiset* (duplicate values are allowed).
 
 ```{python}
 pd.Index(['A','B','C'])
@@ -239,6 +245,8 @@ data.reindex(range(5,-1,-1))
 ```
 ]
 
+--
+
 .pull-right[
 ```{python}
 data.reindex(columns = ["a","b","c","d","e"])
@@ -290,12 +298,9 @@ These are a hierarchical analog of standard Index objects, there are a number of
 
 .pull-left[
 ```{python}
-tuples = [('A','x'),
-          ('A','y'),
-          ('B','x'),
-          ('B','y'),
-          ('C','x'),
-          ('C','y')]
+tuples = [('A','x'), ('A','y'),
+          ('B','x'), ('B','y'),
+          ('C','x'), ('C','y')]
 
 pd.MultiIndex.from_tuples(tuples, names=["1st","2nd"])
 pd.MultiIndex.from_product([["A","B","C"],["x","y"]], names=["1st","2nd"])
@@ -315,7 +320,7 @@ pd.DataFrame(np.random.rand(6,2), index = idx, columns=["m","n"])
 
 ```{python error=TRUE}
 cidx = pd.MultiIndex.from_product([["A","B"],["x","y"]], names=["c1","c2"])
-pd.DataFrame(np.random.rand(4,4), columns = idx)
+pd.DataFrame(np.random.rand(4,4), columns = cidx)
 
 ridx = pd.MultiIndex.from_product([["m","n"],["l","p"]], names=["r1","r2"])
 pd.DataFrame(np.random.rand(4,4), index= ridx, columns = cidx)
@@ -532,12 +537,12 @@ df_wide
 --
 
 <div>
-.pull-left[
+.pull-left[ .small[
 ```{python}
 df_wide.index
 df_wide.columns
 ```
-]
+] ]
 
 --
 
@@ -746,6 +751,7 @@ cereal.groupby("type")
 ```
 ]
 
+--
 
 .pull-left[ .small[
 ```{python error=TRUE}
@@ -753,6 +759,8 @@ cereal.groupby("type").groups
 cereal.groupby("type").mean()
 ```
 ] ]
+
+--
 
 .pull-right[ .small[
 ```{python error=TRUE}
@@ -764,6 +772,8 @@ cereal.groupby("mfr").size()
 ---
 
 ## Selecting and iterating groups
+
+Groups can be accessed via `get_group()` or the DataFrameGroupBy can be iterated over,
 
 .pull-left[ .small[
 ```{python error=TRUE}
@@ -809,6 +819,11 @@ cereal.groupby("mfr").agg({
 ```
 ] ]
 
+
+.footnote[
+Think `summarize()` from dplyr.
+]
+
 ---
 
 ## Named aggregation
@@ -830,7 +845,7 @@ cereal.groupby("mfr", as_index=False).agg(
 
 ## Transformation
 
-The `transform()` method returns a DataFrame with the aggregated result matching the size of the input group(s),
+The `transform()` method returns a DataFrame with the aggregated result matching the size (or length 1) of the input group(s),
 
 .pull-left[
 ```{python}
