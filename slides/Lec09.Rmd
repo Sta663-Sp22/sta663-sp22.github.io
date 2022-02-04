@@ -1,0 +1,898 @@
+---
+title: "Lec 09 - more pandas"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{python setup}
+import scipy
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+np.set_printoptions(edgeitems=3, linewidth=180)
+```
+
+```{r hooks}
+local({
+  hook_old <- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_old(x, options)
+  })
+})
+```
+
+---
+class: center, middle
+
+# Index objects
+
+---
+
+## Columns and Indexes
+
+When constructing a DataFrame we specify the indexes for both the rows (`index`) and columns (`index`),
+
+.pull-left[
+```{python}
+df = pd.DataFrame(
+  np.random.randn(5, 3), 
+  columns=['A', 'B', 'C']
+)
+df
+
+df.columns
+df.index
+```
+]
+
+.pull-right[
+```{python}
+df = pd.DataFrame(
+  np.random.randn(3, 3), 
+  index=['x','y','z'], 
+  columns=['A', 'B', 'C']
+)
+df
+
+df.columns
+df.index
+```
+]
+
+---
+
+## Index objects
+
+pandas' `Index` class and its subclasses provide the necessary infrastructure necessary for lookups, data alignment, and other related tasks. You can think of them as being an immutable *multiset* (duplicate values are allowed).
+
+```{python}
+pd.Index(['A','B','C'])
+pd.Index(['A','B','C','A'])
+pd.Index(range(5))
+pd.Index(list(range(5)))
+```
+
+---
+
+## Indexes as sets
+
+While it is not something you will need to do very often, since Indexs are "sets" the various set operations and methods are available.
+
+```{python}
+a = pd.Index(['c', 'b', 'a'])
+b = pd.Index(['c', 'e', 'd'])
+```
+
+
+.pull-left[
+```{python}
+a.union(b)
+a.intersection(b)
+```
+]
+
+
+.pull-right[
+```{python}
+a.difference(b)
+a.symmetric_difference(b)
+```
+]
+
+--
+
+<div>
+
+.pull-left[
+```{python}
+c = pd.Index([1.0, 1.5, 2.0])
+d = pd.Index(range(5))
+
+c.union(d)
+```
+]
+
+.pull-right[
+```{python}
+e = pd.Index(["A","B","C"])
+f = pd.Index(range(5))
+
+e.union(f)
+```
+]
+
+</div>
+
+
+---
+
+## Index metadata
+
+You can attach names to an index, which will then show when displaying the DataFrame or Index,
+
+.pull-left[
+```{python}
+df = pd.DataFrame(
+  np.random.randn(3, 3), 
+  index=pd.Index(['x','y','z'], name="rows"),
+  columns=pd.Index(['A', 'B', 'C'], name="cols")
+)
+df
+df.columns
+df.index
+```
+]
+
+--
+
+.pull-right[
+```{python}
+df.columns.rename("m")
+df.index.set_names("n")
+df
+df.columns.name = "o"
+df.index.rename("p", inplace=True)
+df
+```
+]
+
+---
+
+## Indexes and missing values
+
+It is possible for an index to contain missing values (e.g. `np.nan`) but this is generally a bad idea and should be avoided.
+
+```{python}
+pd.Index([1,2,3,np.nan,5])
+pd.Index(["A","B",np.nan,"D"])
+```
+
+Missing values can be replaced via the `fillna()` method,
+
+```{python}
+pd.Index([1,2,3,np.nan,5]).fillna(0)
+pd.Index(["A","B",np.nan,"D"]).fillna("Z")
+```
+
+---
+
+## Changing a DataFrame's index
+
+```{python include=FALSE}
+data = pd.DataFrame({
+  "a": ["bar","bar","foo","foo"],
+  "b": ["one","two","one","two"],
+  "c": ["z","y","x","w"],
+  "d": [1,2,3,4]
+})
+```
+
+Existing columns can used as an index via `set_index()` and removed via `reset_index()`,
+
+```{python}
+data
+```
+
+.pull-left[
+```{python}
+data.set_index('a')
+data.set_index('c', drop=False)
+```
+]
+
+.pull-right[
+```{python}
+data.set_index('a').reset_index()
+data.set_index('c').reset_index(drop=True)
+```
+]
+
+---
+
+## Creating a new index
+
+New index values can be attached to a DataFrame via `reindex()`,
+
+```{python}
+data
+```
+
+.pull-left[
+```{python}
+data.reindex(["w","x","y","z"])
+data.reindex(range(5,-1,-1))
+```
+]
+
+.pull-right[
+```{python}
+data.reindex(columns = ["a","b","c","d","e"])
+
+data.index = ["w","x","y","z"]
+data
+```
+```{python include=FALSE}
+data.index = range(4)
+data
+```
+]
+
+---
+
+## Renaming levels
+
+Alternatively, row or column index levels can be renamed via `rename()`,
+
+```{python}
+data
+```
+
+
+.pull-left[
+```{python}
+data.rename(index = pd.Series(["m","n","o","p"]))
+data.rename_axis(index="rows")
+```
+]
+
+.pull-right[
+```{python}
+data.rename(columns = {"a":"w", "b":"x", "c":"y", "d":"z"})
+data.rename_axis(columns="cols")
+```
+]
+
+---
+class: center, middle
+
+# MultiIndexes
+
+---
+
+## MultiIndex objects
+
+These are a hierarchical analog of standard Index objects, there are a number of methods for constructing them based on the initial object
+
+.pull-left[
+```{python}
+tuples = [('A','x'),
+          ('A','y'),
+          ('B','x'),
+          ('B','y'),
+          ('C','x'),
+          ('C','y')]
+
+pd.MultiIndex.from_tuples(tuples, names=["1st","2nd"])
+pd.MultiIndex.from_product([["A","B","C"],["x","y"]], names=["1st","2nd"])
+```
+]
+
+.pull-right[
+```{python}
+idx = pd.MultiIndex.from_tuples(tuples, names=["1st","2nd"])
+pd.DataFrame(np.random.rand(6,2), index = idx, columns=["m","n"])
+```
+]
+
+---
+
+## Column MultiIndex
+
+```{python error=TRUE}
+cidx = pd.MultiIndex.from_product([["A","B"],["x","y"]], names=["c1","c2"])
+pd.DataFrame(np.random.rand(4,4), columns = idx)
+
+ridx = pd.MultiIndex.from_product([["m","n"],["l","p"]], names=["r1","r2"])
+pd.DataFrame(np.random.rand(4,4), index= ridx, columns = cidx)
+```
+
+---
+
+## MultiIndex indexing
+
+```{python include=FALSE}
+data = pd.DataFrame(np.random.rand(4,4), index= ridx, columns = cidx)
+```
+
+.pull-left[
+
+```{python}
+data
+```
+
+```{python error=TRUE}
+data["A"]
+data["x"]
+data["m"]
+```
+]
+
+--
+
+.pull-right[
+```{python error=TRUE}
+data["m","A"]
+data["A","x"]
+data["A"]["x"]
+```
+]
+
+---
+
+## MultiIndex indexing via `iloc`
+
+.small[
+```{python}
+data
+```
+]
+
+
+.pull-left[ .small[
+```{python error=TRUE}
+data.iloc[0]
+data.iloc[(0,1)]
+data.iloc[[0,1]]
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+data.iloc[:,0]
+data.iloc[0,1]
+data.iloc[0,[0,1]]
+```
+] ]
+
+.footnote[Note that tuples and lists are not treated the same by pandas when it comes to indexing]
+---
+
+## MultiIndex indexing via `loc`
+
+.small[
+```{python}
+data
+```
+]
+
+.pull-left[ .small[
+```{python error=TRUE}
+data.loc["m"]
+data.loc["l"]
+data.loc[:,"A"]
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+data.loc[("m","l")]
+data.loc[:,("A","y")]
+```
+] ]
+
+---
+
+## Fancier indexing with `loc`
+
+Index slices can also be used with combinations of indexes and index tuples,
+
+.small[
+```{python}
+data
+```
+]
+
+.pull-left[ .small[
+```{python error=TRUE}
+data.loc["m":"n"]
+data.loc[("m","l"):("n","l")]
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+data.loc[("m","p"):"n"]
+data.loc[[("m","p"),("n","l")]]
+```
+] ] 
+
+---
+
+## Selecting nested levels
+
+The previous methods don't give easy access to indexing on nested index levels, this is possible via the cross-section method `xs()`,
+
+.small[
+```{python}
+data
+```
+]
+
+.pull-left[ .small[
+```{python error=TRUE}
+data.xs("p", level="r2")
+data.xs("m", level="r1")
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+data.xs("y", level="c2", axis=1)
+data.xs("B", level="c1", axis=1)
+```
+] ] 
+
+
+
+---
+
+## Setting MultiIndexes
+
+It is also possible to construct a MultiIndex or modify an existing one using `set_index()` and `reset_index()`,
+
+```{python include=FALSE}
+data = pd.DataFrame({
+  "a": ["bar","bar","foo","foo"],
+  "b": ["one","two","one","two"],
+  "c": ["z","y","x","w"],
+  "d": [1,2,3,4]
+})
+```
+
+```{python}
+data
+```
+
+.pull-left[
+```{python}
+data.set_index(['a','b'])
+data.set_index('c', append=True)
+```
+]
+
+.pull-right[
+```{python}
+data.set_index(['a','b']).reset_index()
+data.set_index(['a','b']).reset_index(level=1)
+```
+]
+
+---
+class: center, middle
+
+# Reshaping data
+
+---
+
+## Long to wide (pivot)
+
+```{python include=FALSE}
+df = pd.DataFrame({
+   "country": ["A","A","A","A","B","B","B","B","C","C","C","C"],
+    "year":   [1999,1999,2000,2000,1999,1999,2000,2000,1999,1999,2000,2000],
+    "type":   ["cases","pop","cases","pop","cases","pop","cases","pop","cases","pop","cases","pop"],
+    "count":  ["0.7K", "19M", "2K", "20M", "37K", "172M", " 80K", "174M", "212K", "1T", "213K", "1T"]
+})
+```
+
+.pull-left[
+```{python}
+df
+```
+]
+
+--
+
+.pull-right[
+```{python}
+df_wide = df.pivot(
+  index=["country","year"], 
+  columns="type", 
+  values="count"
+)
+df_wide
+```
+]
+
+--
+
+<div>
+.pull-left[
+```{python}
+df_wide.index
+df_wide.columns
+```
+]
+
+--
+
+.pull-right[
+```{python}
+df_wide.reset_index().rename_axis(columns=None)
+```
+]
+
+</div>
+
+---
+
+## Wide to long (melt)
+
+```{python include=FALSE}
+df = pd.DataFrame({
+  "country": ["A","B","C"],
+  "1999":    ["0.7K","37K","212K"],
+  "2000":    ["2K","80K","213K"]
+})
+```
+
+.pull-left[
+```{python}
+df
+```
+]
+
+--
+
+.pull-right[
+```{python}
+df_long = df.melt(
+  id_vars="country", 
+  var_name="year"
+)
+df_long
+```
+]
+
+---
+
+## Separate Example - splits and explosions
+
+```{python include=FALSE}
+df = pd.DataFrame({
+  "country": ["A","A","B","B","C","C"],
+  "year":    [1999, 2000, 1999, 2000, 1999, 2000],
+  "rate":    ["0.7K/19M", "2K/20M", "37K/172M", "80K/174M", "212K/1T", "213K/1T"]
+})
+```
+
+.pull-left[ .small[
+```{python}
+df
+```
+] ]
+
+--
+
+.pull-right[ .small[
+```{python}
+df.assign(
+  rate = lambda d: d.rate.str.split("/")
+)
+```
+] ]
+
+--
+
+<div>
+
+.pull-left[ .small[
+```{python}
+( df
+  .assign(
+    rate = lambda d: d.rate.str.split("/")
+  )
+  .explode("rate")
+  .assign(
+    type = lambda d: ["cases", "pop"] * int(d.shape[0]/2)
+  )
+)
+```
+] ]
+
+--
+
+.pull-right[ .small[
+```{python}
+( df
+  .assign(
+    rate = lambda d: d.rate.str.split("/")
+  )
+  .explode("rate")
+  .assign(
+    type = lambda d: ["cases", "pop"] * int(d.shape[0]/2)
+  )
+  .pivot(index=["country","year"], columns="type", values="rate")
+  .reset_index()
+)
+```
+] ]
+</div>
+
+
+---
+
+## Separate Example - A better way
+
+.pull-left[
+```{python}
+df
+```
+]
+
+--
+
+.pull-right[
+```{python}
+df.assign(
+  counts = lambda d: d.rate.str.split("/").str[0],
+  pop    = lambda d: d.rate.str.split("/").str[1]
+)
+```
+]
+
+--
+
+If you dont want to repeat the split,
+
+<div>
+.pull-left[
+```{python}
+df.assign(
+  rate = lambda d: d.rate.str.split("/"),
+  counts = lambda d: d.rate.str[0],
+  pop    = lambda d: d.rate.str[1]
+).drop("rate", axis=1)
+```
+]
+</div>
+
+---
+
+## Exercise 1
+
+```{r include = FALSE}
+library(tidyverse)
+
+us_rent =  tidyr::us_rent_income %>% 
+  select(-"GEOID") %>%
+  rename(name = NAME)
+
+readr::write_csv(us_rent, file = "data/us_rent.csv")
+```
+
+Create a DataFrame from the data available at https://sta663-sp22.github.io/slides/data/us_rent.csv using `pd.read_csv()`. 
+
+These data come from the 2017 American Community Survey and reflect the following values:
+* `name` - name of state
+* `variable` - Variable name: income = median yearly income, rent = median monthly rent
+* `estimate` - Estimated value
+* `moe` - 90% margin of error
+
+Using these data find the state(s) with the lowest income to rent ratio.
+
+---
+class: center, middle
+
+## Split-Apply-Combine
+
+```{r include=FALSE}
+library(tidyverse)
+d = readr::read_csv("https://raw.githubusercontent.com/UBC-MDS/programming-in-python-for-data-science/master/data/cereal.csv")
+
+d %>%
+  mutate(
+    mfr = case_when(
+      mfr == "A" ~ "Maltex",
+      mfr == "G" ~ "General Mills",
+      mfr == "K" ~ "Kellogg's",
+      mfr == "N" ~ "Nabisco",
+      mfr == "P" ~ "Post",
+      mfr == "Q" ~ "Quaker Oats",
+      mfr == "R" ~ "Ralston Purina"
+    )
+  ) %>%
+  select(-sodium, -potass, -vitamins, -shelf, -weight, -cups) %>%
+  select(-(protein:carbo)) %>%
+  write_csv("data/cereal.csv")
+```
+
+---
+
+## groupby
+
+Groups can be created within a DataFrame via `groupby()` - these groups are then used by the standard summary methods (e.g. `sum()`, `mean()`, `std()`, etc.).
+
+.small[
+```{python}
+cereal = pd.read_csv("https://sta663-sp22.github.io/slides/data/cereal.csv")
+cereal
+cereal.groupby("type")
+```
+]
+
+
+.pull-left[ .small[
+```{python error=TRUE}
+cereal.groupby("type").groups
+cereal.groupby("type").mean()
+```
+] ]
+
+.pull-right[ .small[
+```{python error=TRUE}
+cereal.groupby("mfr").groups
+cereal.groupby("mfr").size()
+```
+] ]
+
+---
+
+## Selecting and iterating groups
+
+.pull-left[ .small[
+```{python error=TRUE}
+cereal.groupby("type").get_group("Hot")
+
+cereal.groupby("mfr").get_group("Post")
+```
+] ]
+
+--
+
+.pull-right[ .small[
+```{python}
+for name, group in cereal.groupby("type"):
+  print(name)
+  print(group)
+  print("")
+```
+] ]
+
+
+---
+
+## Aggregation
+
+The `aggregate()` function or `agg()` method can be used to compute summary statistics for each group,
+
+.pull-left[ .small[
+```{python}
+cereal.groupby("mfr").agg("mean")
+
+cereal.groupby("mfr").agg([np.mean, np.std])
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+cereal.groupby("mfr").agg({
+  "calories": ['min', 'max'],
+  "sugars":   ['mean', 'median'],
+  "rating":   ['sum', 'count']
+})
+```
+] ]
+
+---
+
+## Named aggregation
+
+It is also possible to use special syntax to aggregate specific columns into a named output column,
+
+```{python}
+cereal.groupby("mfr", as_index=False).agg(
+  min_cal = ("calories", "min"),
+  max_cal = ("calories", "max"),
+  med_sugar = ("sugars", "median"),
+  avg_rating = ("rating", "mean")
+)
+```
+
+.footnote[Tuples can also be passed using `pd.NamedAgg()` but this offers no additional functionality.]
+
+---
+
+## Transformation
+
+The `transform()` method returns a DataFrame with the aggregated result matching the size of the input group(s),
+
+.pull-left[
+```{python}
+cereal.groupby("mfr").transform(np.mean)
+```
+]
+
+.pull-right[
+```{python}
+cereal.groupby("type").transform("mean")
+```
+]
+
+
+.footnote[Note that we have lost the non-numeric columns]
+
+---
+
+## Practical transformation
+
+`transform()` will generally be most useful via a user defined function, the lambda argument is each column of each group.
+
+```{python}
+( cereal
+  .groupby("mfr")
+  .transform(
+    lambda x: (x - np.mean(x))/np.std(x)
+  ) 
+)
+```
+
+.footnote[
+Above we are standardizing each numerical column of each manufacturer 
+]
+
+---
+
+## Filtering groups
+
+`filter()` also respects groups and allows for the inclusion / exclusion of groups based on user specified criteria,
+
+.small[
+```{python}
+cereal.groupby("mfr").size()
+```
+]
+
+--
+
+.pull-left[ .small[
+```{python}
+cereal.groupby("mfr").filter(lambda x: len(x) > 10)
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+( cereal
+  .groupby("mfr")
+  .filter(lambda x: len(x) > 10)
+  .groupby("mfr")
+  .size()  
+)
+```
+] ]

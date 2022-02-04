@@ -1,0 +1,2147 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 09 - more pandas</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs-2.11/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 09 - more pandas
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+```python
+import scipy
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+np.set_printoptions(edgeitems=3, linewidth=180)
+```
+
+
+```r
+local({
+  hook_old &lt;- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_old(x, options)
+  })
+})
+```
+
+---
+class: center, middle
+
+# Index objects
+
+---
+
+## Columns and Indexes
+
+When constructing a DataFrame we specify the indexes for both the rows (`index`) and columns (`index`),
+
+.pull-left[
+
+```python
+df = pd.DataFrame(
+  np.random.randn(5, 3), 
+  columns=['A', 'B', 'C']
+)
+df
+```
+
+```
+##           A         B         C
+## 0 -0.765575 -0.297751  0.979929
+## 1 -0.061962 -1.753301 -0.685092
+## 2 -1.472946 -1.702041 -0.235251
+## 3  0.411070  0.388606 -0.377361
+## 4 -0.766453  1.140326  0.243184
+```
+
+```python
+df.columns
+```
+
+```
+## Index(['A', 'B', 'C'], dtype='object')
+```
+
+```python
+df.index
+```
+
+```
+## RangeIndex(start=0, stop=5, step=1)
+```
+]
+
+.pull-right[
+
+```python
+df = pd.DataFrame(
+  np.random.randn(3, 3), 
+  index=['x','y','z'], 
+  columns=['A', 'B', 'C']
+)
+df
+```
+
+```
+##           A         B         C
+## x -0.231611 -0.489103  2.030998
+## y -0.359150 -1.702668  1.539263
+## z -2.021065  1.289007 -2.103701
+```
+
+```python
+df.columns
+```
+
+```
+## Index(['A', 'B', 'C'], dtype='object')
+```
+
+```python
+df.index
+```
+
+```
+## Index(['x', 'y', 'z'], dtype='object')
+```
+]
+
+---
+
+## Index objects
+
+pandas' `Index` class and its subclasses provide the necessary infrastructure necessary for lookups, data alignment, and other related tasks. You can think of them as being an immutable *multiset* (duplicate values are allowed).
+
+
+```python
+pd.Index(['A','B','C'])
+```
+
+```
+## Index(['A', 'B', 'C'], dtype='object')
+```
+
+```python
+pd.Index(['A','B','C','A'])
+```
+
+```
+## Index(['A', 'B', 'C', 'A'], dtype='object')
+```
+
+```python
+pd.Index(range(5))
+```
+
+```
+## RangeIndex(start=0, stop=5, step=1)
+```
+
+```python
+pd.Index(list(range(5)))
+```
+
+```
+## Int64Index([0, 1, 2, 3, 4], dtype='int64')
+```
+
+---
+
+## Indexes as sets
+
+While it is not something you will need to do very often, since Indexs are "sets" the various set operations and methods are available.
+
+
+```python
+a = pd.Index(['c', 'b', 'a'])
+b = pd.Index(['c', 'e', 'd'])
+```
+
+
+.pull-left[
+
+```python
+a.union(b)
+```
+
+```
+## Index(['a', 'b', 'c', 'd', 'e'], dtype='object')
+```
+
+```python
+a.intersection(b)
+```
+
+```
+## Index(['c'], dtype='object')
+```
+]
+
+
+.pull-right[
+
+```python
+a.difference(b)
+```
+
+```
+## Index(['a', 'b'], dtype='object')
+```
+
+```python
+a.symmetric_difference(b)
+```
+
+```
+## Index(['a', 'b', 'd', 'e'], dtype='object')
+```
+]
+
+--
+
+&lt;div&gt;
+
+.pull-left[
+
+```python
+c = pd.Index([1.0, 1.5, 2.0])
+d = pd.Index(range(5))
+
+c.union(d)
+```
+
+```
+## Float64Index([0.0, 1.0, 1.5, 2.0, 3.0, 4.0], dtype='float64')
+```
+]
+
+.pull-right[
+
+```python
+e = pd.Index(["A","B","C"])
+f = pd.Index(range(5))
+
+e.union(f)
+```
+
+```
+## Index(['A', 'B', 'C', 0, 1, 2, 3, 4], dtype='object')
+```
+]
+
+&lt;/div&gt;
+
+
+---
+
+## Index metadata
+
+You can attach names to an index, which will then show when displaying the DataFrame or Index,
+
+.pull-left[
+
+```python
+df = pd.DataFrame(
+  np.random.randn(3, 3), 
+  index=pd.Index(['x','y','z'], name="rows"),
+  columns=pd.Index(['A', 'B', 'C'], name="cols")
+)
+df
+```
+
+```
+## cols         A         B         C
+## rows                              
+## x     0.228729  1.198212  0.041249
+## y    -0.147431  0.398527  0.939325
+## z    -1.239857  1.557584  0.634145
+```
+
+```python
+df.columns
+```
+
+```
+## Index(['A', 'B', 'C'], dtype='object', name='cols')
+```
+
+```python
+df.index
+```
+
+```
+## Index(['x', 'y', 'z'], dtype='object', name='rows')
+```
+]
+
+--
+
+.pull-right[
+
+```python
+df.columns.rename("m")
+```
+
+```
+## Index(['A', 'B', 'C'], dtype='object', name='m')
+```
+
+```python
+df.index.set_names("n")
+```
+
+```
+## Index(['x', 'y', 'z'], dtype='object', name='n')
+```
+
+```python
+df
+```
+
+```
+## cols         A         B         C
+## rows                              
+## x     0.228729  1.198212  0.041249
+## y    -0.147431  0.398527  0.939325
+## z    -1.239857  1.557584  0.634145
+```
+
+```python
+df.columns.name = "o"
+df.index.rename("p", inplace=True)
+df
+```
+
+```
+## o         A         B         C
+## p                              
+## x  0.228729  1.198212  0.041249
+## y -0.147431  0.398527  0.939325
+## z -1.239857  1.557584  0.634145
+```
+]
+
+---
+
+## Indexes and missing values
+
+It is possible for an index to contain missing values (e.g. `np.nan`) but this is generally a bad idea and should be avoided.
+
+
+```python
+pd.Index([1,2,3,np.nan,5])
+```
+
+```
+## Float64Index([1.0, 2.0, 3.0, nan, 5.0], dtype='float64')
+```
+
+```python
+pd.Index(["A","B",np.nan,"D"])
+```
+
+```
+## Index(['A', 'B', nan, 'D'], dtype='object')
+```
+
+Missing values can be replaced via the `fillna()` method,
+
+
+```python
+pd.Index([1,2,3,np.nan,5]).fillna(0)
+```
+
+```
+## Float64Index([1.0, 2.0, 3.0, 0.0, 5.0], dtype='float64')
+```
+
+```python
+pd.Index(["A","B",np.nan,"D"]).fillna("Z")
+```
+
+```
+## Index(['A', 'B', 'Z', 'D'], dtype='object')
+```
+
+---
+
+## Changing a DataFrame's index
+
+
+
+Existing columns can used as an index via `set_index()` and removed via `reset_index()`,
+
+
+```python
+data
+```
+
+```
+##      a    b  c  d
+## 0  bar  one  z  1
+## 1  bar  two  y  2
+## 2  foo  one  x  3
+## 3  foo  two  w  4
+```
+
+.pull-left[
+
+```python
+data.set_index('a')
+```
+
+```
+##        b  c  d
+## a             
+## bar  one  z  1
+## bar  two  y  2
+## foo  one  x  3
+## foo  two  w  4
+```
+
+```python
+data.set_index('c', drop=False)
+```
+
+```
+##      a    b  c  d
+## c                
+## z  bar  one  z  1
+## y  bar  two  y  2
+## x  foo  one  x  3
+## w  foo  two  w  4
+```
+]
+
+.pull-right[
+
+```python
+data.set_index('a').reset_index()
+```
+
+```
+##      a    b  c  d
+## 0  bar  one  z  1
+## 1  bar  two  y  2
+## 2  foo  one  x  3
+## 3  foo  two  w  4
+```
+
+```python
+data.set_index('c').reset_index(drop=True)
+```
+
+```
+##      a    b  d
+## 0  bar  one  1
+## 1  bar  two  2
+## 2  foo  one  3
+## 3  foo  two  4
+```
+]
+
+---
+
+## Creating a new index
+
+New index values can be attached to a DataFrame via `reindex()`,
+
+
+```python
+data
+```
+
+```
+##      a    b  c  d
+## 0  bar  one  z  1
+## 1  bar  two  y  2
+## 2  foo  one  x  3
+## 3  foo  two  w  4
+```
+
+.pull-left[
+
+```python
+data.reindex(["w","x","y","z"])
+```
+
+```
+##      a    b    c   d
+## w  NaN  NaN  NaN NaN
+## x  NaN  NaN  NaN NaN
+## y  NaN  NaN  NaN NaN
+## z  NaN  NaN  NaN NaN
+```
+
+```python
+data.reindex(range(5,-1,-1))
+```
+
+```
+##      a    b    c    d
+## 5  NaN  NaN  NaN  NaN
+## 4  NaN  NaN  NaN  NaN
+## 3  foo  two    w  4.0
+## 2  foo  one    x  3.0
+## 1  bar  two    y  2.0
+## 0  bar  one    z  1.0
+```
+]
+
+.pull-right[
+
+```python
+data.reindex(columns = ["a","b","c","d","e"])
+```
+
+```
+##      a    b  c  d   e
+## 0  bar  one  z  1 NaN
+## 1  bar  two  y  2 NaN
+## 2  foo  one  x  3 NaN
+## 3  foo  two  w  4 NaN
+```
+
+```python
+data.index = ["w","x","y","z"]
+data
+```
+
+```
+##      a    b  c  d
+## w  bar  one  z  1
+## x  bar  two  y  2
+## y  foo  one  x  3
+## z  foo  two  w  4
+```
+
+]
+
+---
+
+## Renaming levels
+
+Alternatively, row or column index levels can be renamed via `rename()`,
+
+
+```python
+data
+```
+
+```
+##      a    b  c  d
+## 0  bar  one  z  1
+## 1  bar  two  y  2
+## 2  foo  one  x  3
+## 3  foo  two  w  4
+```
+
+
+.pull-left[
+
+```python
+data.rename(index = pd.Series(["m","n","o","p"]))
+```
+
+```
+##      a    b  c  d
+## m  bar  one  z  1
+## n  bar  two  y  2
+## o  foo  one  x  3
+## p  foo  two  w  4
+```
+
+```python
+data.rename_axis(index="rows")
+```
+
+```
+##         a    b  c  d
+## rows                
+## 0     bar  one  z  1
+## 1     bar  two  y  2
+## 2     foo  one  x  3
+## 3     foo  two  w  4
+```
+]
+
+.pull-right[
+
+```python
+data.rename(columns = {"a":"w", "b":"x", "c":"y", "d":"z"})
+```
+
+```
+##      w    x  y  z
+## 0  bar  one  z  1
+## 1  bar  two  y  2
+## 2  foo  one  x  3
+## 3  foo  two  w  4
+```
+
+```python
+data.rename_axis(columns="cols")
+```
+
+```
+## cols    a    b  c  d
+## 0     bar  one  z  1
+## 1     bar  two  y  2
+## 2     foo  one  x  3
+## 3     foo  two  w  4
+```
+]
+
+---
+class: center, middle
+
+# MultiIndexes
+
+---
+
+## MultiIndex objects
+
+These are a hierarchical analog of standard Index objects, there are a number of methods for constructing them based on the initial object
+
+.pull-left[
+
+```python
+tuples = [('A','x'),
+          ('A','y'),
+          ('B','x'),
+          ('B','y'),
+          ('C','x'),
+          ('C','y')]
+
+pd.MultiIndex.from_tuples(tuples, names=["1st","2nd"])
+```
+
+```
+## MultiIndex([('A', 'x'),
+##             ('A', 'y'),
+##             ('B', 'x'),
+##             ('B', 'y'),
+##             ('C', 'x'),
+##             ('C', 'y')],
+##            names=['1st', '2nd'])
+```
+
+```python
+pd.MultiIndex.from_product([["A","B","C"],["x","y"]], names=["1st","2nd"])
+```
+
+```
+## MultiIndex([('A', 'x'),
+##             ('A', 'y'),
+##             ('B', 'x'),
+##             ('B', 'y'),
+##             ('C', 'x'),
+##             ('C', 'y')],
+##            names=['1st', '2nd'])
+```
+]
+
+.pull-right[
+
+```python
+idx = pd.MultiIndex.from_tuples(tuples, names=["1st","2nd"])
+pd.DataFrame(np.random.rand(6,2), index = idx, columns=["m","n"])
+```
+
+```
+##                 m         n
+## 1st 2nd                    
+## A   x    0.826420  0.988723
+##     y    0.716747  0.267231
+## B   x    0.051382  0.694018
+##     y    0.206030  0.240107
+## C   x    0.892630  0.721365
+##     y    0.542216  0.996779
+```
+]
+
+---
+
+## Column MultiIndex
+
+
+```python
+cidx = pd.MultiIndex.from_product([["A","B"],["x","y"]], names=["c1","c2"])
+pd.DataFrame(np.random.rand(4,4), columns = idx)
+```
+
+```
+## ValueError: Shape of passed values is (4, 4), indices imply (4, 6)
+```
+
+```python
+ridx = pd.MultiIndex.from_product([["m","n"],["l","p"]], names=["r1","r2"])
+pd.DataFrame(np.random.rand(4,4), index= ridx, columns = cidx)
+```
+
+```
+## c1            A                   B          
+## c2            x         y         x         y
+## r1 r2                                        
+## m  l   0.018217  0.840527  0.195766  0.503478
+##    p   0.441896  0.474930  0.676317  0.919012
+## n  l   0.439929  0.633367  0.490931  0.067904
+##    p   0.653642  0.840373  0.787182  0.124181
+```
+
+---
+
+## MultiIndex indexing
+
+
+
+.pull-left[
+
+
+```python
+data
+```
+
+```
+## c1            A                   B          
+## c2            x         y         x         y
+## r1 r2                                        
+## m  l   0.367628  0.412129  0.380498  0.102844
+##    p   0.796443  0.621716  0.177684  0.545813
+## n  l   0.187163  0.893932  0.245014  0.268120
+##    p   0.562964  0.848694  0.642082  0.497807
+```
+
+
+```python
+data["A"]
+```
+
+```
+## c2            x         y
+## r1 r2                    
+## m  l   0.367628  0.412129
+##    p   0.796443  0.621716
+## n  l   0.187163  0.893932
+##    p   0.562964  0.848694
+```
+
+```python
+data["x"]
+```
+
+```
+## KeyError: 'x'
+```
+
+```python
+data["m"]
+```
+
+```
+## KeyError: 'm'
+```
+]
+
+--
+
+.pull-right[
+
+```python
+data["m","A"]
+```
+
+```
+## KeyError: ('m', 'A')
+```
+
+```python
+data["A","x"]
+```
+
+```
+## r1  r2
+## m   l     0.367628
+##     p     0.796443
+## n   l     0.187163
+##     p     0.562964
+## Name: (A, x), dtype: float64
+```
+
+```python
+data["A"]["x"]
+```
+
+```
+## r1  r2
+## m   l     0.367628
+##     p     0.796443
+## n   l     0.187163
+##     p     0.562964
+## Name: x, dtype: float64
+```
+]
+
+---
+
+## MultiIndex indexing via `iloc`
+
+.small[
+
+```python
+data
+```
+
+```
+## c1            A                   B          
+## c2            x         y         x         y
+## r1 r2                                        
+## m  l   0.367628  0.412129  0.380498  0.102844
+##    p   0.796443  0.621716  0.177684  0.545813
+## n  l   0.187163  0.893932  0.245014  0.268120
+##    p   0.562964  0.848694  0.642082  0.497807
+```
+]
+
+
+.pull-left[ .small[
+
+```python
+data.iloc[0]
+```
+
+```
+## c1  c2
+## A   x     0.367628
+##     y     0.412129
+## B   x     0.380498
+##     y     0.102844
+## Name: (m, l), dtype: float64
+```
+
+```python
+data.iloc[(0,1)]
+```
+
+```
+## 0.41212898451013225
+```
+
+```python
+data.iloc[[0,1]]
+```
+
+```
+## c1            A                   B          
+## c2            x         y         x         y
+## r1 r2                                        
+## m  l   0.367628  0.412129  0.380498  0.102844
+##    p   0.796443  0.621716  0.177684  0.545813
+```
+] ]
+
+.pull-right[ .small[
+
+```python
+data.iloc[:,0]
+```
+
+```
+## r1  r2
+## m   l     0.367628
+##     p     0.796443
+## n   l     0.187163
+##     p     0.562964
+## Name: (A, x), dtype: float64
+```
+
+```python
+data.iloc[0,1]
+```
+
+```
+## 0.41212898451013225
+```
+
+```python
+data.iloc[0,[0,1]]
+```
+
+```
+## c1  c2
+## A   x     0.367628
+##     y     0.412129
+## Name: (m, l), dtype: float64
+```
+] ]
+
+.footnote[Note that tuples and lists are not treated the same by pandas when it comes to indexing]
+---
+
+## MultiIndex indexing via `loc`
+
+.small[
+
+```python
+data
+```
+
+```
+## c1            A                   B          
+## c2            x         y         x         y
+## r1 r2                                        
+## m  l   0.367628  0.412129  0.380498  0.102844
+##    p   0.796443  0.621716  0.177684  0.545813
+## n  l   0.187163  0.893932  0.245014  0.268120
+##    p   0.562964  0.848694  0.642082  0.497807
+```
+]
+
+.pull-left[ .small[
+
+```python
+data.loc["m"]
+```
+
+```
+## c1         A                   B          
+## c2         x         y         x         y
+## r2                                        
+## l   0.367628  0.412129  0.380498  0.102844
+## p   0.796443  0.621716  0.177684  0.545813
+```
+
+```python
+data.loc["l"]
+```
+
+```
+## KeyError: 'l'
+```
+
+```python
+data.loc[:,"A"]
+```
+
+```
+## c2            x         y
+## r1 r2                    
+## m  l   0.367628  0.412129
+##    p   0.796443  0.621716
+## n  l   0.187163  0.893932
+##    p   0.562964  0.848694
+```
+] ]
+
+.pull-right[ .small[
+
+```python
+data.loc[("m","l")]
+```
+
+```
+## c1  c2
+## A   x     0.367628
+##     y     0.412129
+## B   x     0.380498
+##     y     0.102844
+## Name: (m, l), dtype: float64
+```
+
+```python
+data.loc[:,("A","y")]
+```
+
+```
+## r1  r2
+## m   l     0.412129
+##     p     0.621716
+## n   l     0.893932
+##     p     0.848694
+## Name: (A, y), dtype: float64
+```
+] ]
+
+---
+
+## Fancier indexing with `loc`
+
+Index slices can also be used with combinations of indexes and index tuples,
+
+.small[
+
+```python
+data
+```
+
+```
+## c1            A                   B          
+## c2            x         y         x         y
+## r1 r2                                        
+## m  l   0.367628  0.412129  0.380498  0.102844
+##    p   0.796443  0.621716  0.177684  0.545813
+## n  l   0.187163  0.893932  0.245014  0.268120
+##    p   0.562964  0.848694  0.642082  0.497807
+```
+]
+
+.pull-left[ .small[
+
+```python
+data.loc["m":"n"]
+```
+
+```
+## c1            A                   B          
+## c2            x         y         x         y
+## r1 r2                                        
+## m  l   0.367628  0.412129  0.380498  0.102844
+##    p   0.796443  0.621716  0.177684  0.545813
+## n  l   0.187163  0.893932  0.245014  0.268120
+##    p   0.562964  0.848694  0.642082  0.497807
+```
+
+```python
+data.loc[("m","l"):("n","l")]
+```
+
+```
+## c1            A                   B          
+## c2            x         y         x         y
+## r1 r2                                        
+## m  l   0.367628  0.412129  0.380498  0.102844
+##    p   0.796443  0.621716  0.177684  0.545813
+## n  l   0.187163  0.893932  0.245014  0.268120
+```
+] ]
+
+.pull-right[ .small[
+
+```python
+data.loc[("m","p"):"n"]
+```
+
+```
+## c1            A                   B          
+## c2            x         y         x         y
+## r1 r2                                        
+## m  p   0.796443  0.621716  0.177684  0.545813
+## n  l   0.187163  0.893932  0.245014  0.268120
+##    p   0.562964  0.848694  0.642082  0.497807
+```
+
+```python
+data.loc[[("m","p"),("n","l")]]
+```
+
+```
+## c1            A                   B          
+## c2            x         y         x         y
+## r1 r2                                        
+## m  p   0.796443  0.621716  0.177684  0.545813
+## n  l   0.187163  0.893932  0.245014  0.268120
+```
+] ] 
+
+---
+
+## Selecting nested levels
+
+The previous methods don't give easy access to indexing on nested index levels, this is possible via the cross-section method `xs()`,
+
+.small[
+
+```python
+data
+```
+
+```
+## c1            A                   B          
+## c2            x         y         x         y
+## r1 r2                                        
+## m  l   0.367628  0.412129  0.380498  0.102844
+##    p   0.796443  0.621716  0.177684  0.545813
+## n  l   0.187163  0.893932  0.245014  0.268120
+##    p   0.562964  0.848694  0.642082  0.497807
+```
+]
+
+.pull-left[ .small[
+
+```python
+data.xs("p", level="r2")
+```
+
+```
+## c1         A                   B          
+## c2         x         y         x         y
+## r1                                        
+## m   0.796443  0.621716  0.177684  0.545813
+## n   0.562964  0.848694  0.642082  0.497807
+```
+
+```python
+data.xs("m", level="r1")
+```
+
+```
+## c1         A                   B          
+## c2         x         y         x         y
+## r2                                        
+## l   0.367628  0.412129  0.380498  0.102844
+## p   0.796443  0.621716  0.177684  0.545813
+```
+] ]
+
+.pull-right[ .small[
+
+```python
+data.xs("y", level="c2", axis=1)
+```
+
+```
+## c1            A         B
+## r1 r2                    
+## m  l   0.412129  0.102844
+##    p   0.621716  0.545813
+## n  l   0.893932  0.268120
+##    p   0.848694  0.497807
+```
+
+```python
+data.xs("B", level="c1", axis=1)
+```
+
+```
+## c2            x         y
+## r1 r2                    
+## m  l   0.380498  0.102844
+##    p   0.177684  0.545813
+## n  l   0.245014  0.268120
+##    p   0.642082  0.497807
+```
+] ] 
+
+
+
+---
+
+## Setting MultiIndexes
+
+It is also possible to construct a MultiIndex or modify an existing one using `set_index()` and `reset_index()`,
+
+
+
+
+```python
+data
+```
+
+```
+##      a    b  c  d
+## 0  bar  one  z  1
+## 1  bar  two  y  2
+## 2  foo  one  x  3
+## 3  foo  two  w  4
+```
+
+.pull-left[
+
+```python
+data.set_index(['a','b'])
+```
+
+```
+##          c  d
+## a   b        
+## bar one  z  1
+##     two  y  2
+## foo one  x  3
+##     two  w  4
+```
+
+```python
+data.set_index('c', append=True)
+```
+
+```
+##        a    b  d
+##   c             
+## 0 z  bar  one  1
+## 1 y  bar  two  2
+## 2 x  foo  one  3
+## 3 w  foo  two  4
+```
+]
+
+.pull-right[
+
+```python
+data.set_index(['a','b']).reset_index()
+```
+
+```
+##      a    b  c  d
+## 0  bar  one  z  1
+## 1  bar  two  y  2
+## 2  foo  one  x  3
+## 3  foo  two  w  4
+```
+
+```python
+data.set_index(['a','b']).reset_index(level=1)
+```
+
+```
+##        b  c  d
+## a             
+## bar  one  z  1
+## bar  two  y  2
+## foo  one  x  3
+## foo  two  w  4
+```
+]
+
+---
+class: center, middle
+
+# Reshaping data
+
+---
+
+## Long to wide (pivot)
+
+
+
+.pull-left[
+
+```python
+df
+```
+
+```
+##    country  year   type count
+## 0        A  1999  cases  0.7K
+## 1        A  1999    pop   19M
+## 2        A  2000  cases    2K
+## 3        A  2000    pop   20M
+## 4        B  1999  cases   37K
+## 5        B  1999    pop  172M
+## 6        B  2000  cases   80K
+## 7        B  2000    pop  174M
+## 8        C  1999  cases  212K
+## 9        C  1999    pop    1T
+## 10       C  2000  cases  213K
+## 11       C  2000    pop    1T
+```
+]
+
+--
+
+.pull-right[
+
+```python
+df_wide = df.pivot(
+  index=["country","year"], 
+  columns="type", 
+  values="count"
+)
+df_wide
+```
+
+```
+## type         cases   pop
+## country year            
+## A       1999  0.7K   19M
+##         2000    2K   20M
+## B       1999   37K  172M
+##         2000   80K  174M
+## C       1999  212K    1T
+##         2000  213K    1T
+```
+]
+
+--
+
+&lt;div&gt;
+.pull-left[
+
+```python
+df_wide.index
+```
+
+```
+## MultiIndex([('A', 1999),
+##             ('A', 2000),
+##             ('B', 1999),
+##             ('B', 2000),
+##             ('C', 1999),
+##             ('C', 2000)],
+##            names=['country', 'year'])
+```
+
+```python
+df_wide.columns
+```
+
+```
+## Index(['cases', 'pop'], dtype='object', name='type')
+```
+]
+
+--
+
+.pull-right[
+
+```python
+df_wide.reset_index().rename_axis(columns=None)
+```
+
+```
+##   country  year cases   pop
+## 0       A  1999  0.7K   19M
+## 1       A  2000    2K   20M
+## 2       B  1999   37K  172M
+## 3       B  2000   80K  174M
+## 4       C  1999  212K    1T
+## 5       C  2000  213K    1T
+```
+]
+
+&lt;/div&gt;
+
+---
+
+## Wide to long (melt)
+
+
+
+.pull-left[
+
+```python
+df
+```
+
+```
+##   country  1999  2000
+## 0       A  0.7K    2K
+## 1       B   37K   80K
+## 2       C  212K  213K
+```
+]
+
+--
+
+.pull-right[
+
+```python
+df_long = df.melt(
+  id_vars="country", 
+  var_name="year"
+)
+df_long
+```
+
+```
+##   country  year value
+## 0       A  1999  0.7K
+## 1       B  1999   37K
+## 2       C  1999  212K
+## 3       A  2000    2K
+## 4       B  2000   80K
+## 5       C  2000  213K
+```
+]
+
+---
+
+## Separate Example - splits and explosions
+
+
+
+.pull-left[ .small[
+
+```python
+df
+```
+
+```
+##   country  year      rate
+## 0       A  1999  0.7K/19M
+## 1       A  2000    2K/20M
+## 2       B  1999  37K/172M
+## 3       B  2000  80K/174M
+## 4       C  1999   212K/1T
+## 5       C  2000   213K/1T
+```
+] ]
+
+--
+
+.pull-right[ .small[
+
+```python
+df.assign(
+  rate = lambda d: d.rate.str.split("/")
+)
+```
+
+```
+##   country  year         rate
+## 0       A  1999  [0.7K, 19M]
+## 1       A  2000    [2K, 20M]
+## 2       B  1999  [37K, 172M]
+## 3       B  2000  [80K, 174M]
+## 4       C  1999   [212K, 1T]
+## 5       C  2000   [213K, 1T]
+```
+] ]
+
+--
+
+&lt;div&gt;
+
+.pull-left[ .small[
+
+```python
+( df
+  .assign(
+    rate = lambda d: d.rate.str.split("/")
+  )
+  .explode("rate")
+  .assign(
+    type = lambda d: ["cases", "pop"] * int(d.shape[0]/2)
+  )
+)
+```
+
+```
+##   country  year  rate   type
+## 0       A  1999  0.7K  cases
+## 0       A  1999   19M    pop
+## 1       A  2000    2K  cases
+## 1       A  2000   20M    pop
+## 2       B  1999   37K  cases
+## 2       B  1999  172M    pop
+## 3       B  2000   80K  cases
+## 3       B  2000  174M    pop
+## 4       C  1999  212K  cases
+## 4       C  1999    1T    pop
+## 5       C  2000  213K  cases
+## 5       C  2000    1T    pop
+```
+] ]
+
+--
+
+.pull-right[ .small[
+
+```python
+( df
+  .assign(
+    rate = lambda d: d.rate.str.split("/")
+  )
+  .explode("rate")
+  .assign(
+    type = lambda d: ["cases", "pop"] * int(d.shape[0]/2)
+  )
+  .pivot(index=["country","year"], columns="type", values="rate")
+  .reset_index()
+)
+```
+
+```
+## type country  year cases   pop
+## 0          A  1999  0.7K   19M
+## 1          A  2000    2K   20M
+## 2          B  1999   37K  172M
+## 3          B  2000   80K  174M
+## 4          C  1999  212K    1T
+## 5          C  2000  213K    1T
+```
+] ]
+&lt;/div&gt;
+
+
+---
+
+## Separate Example - A better way
+
+.pull-left[
+
+```python
+df
+```
+
+```
+##   country  year      rate
+## 0       A  1999  0.7K/19M
+## 1       A  2000    2K/20M
+## 2       B  1999  37K/172M
+## 3       B  2000  80K/174M
+## 4       C  1999   212K/1T
+## 5       C  2000   213K/1T
+```
+]
+
+--
+
+.pull-right[
+
+```python
+df.assign(
+  counts = lambda d: d.rate.str.split("/").str[0],
+  pop    = lambda d: d.rate.str.split("/").str[1]
+)
+```
+
+```
+##   country  year      rate counts   pop
+## 0       A  1999  0.7K/19M   0.7K   19M
+## 1       A  2000    2K/20M     2K   20M
+## 2       B  1999  37K/172M    37K  172M
+## 3       B  2000  80K/174M    80K  174M
+## 4       C  1999   212K/1T   212K    1T
+## 5       C  2000   213K/1T   213K    1T
+```
+]
+
+--
+
+If you dont want to repeat the split,
+
+&lt;div&gt;
+.pull-left[
+
+```python
+df.assign(
+  rate = lambda d: d.rate.str.split("/"),
+  counts = lambda d: d.rate.str[0],
+  pop    = lambda d: d.rate.str[1]
+).drop("rate", axis=1)
+```
+
+```
+##   country  year counts   pop
+## 0       A  1999   0.7K   19M
+## 1       A  2000     2K   20M
+## 2       B  1999    37K  172M
+## 3       B  2000    80K  174M
+## 4       C  1999   212K    1T
+## 5       C  2000   213K    1T
+```
+]
+&lt;/div&gt;
+
+---
+
+## Exercise 1
+
+
+
+Create a DataFrame from the data available at https://sta663-sp22.github.io/slides/data/us_rent.csv using `pd.read_csv()`. 
+
+These data come from the 2017 American Community Survey and reflect the following values:
+* `name` - name of state
+* `variable` - Variable name: income = median yearly income, rent = median monthly rent
+* `estimate` - Estimated value
+* `moe` - 90% margin of error
+
+Using these data find the state(s) with the lowest income to rent ratio.
+
+---
+class: center, middle
+
+## Split-Apply-Combine
+
+
+
+---
+
+## groupby
+
+Groups can be created within a DataFrame via `groupby()` - these groups are then used by the standard summary methods (e.g. `sum()`, `mean()`, `std()`, etc.).
+
+.small[
+
+```python
+cereal = pd.read_csv("https://sta663-sp22.github.io/slides/data/cereal.csv")
+cereal
+```
+
+```
+##                          name             mfr  ... sugars     rating
+## 0                   100% Bran         Nabisco  ...      6  68.402973
+## 1           100% Natural Bran     Quaker Oats  ...      8  33.983679
+## 2                    All-Bran       Kellogg's  ...      5  59.425505
+## 3   All-Bran with Extra Fiber       Kellogg's  ...      0  93.704912
+## 4              Almond Delight  Ralston Purina  ...      8  34.384843
+## ..                        ...             ...  ...    ...        ...
+## 72                    Triples   General Mills  ...      3  39.106174
+## 73                       Trix   General Mills  ...     12  27.753301
+## 74                 Wheat Chex  Ralston Purina  ...      3  49.787445
+## 75                   Wheaties   General Mills  ...      3  51.592193
+## 76        Wheaties Honey Gold   General Mills  ...      8  36.187559
+## 
+## [77 rows x 6 columns]
+```
+
+```python
+cereal.groupby("type")
+```
+
+```
+## &lt;pandas.core.groupby.generic.DataFrameGroupBy object at 0x172199fa0&gt;
+```
+]
+
+
+.pull-left[ .small[
+
+```python
+cereal.groupby("type").groups
+```
+
+```
+## {'Cold': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76], 'Hot': [20, 43, 57]}
+```
+
+```python
+cereal.groupby("type").mean()
+```
+
+```
+##         calories    sugars     rating
+## type                                 
+## Cold  107.162162  7.175676  42.095218
+## Hot   100.000000  1.333333  56.737708
+```
+] ]
+
+.pull-right[ .small[
+
+```python
+cereal.groupby("mfr").groups
+```
+
+```
+## {'General Mills': [5, 7, 11, 12, 13, 14, 18, 22, 31, 36, 40, 42, 47, 51, 59, 69, 70, 71, 72, 73, 75, 76], 'Kellogg's': [2, 3, 6, 16, 17, 19, 21, 24, 25, 26, 28, 38, 39, 46, 48, 49, 50, 53, 58, 60, 62, 66, 67], 'Maltex': [43], 'Nabisco': [0, 20, 63, 64, 65, 68], 'Post': [9, 27, 29, 30, 32, 33, 34, 37, 52], 'Quaker Oats': [1, 10, 35, 41, 54, 55, 56, 57], 'Ralston Purina': [4, 8, 15, 23, 44, 45, 61, 74]}
+```
+
+```python
+cereal.groupby("mfr").size()
+```
+
+```
+## mfr
+## General Mills     22
+## Kellogg's         23
+## Maltex             1
+## Nabisco            6
+## Post               9
+## Quaker Oats        8
+## Ralston Purina     8
+## dtype: int64
+```
+] ]
+
+---
+
+## Selecting and iterating groups
+
+.pull-left[ .small[
+
+```python
+cereal.groupby("type").get_group("Hot")
+```
+
+```
+##                       name          mfr type  calories  sugars     rating
+## 20  Cream of Wheat (Quick)      Nabisco  Hot       100       0  64.533816
+## 43                   Maypo       Maltex  Hot       100       3  54.850917
+## 57          Quaker Oatmeal  Quaker Oats  Hot       100       1  50.828392
+```
+
+```python
+cereal.groupby("mfr").get_group("Post")
+```
+
+```
+##                                       name   mfr  ... sugars     rating
+## 9                              Bran Flakes  Post  ...      5  53.313813
+## 27  Fruit &amp; Fibre Dates; Walnuts; and Oats  Post  ...     10  40.917047
+## 29                          Fruity Pebbles  Post  ...     12  28.025765
+## 30                            Golden Crisp  Post  ...     15  35.252444
+## 32                       Grape Nuts Flakes  Post  ...      5  52.076897
+## 33                              Grape-Nuts  Post  ...      3  53.371007
+## 34                      Great Grains Pecan  Post  ...      4  45.811716
+## 37                              Honey-comb  Post  ...     11  28.742414
+## 52                   Post Nat. Raisin Bran  Post  ...     14  37.840594
+## 
+## [9 rows x 6 columns]
+```
+] ]
+
+--
+
+.pull-right[ .small[
+
+```python
+for name, group in cereal.groupby("type"):
+  print(name)
+  print(group)
+  print("")
+```
+
+```
+## Cold
+##                          name             mfr  ... sugars     rating
+## 0                   100% Bran         Nabisco  ...      6  68.402973
+## 1           100% Natural Bran     Quaker Oats  ...      8  33.983679
+## 2                    All-Bran       Kellogg's  ...      5  59.425505
+## 3   All-Bran with Extra Fiber       Kellogg's  ...      0  93.704912
+## 4              Almond Delight  Ralston Purina  ...      8  34.384843
+## ..                        ...             ...  ...    ...        ...
+## 72                    Triples   General Mills  ...      3  39.106174
+## 73                       Trix   General Mills  ...     12  27.753301
+## 74                 Wheat Chex  Ralston Purina  ...      3  49.787445
+## 75                   Wheaties   General Mills  ...      3  51.592193
+## 76        Wheaties Honey Gold   General Mills  ...      8  36.187559
+## 
+## [74 rows x 6 columns]
+## 
+## Hot
+##                       name          mfr type  calories  sugars     rating
+## 20  Cream of Wheat (Quick)      Nabisco  Hot       100       0  64.533816
+## 43                   Maypo       Maltex  Hot       100       3  54.850917
+## 57          Quaker Oatmeal  Quaker Oats  Hot       100       1  50.828392
+```
+] ]
+
+
+---
+
+## Aggregation
+
+The `aggregate()` function or `agg()` method can be used to compute summary statistics for each group,
+
+.pull-left[ .small[
+
+```python
+cereal.groupby("mfr").agg("mean")
+```
+
+```
+##                   calories    sugars     rating
+## mfr                                            
+## General Mills   111.363636  7.954545  34.485852
+## Kellogg's       108.695652  7.565217  44.038462
+## Maltex          100.000000  3.000000  54.850917
+## Nabisco          86.666667  1.833333  67.968567
+## Post            108.888889  8.777778  41.705744
+## Quaker Oats      95.000000  5.500000  42.915990
+## Ralston Purina  115.000000  6.125000  41.542997
+```
+
+```python
+cereal.groupby("mfr").agg([np.mean, np.std])
+```
+
+```
+##                   calories               sugars               rating           
+##                       mean        std      mean       std       mean        std
+## mfr                                                                            
+## General Mills   111.363636  10.371873  7.954545  3.872704  34.485852   8.946704
+## Kellogg's       108.695652  22.218818  7.565217  4.500768  44.038462  14.457434
+## Maltex          100.000000        NaN  3.000000       NaN  54.850917        NaN
+## Nabisco          86.666667  10.327956  1.833333  2.857738  67.968567   5.509326
+## Post            108.888889  10.540926  8.777778  4.576510  41.705744  10.047647
+## Quaker Oats      95.000000  29.277002  5.500000  4.780914  42.915990  16.797673
+## Ralston Purina  115.000000  22.677868  6.125000  3.563205  41.542997   6.080841
+## 
+## &lt;string&gt;:1: FutureWarning: ['name', 'type'] did not aggregate successfully. If any error is raised this will raise in a future version of pandas. Drop these columns/ops to avoid this warning.
+```
+] ]
+
+.pull-right[ .small[
+
+```python
+cereal.groupby("mfr").agg({
+  "calories": ['min', 'max'],
+  "sugars":   ['mean', 'median'],
+  "rating":   ['sum', 'count']
+})
+```
+
+```
+##                calories         sugars              rating      
+##                     min  max      mean median          sum count
+## mfr                                                             
+## General Mills       100  140  7.954545    8.5   758.688737    22
+## Kellogg's            50  160  7.565217    7.0  1012.884634    23
+## Maltex              100  100  3.000000    3.0    54.850917     1
+## Nabisco              70  100  1.833333    0.0   407.811403     6
+## Post                 90  120  8.777778   10.0   375.351697     9
+## Quaker Oats          50  120  5.500000    6.0   343.327919     8
+## Ralston Purina       90  150  6.125000    5.5   332.343977     8
+```
+] ]
+
+---
+
+## Named aggregation
+
+It is also possible to use special syntax to aggregate specific columns into a named output column,
+
+
+```python
+cereal.groupby("mfr", as_index=False).agg(
+  min_cal = ("calories", "min"),
+  max_cal = ("calories", "max"),
+  med_sugar = ("sugars", "median"),
+  avg_rating = ("rating", "mean")
+)
+```
+
+```
+##               mfr  min_cal  max_cal  med_sugar  avg_rating
+## 0   General Mills      100      140        8.5   34.485852
+## 1       Kellogg's       50      160        7.0   44.038462
+## 2          Maltex      100      100        3.0   54.850917
+## 3         Nabisco       70      100        0.0   67.968567
+## 4            Post       90      120       10.0   41.705744
+## 5     Quaker Oats       50      120        6.0   42.915990
+## 6  Ralston Purina       90      150        5.5   41.542997
+```
+
+.footnote[Tuples can also be passed using `pd.NamedAgg()` but this offers no additional functionality.]
+
+---
+
+## Transformation
+
+The `transform()` method returns a DataFrame with the aggregated result matching the size of the input group(s),
+
+.pull-left[
+
+```python
+cereal.groupby("mfr").transform(np.mean)
+```
+
+```
+##       calories    sugars     rating
+## 0    86.666667  1.833333  67.968567
+## 1    95.000000  5.500000  42.915990
+## 2   108.695652  7.565217  44.038462
+## 3   108.695652  7.565217  44.038462
+## 4   115.000000  6.125000  41.542997
+## ..         ...       ...        ...
+## 72  111.363636  7.954545  34.485852
+## 73  111.363636  7.954545  34.485852
+## 74  115.000000  6.125000  41.542997
+## 75  111.363636  7.954545  34.485852
+## 76  111.363636  7.954545  34.485852
+## 
+## [77 rows x 3 columns]
+## 
+## &lt;string&gt;:1: FutureWarning: Dropping invalid columns in DataFrameGroupBy.transform is deprecated. In a future version, a TypeError will be raised. Before calling .transform, select only columns which should be valid for the function.
+```
+]
+
+.pull-right[
+
+```python
+cereal.groupby("type").transform("mean")
+```
+
+```
+##       calories    sugars     rating
+## 0   107.162162  7.175676  42.095218
+## 1   107.162162  7.175676  42.095218
+## 2   107.162162  7.175676  42.095218
+## 3   107.162162  7.175676  42.095218
+## 4   107.162162  7.175676  42.095218
+## ..         ...       ...        ...
+## 72  107.162162  7.175676  42.095218
+## 73  107.162162  7.175676  42.095218
+## 74  107.162162  7.175676  42.095218
+## 75  107.162162  7.175676  42.095218
+## 76  107.162162  7.175676  42.095218
+## 
+## [77 rows x 3 columns]
+## 
+## &lt;string&gt;:1: FutureWarning: Dropping invalid columns in DataFrameGroupBy.transform is deprecated. In a future version, a TypeError will be raised. Before calling .transform, select only columns which should be valid for the function.
+```
+]
+
+
+.footnote[Note that we have lost the non-numeric columns]
+
+---
+
+## Practical transformation
+
+`transform()` will generally be most useful via a user defined function, the lambda argument is each column of each group.
+
+
+```python
+( cereal
+  .groupby("mfr")
+  .transform(
+    lambda x: (x - np.mean(x))/np.std(x)
+  ) 
+)
+```
+
+```
+##     calories    sugars    rating
+## 0  -1.767767  1.597191  0.086375
+## 1   0.912871  0.559017 -0.568474
+## 2  -1.780712 -0.582760  1.088220
+## 3  -2.701081 -1.718649  3.512566
+## 4  -0.235702  0.562544 -1.258442
+## ..       ...       ...       ...
+## 72 -0.134568 -1.309457  0.528580
+## 73 -0.134568  1.069190 -0.770226
+## 74 -0.707107 -0.937573  1.449419
+## 75 -1.121403 -1.309457  1.957022
+## 76 -0.134568  0.012013  0.194681
+## 
+## [77 rows x 3 columns]
+## 
+## &lt;string&gt;:1: FutureWarning: Dropping invalid columns in DataFrameGroupBy.transform is deprecated. In a future version, a TypeError will be raised. Before calling .transform, select only columns which should be valid for the function.
+```
+
+.footnote[
+Above we are standardizing each numerical column of each manufacturer 
+]
+
+---
+
+## Filtering groups
+
+`filter()` also respects groups and allows for the inclusion / exclusion of groups based on user specified criteria,
+
+.small[
+
+```python
+cereal.groupby("mfr").size()
+```
+
+```
+## mfr
+## General Mills     22
+## Kellogg's         23
+## Maltex             1
+## Nabisco            6
+## Post               9
+## Quaker Oats        8
+## Ralston Purina     8
+## dtype: int64
+```
+]
+
+--
+
+.pull-left[ .small[
+
+```python
+cereal.groupby("mfr").filter(lambda x: len(x) &gt; 10)
+```
+
+```
+##                            name            mfr  ... sugars     rating
+## 2                      All-Bran      Kellogg's  ...      5  59.425505
+## 3     All-Bran with Extra Fiber      Kellogg's  ...      0  93.704912
+## 5       Apple Cinnamon Cheerios  General Mills  ...     10  29.509541
+## 6                   Apple Jacks      Kellogg's  ...     14  33.174094
+## 7                       Basic 4  General Mills  ...      8  37.038562
+## 11                     Cheerios  General Mills  ...      1  50.764999
+## 12        Cinnamon Toast Crunch  General Mills  ...      9  19.823573
+## 13                     Clusters  General Mills  ...      7  40.400208
+## 14                  Cocoa Puffs  General Mills  ...     13  22.736446
+## 16                  Corn Flakes      Kellogg's  ...      2  45.863324
+## 17                    Corn Pops      Kellogg's  ...     12  35.782791
+## 18                Count Chocula  General Mills  ...     13  22.396513
+## 19           Cracklin' Oat Bran      Kellogg's  ...      7  40.448772
+## 21                      Crispix      Kellogg's  ...      3  46.895644
+## 22       Crispy Wheat &amp; Raisins  General Mills  ...     10  36.176196
+## 24                  Froot Loops      Kellogg's  ...     13  32.207582
+## 25               Frosted Flakes      Kellogg's  ...     11  31.435973
+## 26          Frosted Mini-Wheats      Kellogg's  ...      7  58.345141
+## 28                Fruitful Bran      Kellogg's  ...     12  41.015492
+## 31               Golden Grahams  General Mills  ...      9  23.804043
+## 36           Honey Nut Cheerios  General Mills  ...     10  31.072217
+## 38  Just Right Crunchy  Nuggets      Kellogg's  ...      6  36.523683
+## 39       Just Right Fruit &amp; Nut      Kellogg's  ...      9  36.471512
+## 40                          Kix  General Mills  ...      3  39.241114
+## 42                 Lucky Charms  General Mills  ...     12  26.734515
+## 46         Mueslix Crispy Blend      Kellogg's  ...     13  30.313351
+## 47         Multi-Grain Cheerios  General Mills  ...      6  40.105965
+## 48             Nut&amp;Honey Crunch      Kellogg's  ...      9  29.924285
+## 49    Nutri-Grain Almond-Raisin      Kellogg's  ...      7  40.692320
+## 50            Nutri-grain Wheat      Kellogg's  ...      2  59.642837
+## 51         Oatmeal Raisin Crisp  General Mills  ...     10  30.450843
+## 53                   Product 19      Kellogg's  ...      3  41.503540
+## 58                  Raisin Bran      Kellogg's  ...     12  39.259197
+## 59              Raisin Nut Bran  General Mills  ...      8  39.703400
+## 60               Raisin Squares      Kellogg's  ...      6  55.333142
+## 62                Rice Krispies      Kellogg's  ...      3  40.560159
+## 66                       Smacks      Kellogg's  ...     15  31.230054
+## 67                    Special K      Kellogg's  ...      3  53.131324
+## 69            Total Corn Flakes  General Mills  ...      3  38.839746
+## 70            Total Raisin Bran  General Mills  ...     14  28.592785
+## 71            Total Whole Grain  General Mills  ...      3  46.658844
+## 72                      Triples  General Mills  ...      3  39.106174
+## 73                         Trix  General Mills  ...     12  27.753301
+## 75                     Wheaties  General Mills  ...      3  51.592193
+## 76          Wheaties Honey Gold  General Mills  ...      8  36.187559
+## 
+## [45 rows x 6 columns]
+```
+] ]
+
+.pull-right[ .small[
+
+```python
+( cereal
+  .groupby("mfr")
+  .filter(lambda x: len(x) &gt; 10)
+  .groupby("mfr")
+  .size()  
+)
+```
+
+```
+## mfr
+## General Mills    22
+## Kellogg's        23
+## dtype: int64
+```
+] ]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
