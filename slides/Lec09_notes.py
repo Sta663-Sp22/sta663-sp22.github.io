@@ -1,9 +1,7 @@
 import numpy as np
 import pandas as pd
 
-
-
-## Exercise 2
+## Exercise 1
 
 df = pd.read_csv("https://sta663-sp22.github.io/slides/data/us_rent.csv")
 
