@@ -196,7 +196,7 @@ x = np.linspace(-2, 2, 101)
 fig, axd = plt.subplot_mosaic([['upleft', 'right'],
                                ['lowleft', 'right']])
 
-axd['upleft'].plot(x, x, ".b", label="linear")
+axd['upleft'].plot(x, x, "b", label="linear")
 axd['lowleft'].plot(x, x**2, "r", label="quadratic")
 axd['right'].plot(x, x**3, "g", label="cubic")
 
@@ -254,7 +254,7 @@ For quick formating of plots (scatter and line) format strings are a useful shor
 | `m`       |	magenta |
 | `y`       |	yellow  |
 | `k`       |	black   |
-| `w` |	white    |    
+| `w`       |	white   |    
 
 ]
 
@@ -947,6 +947,18 @@ plt.show()
 &lt;img src="Lec10_files/figure-html/unnamed-chunk-38-35.png" width="66%" style="display: block; margin: auto;" /&gt;
 ] ]
 
+---
+
+## Other plots
+
+
+```python
+dir(pd.plotting)
+```
+
+```
+## ['PlotAccessor', '__all__', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__path__', '__spec__', '_core', '_matplotlib', '_misc', 'andrews_curves', 'autocorrelation_plot', 'bootstrap_plot', 'boxplot', 'boxplot_frame', 'boxplot_frame_groupby', 'deregister_matplotlib_converters', 'hist_frame', 'hist_series', 'lag_plot', 'parallel_coordinates', 'plot_params', 'radviz', 'register_matplotlib_converters', 'scatter_matrix', 'table']
+```
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>

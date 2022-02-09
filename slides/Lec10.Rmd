@@ -785,3 +785,10 @@ plt.show()
 ```
 ] ]
 
+---
+
+## Other plots
+
+```{python}
+dir(pd.plotting)
+```
