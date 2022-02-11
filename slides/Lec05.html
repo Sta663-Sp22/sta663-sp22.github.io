@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="" xml:lang="">
   <head>
-    <title>Lec 06 - Advanced indexing &amp; Broadcasting</title>
+    <title>Lec 05 - NumPy Basics</title>
     <meta charset="utf-8" />
     <meta name="author" content="Sta 663 | Spring 2022" />
-    <script src="libs/header-attrs-2.11/header-attrs.js"></script>
+    <script src="libs/header-attrs/header-attrs.js"></script>
     <link rel="stylesheet" href="slides.css" type="text/css" />
   </head>
   <body>
     <textarea id="source">
 class: center, middle, inverse, title-slide
 
-# Lec 06 - Advanced indexing &amp; Broadcasting
+# Lec 05 - NumPy Basics
 ## <br/> Statistical Computing and Computation
 ### Sta 663 | Spring 2022
 ### <br/> Dr. Colin Rundel
@@ -21,19 +21,646 @@ class: center, middle, inverse, title-slide
 exclude: true
 
 
+
+---
+
+class: middle, center
+
+# NumPy Basics
+
+---
+
+## What is NumPy?
+
+&gt; NumPy is the fundamental package for scientific computing in Python. It is a Python library that provides a multidimensional array object, various derived objects (such as masked arrays and matrices), and an assortment of routines for fast operations on arrays, including mathematical, logical, shape manipulation, sorting, selecting, I/O, discrete Fourier transforms, basic linear algebra, basic statistical operations, random simulation and much more.
+
+--
+
+
 ```python
 import numpy as np
 ```
 
 ---
 
-class: middle, center
+## Arrays
 
-# NumPy - Advanced Indexing
+In general NumPy arrays are constructed from sequences (e.g. lists), nesting as necessary for the number of desired dimensions.
+
+.pull-left[
+
+```python
+np.array([1,2,3])
+```
+
+```
+## array([1, 2, 3])
+```
+
+```python
+np.array([[1,2],[3,4]])
+```
+
+```
+## array([[1, 2],
+##        [3, 4]])
+```
+
+```python
+np.array([[[1,2],[3,4]], [[5,6],[7,8]]])
+```
+
+```
+## array([[[1, 2],
+##         [3, 4]],
+## 
+##        [[5, 6],
+##         [7, 8]]])
+```
+]
+
+.footnote[
+Note that NumPy stores data in row major order.
+]
+
+--
+
+.pull-right[
+Some properties of arrays:
+* Arrays have a fixed size at creation
+* All data must be homogeneous (consistent type)
+* Built to support vectorized operations
+* Avoids copying whenever possible
+
+
+```python
+np.array([True, False])
+```
+
+```
+## array([ True, False])
+```
+
+```python
+np.array(["abc", "def"])
+```
+
+```
+## array(['abc', 'def'], dtype='&lt;U3')
+```
+]
 
 ---
 
-## From last time: subsetting with tuples
+## dtype
+
+NumPy arrays will have a specific type used for storing their data, called their `dtype`. This is accessible via the `.dtype` attribute and can be set at creation using the `dtype` argument.
+
+.pull-left[
+
+```python
+np.array([1,1]).dtype
+```
+
+```
+## dtype('int64')
+```
+
+```python
+np.array([1.1, 2.2]).dtype
+```
+
+```
+## dtype('float64')
+```
+
+```python
+np.array([True, False]).dtype
+```
+
+```
+## dtype('bool')
+```
+]
+
+.pull-right[
+
+```python
+np.array([1,2,3], dtype = np.uint8)
+```
+
+```
+## array([1, 2, 3], dtype=uint8)
+```
+
+```python
+np.array([1,2,1000], dtype = np.uint8)
+```
+
+```
+## array([  1,   2, 232], dtype=uint8)
+```
+
+```python
+np.array([3.14159, 2.33333], dtype = np.double)
+```
+
+```
+## array([3.14159, 2.33333])
+```
+
+```python
+np.array([3.14159, 2.33333], dtype = np.float16)
+```
+
+```
+## array([3.14 , 2.334], dtype=float16)
+```
+]
+
+
+
+.footnote[
+See here for [here](https://numpy.org/doc/stable/user/basics.types.html#array-types-and-conversions-between-types) for a list of dtypes and [here](https://numpy.org/doc/stable/reference/arrays.dtypes.html) for a more detailed description of how they are implemented.
+]
+
+---
+
+## Creating 1d arrays
+
+Some common tools for creating useful 1d arrays:
+
+.pull-left[
+
+```python
+np.arange(10)
+```
+
+```
+## array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+```
+
+```python
+np.arange(3, 5, 0.25)
+```
+
+```
+## array([3.  , 3.25, 3.5 , 3.75, 4.  , 4.25, 4.5 , 4.75])
+```
+
+```python
+np.linspace(0, 1, 11)
+```
+
+```
+## array([0. , 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. ])
+```
+
+```python
+np.logspace(0, 2, 11)
+```
+
+```
+## array([  1.        ,   1.58489319,   2.51188643,   3.98107171,
+##          6.30957344,  10.        ,  15.84893192,  25.11886432,
+##         39.81071706,  63.09573445, 100.        ])
+```
+]
+
+--
+
+.pull-right[
+
+```python
+np.ones(4)
+```
+
+```
+## array([1., 1., 1., 1.])
+```
+
+```python
+np.zeros(6)
+```
+
+```
+## array([0., 0., 0., 0., 0., 0.])
+```
+
+```python
+np.full(3, False)
+```
+
+```
+## array([False, False, False])
+```
+
+```python
+np.empty(4)
+```
+
+```
+## array([1., 1., 1., 1.])
+```
+]
+
+
+
+.footnote[
+For the full list of creation functions see [here](https://numpy.org/doc/stable/reference/routines.array-creation.html)
+]
+
+---
+
+## Creating 2d arrays (matrices)
+
+Many of the same functions exist with some additional useful tools for common matrices,
+
+.pull-left[
+
+```python
+np.eye(3)
+```
+
+```
+## array([[1., 0., 0.],
+##        [0., 1., 0.],
+##        [0., 0., 1.]])
+```
+
+```python
+np.identity(2)
+```
+
+```
+## array([[1., 0.],
+##        [0., 1.]])
+```
+
+```python
+np.zeros((2,2))
+```
+
+```
+## array([[0., 0.],
+##        [0., 0.]])
+```
+]
+
+--
+
+.pull-right[
+
+```python
+np.diag([3,2,1])
+```
+
+```
+## array([[3, 0, 0],
+##        [0, 2, 0],
+##        [0, 0, 1]])
+```
+
+```python
+np.tri(3)
+```
+
+```
+## array([[1., 0., 0.],
+##        [1., 1., 0.],
+##        [1., 1., 1.]])
+```
+
+```python
+np.triu(np.full((3,3),3))
+```
+
+```
+## array([[3, 3, 3],
+##        [0, 3, 3],
+##        [0, 0, 3]])
+```
+]
+
+.footnote[
+The NumPy documentation references a `matrix` class and related functions - this is no longer recommended, use the `ndarray` class instead.
+]
+
+---
+
+## Creating nd arrays
+
+For higher dimensional arrays just add dimensions when constructing,
+
+.pull-left[
+
+```python
+np.zeros((2,3,2))
+```
+
+```
+## array([[[0., 0.],
+##         [0., 0.],
+##         [0., 0.]],
+## 
+##        [[0., 0.],
+##         [0., 0.],
+##         [0., 0.]]])
+```
+]
+
+
+.pull-right[
+
+```python
+np.ones((2,3,2,2))
+```
+
+```
+## array([[[[1., 1.],
+##          [1., 1.]],
+## 
+##         [[1., 1.],
+##          [1., 1.]],
+## 
+##         [[1., 1.],
+##          [1., 1.]]],
+## 
+## 
+##        [[[1., 1.],
+##          [1., 1.]],
+## 
+##         [[1., 1.],
+##          [1., 1.]],
+## 
+##         [[1., 1.],
+##          [1., 1.]]]])
+```
+]
+
+---
+
+## Subsetting
+
+Arrays are subsetted using the standard python syntax with either indexes or slices, different dimensions are separated by commas.
+
+
+```python
+x = np.array([[1,2,3],[4,5,6],[7,8,9]])
+x
+```
+
+```
+## array([[1, 2, 3],
+##        [4, 5, 6],
+##        [7, 8, 9]])
+```
+
+--
+
+
+```python
+x[0]
+```
+
+```
+## array([1, 2, 3])
+```
+
+```python
+x[0,0]
+```
+
+```
+## 1
+```
+
+```python
+x[0][0]
+```
+
+```
+## 1
+```
+
+```python
+x[0:3:2, :]
+```
+
+```
+## array([[1, 2, 3],
+##        [7, 8, 9]])
+```
+
+
+```python
+x[0:3:2, :]
+```
+
+```
+## array([[1, 2, 3],
+##        [7, 8, 9]])
+```
+
+```python
+x[0:3:2, ]
+```
+
+```
+## array([[1, 2, 3],
+##        [7, 8, 9]])
+```
+
+```python
+x[1:, ::-1]
+```
+
+```
+## array([[6, 5, 4],
+##        [9, 8, 7]])
+```
+
+
+---
+
+## Views and copies
+
+Basic subsetting of ndarray objects does not result in a new object, but instead a "view" of the original object. There are a couple of ways that we can investigate this behavior,
+
+
+```python
+x = np.arange(10)
+y = x[2:5]
+z = x[2:5].copy()
+```
+
+.pull-left[
+
+```python
+print("x =", x, ", x.base =", x.base)
+```
+
+```
+## x = [0 1 2 3 4 5 6 7 8 9] , x.base = None
+```
+
+```python
+print("y =", y, ", y.base =", y.base)
+```
+
+```
+## y = [2 3 4] , y.base = [0 1 2 3 4 5 6 7 8 9]
+```
+
+```python
+print("z =", z, ", z.base =", z.base)
+```
+
+```
+## z = [2 3 4] , z.base = None
+```
+
+
+
+```python
+type(x); type(y); type(z)
+```
+
+```
+## &lt;class 'numpy.ndarray'&gt;
+## &lt;class 'numpy.ndarray'&gt;
+## &lt;class 'numpy.ndarray'&gt;
+```
+]
+
+.pull-right[
+
+```python
+np.shares_memory(x,y)
+```
+
+```
+## True
+```
+
+```python
+np.shares_memory(x,z)
+```
+
+```
+## False
+```
+
+```python
+np.shares_memory(y,z)
+```
+
+```
+## False
+```
+
+```python
+y.flags
+```
+
+```
+##   C_CONTIGUOUS : True
+##   F_CONTIGUOUS : True
+##   OWNDATA : False
+##   WRITEABLE : True
+##   ALIGNED : True
+##   WRITEBACKIFCOPY : False
+##   UPDATEIFCOPY : False
+```
+]
+
+---
+
+## Subsetting with ...
+
+There is some special syntax available using `...` which expands to the number of `:` needed to account for all dimensions,
+
+
+.pull-left[
+
+```python
+x = np.arange(16).reshape(2,2,2,2)
+x
+```
+]
+
+.pull-right[
+
+```
+## array([[[[ 0,  1],
+##          [ 2,  3]],
+## 
+##         [[ 4,  5],
+##          [ 6,  7]]],
+## 
+## 
+##        [[[ 8,  9],
+##          [10, 11]],
+## 
+##         [[12, 13],
+##          [14, 15]]]])
+```
+]
+
+
+&lt;div&gt;
+.pull-left[
+
+```python
+x[0, 1, ...]
+```
+
+```
+## array([[4, 5],
+##        [6, 7]])
+```
+
+```python
+x[..., 1]
+```
+
+```
+## array([[[ 1,  3],
+##         [ 5,  7]],
+## 
+##        [[ 9, 11],
+##         [13, 15]]])
+```
+]
+
+.pull-right[
+
+```python
+x[0, 1, :, :]
+```
+
+```
+## array([[4, 5],
+##        [6, 7]])
+```
+
+```python
+x[:, :, :, 1]
+```
+
+```
+## array([[[ 1,  3],
+##         [ 5,  7]],
+## 
+##        [[ 9, 11],
+##         [13, 15]]])
+```
+]
+&lt;/div&gt;
+
+---
+
+## Subsetting with tuples
 
 Unlike lists, an ndarray can be subset by a tuple containing integers,
 
@@ -120,11 +747,77 @@ More next time on why `x[(0,1,3)]` does not work.
 
 ---
 
-## Integer array subsetting (lists)
+## Subsetting assignment
 
-Lists of integers can be used to subset in the same way:
+Most of the subsetting approaches we've just seen can also be used for assignment, just keep in mind that we cannot change the size or type of the ndarray,
+
+
+```python
+x = np.arange(9).reshape((3,3)); x
+```
+
+```
+## array([[0, 1, 2],
+##        [3, 4, 5],
+##        [6, 7, 8]])
+```
 
 .pull-left[
+
+```python
+x[0,0] = -1
+x
+```
+
+```
+## array([[-1,  1,  2],
+##        [ 3,  4,  5],
+##        [ 6,  7,  8]])
+```
+
+```python
+x[0, :] = -2
+x
+```
+
+```
+## array([[-2, -2, -2],
+##        [ 3,  4,  5],
+##        [ 6,  7,  8]])
+```
+]
+
+.pull-right[
+
+```python
+x[0:2,1:3] = -3
+x
+```
+
+```
+## array([[-2, -3, -3],
+##        [ 3, -3, -3],
+##        [ 6,  7,  8]])
+```
+
+```python
+x[(0,1,2), (0,1,2)] = -4
+x
+```
+
+```
+## array([[-4, -3, -3],
+##        [ 3, -4, -3],
+##        [ 6,  7, -4]])
+```
+]
+
+---
+
+## Reshaping arrays
+
+The dimensions of an array can be retrieved via the `.shape` attribute, these values can changed by 
+
 
 ```python
 x = np.arange(6)
@@ -135,69 +828,594 @@ x
 ## array([0, 1, 2, 3, 4, 5])
 ```
 
-```python
-x[[0,1,3],]
-```
-
-```
-## array([0, 1, 3])
-```
+.pull-left[
 
 ```python
-x[[0,1,3]]
+y = x.reshape((2,3))
+y
 ```
 
 ```
-## array([0, 1, 3])
+## array([[0, 1, 2],
+##        [3, 4, 5]])
+```
+
+```python
+np.shares_memory(x,y)
+```
+
+```
+## True
+```
+]
+
+
+.pull-right[
+
+```python
+z = x
+z.shape = (2,3)
+z
+```
+
+```
+## array([[0, 1, 2],
+##        [3, 4, 5]])
+```
+
+```python
+x
+```
+
+```
+## array([[0, 1, 2],
+##        [3, 4, 5]])
+```
+
+```python
+np.shares_memory(x,z)
+```
+
+```
+## True
+```
+]
+
+---
+
+## Implicit dimensions
+
+When reshaping an array, the value `-1` can be used to automatically calculate a dimension,
+
+
+```python
+x = np.arange(6)
+x
+```
+
+```
+## array([0, 1, 2, 3, 4, 5])
+```
+
+
+```python
+x.reshape((2,-1))
+```
+
+```
+## array([[0, 1, 2],
+##        [3, 4, 5]])
+```
+
+```python
+x.reshape((-1,3,2))
+```
+
+```
+## array([[[0, 1],
+##         [2, 3],
+##         [4, 5]]])
+```
+
+```python
+x.reshape(-1)
+```
+
+```
+## array([0, 1, 2, 3, 4, 5])
+```
+
+```python
+x.reshape((-1,4))
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): ValueError: cannot reshape array of size 6 into shape (4)
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+---
+
+## Flattening arrays
+
+We've just seen the most common approach to flattening an array (`.reshape(-1)`), there are two additional methods / functions:
+* `ravel` which creates flattened *view* of the array and
+* `flatten` which creates a flattened *copy* of the array.
+
+
+```python
+x = np.arange(6).reshape((2,3))
+x
+```
+
+```
+## array([[0, 1, 2],
+##        [3, 4, 5]])
+```
+
+.pull-left[
+
+```python
+y = x.ravel()
+y
+```
+
+```
+## array([0, 1, 2, 3, 4, 5])
+```
+
+```python
+np.shares_memory(x,y)
+```
+
+```
+## True
+```
+]
+
+
+.pull-right[
+
+```python
+z = x.flatten()
+z
+```
+
+```
+## array([0, 1, 2, 3, 4, 5])
+```
+
+```python
+np.shares_memory(x,z)
+```
+
+```
+## False
+```
+]
+
+---
+
+## Resizing
+
+The size of an array cannot be changed but a new array with a different size can be created from an existing array via the resize function and method. Note these have different behaviors around what values the new entries will have.
+
+.pull-left[
+
+```python
+x = np.resize(np.ones((2,2)), (3,3))
+x
+```
+
+```
+## array([[1., 1., 1.],
+##        [1., 1., 1.],
+##        [1., 1., 1.]])
+```
+]
+
+
+.pull-right[
+
+```python
+y = np.ones((2,2))
+y.resize((3,3), refcheck=False)
+y
+```
+
+```
+## array([[1., 1., 1.],
+##        [1., 0., 0.],
+##        [0., 0., 0.]])
+```
+]
+
+.footnote[
+The `refcheck` argument should not generally be needed, here it is a side effect of using reticulate (I think).
+]
+
+---
+
+## Joining arrays
+
+`concatenate()` is a general purpose function for this, with specialized versions `hstack()`, `vstack()`, and `dstack()` for rows, columns, and slices respectively.
+
+.small[
+.pull-left[
+
+```python
+x = np.arange(4).reshape((2,2)); x
+```
+
+```
+## array([[0, 1],
+##        [2, 3]])
 ```
 ]
 
 .pull-right[
 
 ```python
-x = np.arange(16).reshape((4,4))
-x
+y = np.arange(4,8).reshape((2,2)); y
 ```
 
 ```
-## array([[ 0,  1,  2,  3],
-##        [ 4,  5,  6,  7],
-##        [ 8,  9, 10, 11],
-##        [12, 13, 14, 15]])
-```
-
-```python
-x[[1,3], ]
-```
-
-```
-## array([[ 4,  5,  6,  7],
-##        [12, 13, 14, 15]])
-```
-
-```python
-x[:, [1,3]]
-```
-
-```
-## array([[ 1,  3],
-##        [ 5,  7],
-##        [ 9, 11],
-##        [13, 15]])
-```
-
-```python
-x[[1,3], [1,3]]
-```
-
-```
-## array([ 5, 15])
+## array([[4, 5],
+##        [6, 7]])
 ```
 ]
+]
+
+&lt;div&gt;
+.small[
+.pull-left[
+
+```python
+np.concatenate((x,y), axis=0)
+```
+
+```
+## array([[0, 1],
+##        [2, 3],
+##        [4, 5],
+##        [6, 7]])
+```
+
+```python
+np.concatenate((x,y), axis=1)
+```
+
+```
+## array([[0, 1, 4, 5],
+##        [2, 3, 6, 7]])
+```
+
+```python
+np.concatenate((x,y), axis=2)
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): AxisError: axis 2 is out of bounds for array of dimension 2
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+##   File "&lt;__array_function__ internals&gt;", line 180, in concatenate
+```
+
+```python
+np.concatenate((x,y), axis=None)
+```
+
+```
+## array([0, 1, 2, 3, 4, 5, 6, 7])
+```
+]
+
+.pull-right[
+
+```python
+np.vstack((x,y))
+```
+
+```
+## array([[0, 1],
+##        [2, 3],
+##        [4, 5],
+##        [6, 7]])
+```
+
+```python
+np.hstack((x,y))
+```
+
+```
+## array([[0, 1, 4, 5],
+##        [2, 3, 6, 7]])
+```
+
+```python
+np.dstack((x,y))
+```
+
+```
+## array([[[0, 4],
+##         [1, 5]],
+## 
+##        [[2, 6],
+##         [3, 7]]])
+```
+]
+]
+&lt;/div&gt;
 
 .footnote[
-Note that the `,` is now optional
+See `block()` for a more efficient approach to constructing block matrices.
 ]
+
+---
+class: middle, center
+
+# NumPy numerics
+
+---
+
+## Basic operators
+
+All of the basic mathematical operators in Python are implemented for arrays, they are applied element-wise to the array values.
+
+.pull-left[
+
+```python
+np.arange(3) + np.arange(3)
+```
+
+```
+## array([0, 2, 4])
+```
+
+```python
+np.arange(3) - np.arange(3)
+```
+
+```
+## array([0, 0, 0])
+```
+
+```python
+np.arange(3) + 2
+```
+
+```
+## array([2, 3, 4])
+```
+]
+
+.pull-right[
+
+```python
+np.arange(3) * np.arange(3)
+```
+
+```
+## array([0, 1, 4])
+```
+
+```python
+np.arange(1,4) / np.arange(1,4)
+```
+
+```
+## array([1., 1., 1.])
+```
+
+```python
+np.arange(3) * 3
+```
+
+```
+## array([0, 3, 6])
+```
+]
+
+
+```python
+np.full((2,2), 2) ** np.arange(4).reshape((2,2))
+```
+
+```
+## array([[1, 2],
+##        [4, 8]])
+```
+
+```python
+np.full((2,2), 2) ** np.arange(4)
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): ValueError: operands could not be broadcast together with shapes (2,2) (4,) 
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+---
+
+## Mathematical functions
+
+The package provides a [wide variety](https://numpy.org/doc/stable/reference/routines.math.html) of basic mathematical functions that are vectorized, in general they will be faster than their base equivalents (e.g. `np.sum()` vs `sum()`),
+
+
+```python
+np.sum(np.arange(1000))
+```
+
+```
+## 499500
+```
+
+```python
+np.cumsum(np.arange(10))
+```
+
+```
+## array([ 0,  1,  3,  6, 10, 15, 21, 28, 36, 45])
+```
+
+```python
+np.log10(np.arange(1,11))
+```
+
+```
+## array([0.        , 0.30103   , 0.47712125, 0.60205999, 0.69897   ,
+##        0.77815125, 0.84509804, 0.90308999, 0.95424251, 1.        ])
+```
+
+```python
+np.median(np.arange(10))
+```
+
+```
+## 4.5
+```
+
+
+
+---
+
+## Matrix multiplication
+
+Is supported using the `matmul()` function or the `@` operator,
+
+
+```python
+x = np.arange(6).reshape(3,2)
+y = np.tri(2,2)
+```
+
+
+```python
+x @ y
+```
+
+```
+## array([[1., 1.],
+##        [5., 3.],
+##        [9., 5.]])
+```
+
+```python
+y.T @ y
+```
+
+```
+## array([[2., 1.],
+##        [1., 1.]])
+```
+
+```python
+np.matmul(x.T, x)
+```
+
+```
+## array([[20, 26],
+##        [26, 35]])
+```
+
+```python
+y @ x
+```
+
+```
+## Error in py_call_impl(callable, dots$args, dots$keywords): ValueError: matmul: Input operand 1 has a mismatch in its core dimension 0, with gufunc signature (n?,k),(k,m?)-&gt;(n?,m?) (size 3 is different from 2)
+## 
+## Detailed traceback:
+##   File "&lt;string&gt;", line 1, in &lt;module&gt;
+```
+
+---
+
+## Other linear algebra functions
+
+All of the other common linear algebra functions are (mostly) implemented in the `linalg` submodule. See [here](https://numpy.org/doc/stable/reference/routines.linalg.html) for more details.
+
+
+```python
+np.linalg.det(y)
+```
+
+```
+## 1.0
+```
+
+```python
+np.linalg.eig(x.T @ x)
+```
+
+```
+## (array([ 0.43988174, 54.56011826]), array([[-0.79911221, -0.6011819 ],
+##        [ 0.6011819 , -0.79911221]]))
+```
+
+```python
+np.linalg.inv(x.T @ x)
+```
+
+```
+## array([[ 1.45833333, -1.08333333],
+##        [-1.08333333,  0.83333333]])
+```
+
+```python
+np.linalg.cholesky(x.T @ x)
+```
+
+```
+## array([[4.47213595, 0.        ],
+##        [5.81377674, 1.09544512]])
+```
+
+---
+
+## Random values
+
+NumPy has another submodule called `random` for functions used to generate random values,
+
+In order to use this, you should construct a generator via `default_rng()`, with or without a seed, and then use the generator's methods to obtain your desired random values.
+
+
+```python
+rng = np.random.default_rng(seed = 1234)
+
+rng.random(3) # ~ Uniform [0,1)
+```
+
+```
+## array([0.97669977, 0.38019574, 0.92324623])
+```
+
+```python
+rng.normal(0, 2, size = (2,2))
+```
+
+```
+## array([[ 0.30523839,  1.72748778],
+##        [ 5.82619845, -2.95764672]])
+```
+
+```python
+rng.binomial(n=5, p=0.5, size = 10)
+```
+
+```
+## array([2, 4, 2, 2, 3, 4, 4, 3, 3, 3])
+```
+
+---
+class: middle, center
+
+## Example - Linear regression with NumPy
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
