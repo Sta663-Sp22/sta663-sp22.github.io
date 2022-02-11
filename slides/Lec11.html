@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 11 - seaborn</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs-2.11/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 11 - seaborn
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+```python
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+plt.rcParams['figure.dpi'] = 200
+
+penguins = sns.load_dataset("penguins")
+```
+
+
+```r
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+```
+
+
+```r
+local({
+  hook_err_old &lt;- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old &lt;- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("&lt;string&gt;:1: ", "", x)
+    hook_warn_old(x, options)
+  })
+})
+```
+
+---
+
+## seaborn
+
+&gt; Seaborn is a library for making statistical graphics in Python. It builds on top of **matplotlib** and integrates closely with **pandas** data structures.
+&gt;
+&gt; Seaborn helps you explore and understand your data. Its plotting functions operate on dataframes and arrays containing whole datasets and internally perform the necessary semantic mapping and statistical aggregation to produce informative plots. Its dataset-oriented, declarative API lets you focus on what the different elements of your plots mean, rather than on the details of how to draw them.
+
+.small[
+
+```python
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
+]
+
+--
+
+.small[
+
+```python
+penguins = sns.load_dataset("penguins")
+penguins
+```
+
+```
+##     species     island  bill_length_mm  ...  flipper_length_mm  body_mass_g     sex
+## 0    Adelie  Torgersen            39.1  ...              181.0       3750.0    Male
+## 1    Adelie  Torgersen            39.5  ...              186.0       3800.0  Female
+## 2    Adelie  Torgersen            40.3  ...              195.0       3250.0  Female
+## 3    Adelie  Torgersen             NaN  ...                NaN          NaN     NaN
+## 4    Adelie  Torgersen            36.7  ...              193.0       3450.0  Female
+## ..      ...        ...             ...  ...                ...          ...     ...
+## 339  Gentoo     Biscoe             NaN  ...                NaN          NaN     NaN
+## 340  Gentoo     Biscoe            46.8  ...              215.0       4850.0  Female
+## 341  Gentoo     Biscoe            50.4  ...              222.0       5750.0    Male
+## 342  Gentoo     Biscoe            45.2  ...              212.0       5200.0  Female
+## 343  Gentoo     Biscoe            49.9  ...              213.0       5400.0    Male
+## 
+## [344 rows x 7 columns]
+```
+]
+
+---
+
+## Basic plots
+
+.pull-left[
+
+```python
+sns.relplot(
+  data=penguins,
+  x="bill_length_mm", 
+  y="bill_depth_mm"
+)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-3-1.png" width="66%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+sns.relplot(
+  data=penguins,
+  x="bill_length_mm", 
+  y="bill_depth_mm",
+  hue="species"
+)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-4-3.png" width="66%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## A more complex plot
+
+
+```python
+sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species",
+  col="island", row="species"
+)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-5-5.png" width="40%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Figure-level vs. axes-level functions
+
+&lt;img src="imgs/seaborn_levels.png" width="66%" style="display: block; margin: auto;" /&gt;
+
+.footnote[
+These are not the only axes-level functions - we see additional plotting functions in a bit
+]
+
+
+---
+
+## displots
+
+.pull-left[
+
+```python
+sns.displot(
+  data = penguins,
+  x = "bill_length_mm", hue = "species",
+  alpha = 0.5, aspect = 1.5
+)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-7-1.png" width="75%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+sns.displot(
+  data = penguins,
+  x = "bill_length_mm", hue = "species",
+  kind = "kde", fill=True,
+  alpha = 0.5, aspect = 1
+)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-8-3.png" width="75%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## catplots
+
+.pull-left[
+
+```python
+sns.catplot(
+  data = penguins,
+  x = "species", y = "bill_length_mm",
+  hue = "sex"
+)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-9-5.png" width="75%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+sns.catplot(
+  data = penguins,
+  x = "species", y = "bill_length_mm",
+  hue = "sex",
+  kind = "box"
+)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-10-7.png" width="75%" style="display: block; margin: auto;" /&gt;
+]
+
+
+---
+
+## figure-level plot size
+
+To adjust the size of plots generated via a figure-level plotting function adjust the `aspect` and `height` arguments, figure width is `aspect * height`.
+
+.pull-left[
+
+```python
+sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species",
+  aspect = 1, height = 3
+)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-11-9.png" width="66%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species",
+  aspect = 1, height = 5
+)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-12-11.png" width="66%" style="display: block; margin: auto;" /&gt;
+]
+
+.footnote[
+Note this is the size of a facet (Axes) not the figure
+]
+
+---
+
+## figure-level plot details
+
+.pull-left[
+
+```python
+g = sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species",
+  aspect = 1
+)
+
+g
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-13-13.png" width="66%" style="display: block; margin: auto;" /&gt;
+
+```python
+print(g)
+```
+
+```
+## &lt;seaborn.axisgrid.FacetGrid object at 0x294d757f0&gt;
+```
+]
+
+.pull-right[
+
+```python
+h = sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species", col="island",
+  aspect = 1/2
+)
+
+h
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-14-15.png" width="90%" style="display: block; margin: auto;" /&gt;
+
+```python
+print(h)
+```
+
+```
+## &lt;seaborn.axisgrid.FacetGrid object at 0x28d4474f0&gt;
+```
+]
+
+---
+
+## FacetGird methods
+
+.small[
+| Method              | Description     |
+|---------------------|:-------------------------------------------------------------------------|
+| `add_legend()`      | Draw a legend, maybe placing it outside axes and resizing the figure     |
+| `despine()`	        | Remove axis spines from the facets.                                      |
+| `facet_axis()`    	| Make the axis identified by these indices active and return it.          |
+| `facet_data()`	    | Generator for name indices and data subsets for each facet.              |
+| `map()`	            | Apply a plotting function to each facet’s subset of the data.            |
+| `map_dataframe()`	  | Like `.map()` but passes args as strings and inserts data in kwargs.     |
+| `refline()`	        | Add a reference line(s) to each facet.                                   |
+| `savefig()`	        | Save an image of the plot.                                               |
+| `set()`	            | Set attributes on each subplot Axes.                                     |
+| `set_axis_labels()`	| Set axis labels on the left column and bottom row of the grid.           |
+| `set_titles()`	    | Draw titles either above each facet or on the grid margins.              |
+| `set_xlabels()`	    | Label the x axis on the bottom row of the grid.                          |
+| `set_xticklabels()`	| Set x axis tick labels of the grid.                                      |
+| `set_ylabels()`	    | Label the y axis on the left column of the grid.                         |
+| `set_yticklabels()`	| Set y axis tick labels on the left column of the grid.                   |
+| `tight_layout()`	  | Call fig.tight_layout within rect that exclude the legend.               |
+]
+
+---
+
+## Adjusting labels
+
+.pull-left[
+
+```python
+sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species",
+  aspect = 1
+).set_axis_labels(
+  "Bill Length (mm)", "Bill Depth (mm)"
+)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-15-17.png" width="66%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species", col="island",
+  aspect = 1/2
+).set_axis_labels(
+  "Bill Length (mm)", "Bill Depth (mm)"
+).set_titles(
+  "{col_var} - {col_name}" 
+)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-16-19.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## FacetGrid attributes
+
+&lt;br/&gt;&lt;br/&gt;
+
+| Attribute   | Description    |
+|-------------|:--------------------------------------------------------------------|
+| `ax`	      | The `matplotlib.axes.Axes` when no faceting variables are assigned. | 
+| `axes`	    | An array of the `matplotlib.axes.Axes` objects in the grid.         | 
+| `axes_dict` | A mapping of facet names to corresponding `matplotlib.axes.Axes`.   | 
+| `figure`	  | Access the `matplotlib.figure.Figure` object underlying the grid.   | 
+| `legend`    |	The `matplotlib.legend.Legend` object, if present.                  | 
+
+---
+
+## Using axes to modify plots
+
+.pull-left[
+
+```python
+g = sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species",
+  aspect = 1
+)
+g.ax.axvline(
+  x = penguins.bill_length_mm.mean(), c="k"
+)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-17-21.png" width="66%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+h = sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species", col="island",
+  aspect = 1/2
+)
+mean_bill_dep = penguins.bill_depth_mm.mean()
+
+[ ax.axhline(y=mean_bill_dep, c="c") 
+  for row in h.axes for ax in row ]
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-18-23.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Why figure-level functions
+
+.pull-left[
+#### Advantages:
+* Easy faceting by data variables
+* Legend outside of plot by default
+* Easy figure-level customization
+* Different figure size parameterization
+]
+
+.pull-right[
+#### Disadvantages:
+* Many parameters not in function signature
+* Cannot be part of a larger matplotlib figure
+* Different API from matplotlib
+* Different figure size parameterization
+]
+
+.footnote[Details based on [seaborn docs](https://seaborn.pydata.org/tutorial/function_overview.html#relative-merits-of-figure-level-functions)]
+
+---
+
+## lmplots
+
+There is one last figure-level plot type - `lmplot()` which is a convenient interface to fitting and ploting regression models across subsets of data,
+
+
+```python
+sns.lmplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species", col="island",
+  aspect = 1, truncate=False
+)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-19-25.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## axes-level functions
+
+These functions return a `matplotlib.pyplot.Axes` object instead of a `FacetGrid` giving more direct control over the plot using basic matplotlib tools.
+
+.pull-left[
+
+```python
+plt.figure()
+
+sns.scatterplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species"
+)
+
+plt.xlabel("Bill Length (mm)")
+plt.ylabel("Bill Depth (mm)")
+plt.title("Length vs. Depth")
+
+plt.show()
+```
+]
+
+.pull-right[
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-20-27.png" width="85%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## subplots - pyplot style
+
+.pull-left[
+
+```python
+plt.figure(figsize=(4,6), layout="constrained")
+
+plt.subplot(211)
+sns.scatterplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species"
+)
+
+plt.subplot(212)
+sns.countplot(
+  data=penguins,
+  x="species"
+)
+
+plt.show()
+```
+]
+
+.pull-right[
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-21-29.png" width="66%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## subplots - OO style
+
+.pull-left[
+
+```python
+fig, axs = plt.subplots(
+  2, 1, figsize=(4,6), 
+  layout="constrained",
+  sharex=True  
+)
+
+sns.scatterplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species",
+  ax = axs[0]
+)
+
+sns.kdeplot(
+  data=penguins,
+  x="bill_length_mm", hue="species",
+  fill=True, alpha=0.5,
+  ax = axs[1]
+)
+
+plt.show()
+```
+]
+
+.pull-right[
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-22-31.png" width="66%" style="display: block; margin: auto;" /&gt;
+]
+
+
+---
+
+## layering plots
+
+.pull-left[
+
+```python
+plt.figure(layout="constrained")
+
+sns.kdeplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species"
+)
+
+sns.scatterplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species", alpha=0.5
+)
+
+sns.rugplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species"
+)
+
+plt.legend()
+
+plt.show()
+```
+]
+
+.pull-right[
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-23-33.png" width="85%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Themes
+
+Seaborn comes with a number of themes (`darkgrid`, `whitegrid`, `dark`, `white`, and `ticks`) which can be enabled by `sns.set_theme()` at the figure level or `sns.axes_style()` at the axes level.
+
+.pull-left[ .small[
+
+```python
+def sinplot():
+    x = np.linspace(0, 14, 100)
+    for i in range(1, 7):
+        plt.plot(x, np.sin(x + i * .5) * (7 - i))
+        
+sinplot()
+plt.show()
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-24-35.png" width="45%" style="display: block; margin: auto;" /&gt;
+] ]
+
+
+.pull-right[ .small[
+
+```python
+with sns.axes_style("darkgrid"):
+  sinplot()
+  plt.show()
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-25-37.png" width="45%" style="display: block; margin: auto;" /&gt;
+] ]
+
+---
+
+.pull-left[ .small[
+
+```python
+with sns.axes_style("whitegrid"):
+  sinplot()
+  plt.show()
+  
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-26-39.png" width="45%" style="display: block; margin: auto;" /&gt;
+
+```python
+with sns.axes_style("dark"):
+  sinplot()
+  plt.show()
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-26-40.png" width="45%" style="display: block; margin: auto;" /&gt;
+] ]
+
+.pull-right[ .small[
+
+```python
+with sns.axes_style("white"):
+  sinplot()
+  plt.show()
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-27-43.png" width="45%" style="display: block; margin: auto;" /&gt;
+
+```python
+with sns.axes_style("ticks"):
+  sinplot()
+  plt.show()
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-27-44.png" width="45%" style="display: block; margin: auto;" /&gt;
+] ]
+
+---
+
+## Context
+
+.pull-left[ .small[
+
+```python
+sns.set_context("notebook")
+sinplot()
+plt.show()
+  
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-28-47.png" width="40%" style="display: block; margin: auto;" /&gt;
+
+```python
+sns.set_context("paper")
+sinplot()
+plt.show()
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-28-48.png" width="40%" style="display: block; margin: auto;" /&gt;
+] ]
+
+.pull-right[ .small[
+
+```python
+sns.set_context("talk")
+sinplot()
+plt.show()
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-29-51.png" width="40%" style="display: block; margin: auto;" /&gt;
+
+```python
+sns.set_context("poster")
+sinplot()
+plt.show()
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-29-52.png" width="40%" style="display: block; margin: auto;" /&gt;
+] ]
+
+---
+
+## Color palettes
+
+
+
+
+
+All of the examples below are the result of calls to `sns.color_palette()` with `as_cmap=True` for the continuous case,
+
+.pull-left[ .small[
+
+```python
+show_palette()
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-32-55.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+```python
+show_palette("tab10")
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-32-56.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+```python
+show_palette("hls")
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-32-57.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+```python
+show_palette("husl")
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-32-58.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+```python
+show_palette("Set2")
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-32-59.png" width="75%" style="display: block; margin: auto;" /&gt;
+] ]
+
+.pull-right[ .small[
+
+```python
+show_cont_palette("cubehelix")
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-33-65.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+```python
+show_cont_palette("light:b")
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-33-66.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+```python
+show_cont_palette("dark:salmon_r")
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-33-67.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+```python
+show_cont_palette("YlOrBr")
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-33-68.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+```python
+show_cont_palette("vlag")
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-33-69.png" width="75%" style="display: block; margin: auto;" /&gt;
+] ]
+
+.footnote[
+See more examples in the color palettes [tutorial](https://seaborn.pydata.org/tutorial/color_palettes.html)
+]
+
+---
+
+## Pair plots
+
+
+```python
+sns.pairplot(data = penguins, height=5)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-34-75.png" width="45%" style="display: block; margin: auto;" /&gt;
+
+---
+
+
+```python
+sns.pairplot(data = penguins, hue="species", height=5, corner=True)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-35-77.png" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## PairGrid
+
+`pairplot()` is a special case of the more general `PairGrid` - once constructed there are methods that allow for mapping plot functions of the different axes,
+
+
+```python
+sns.PairGrid(penguins, hue="species", height=5)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-36-79.png" width="40%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Mapping
+
+.pull-left-narrow[
+
+```python
+g = sns.PairGrid(
+  penguins, hue="species",
+  height=3
+)
+
+g = g.map_diag(
+  sns.histplot, alpha=0.5
+)
+
+g = g.map_lower(
+  sns.scatterplot
+)
+
+g = g.map_upper(
+  sns.kdeplot
+)
+
+g
+```
+]
+
+.pull-right-wide[
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-37-81.png" width="75%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Pair subsets
+
+
+```python
+x_vars = ["body_mass_g", "bill_length_mm", "bill_depth_mm", "flipper_length_mm"]
+y_vars = ["body_mass_g"]
+
+g = sns.PairGrid(penguins, hue="species", x_vars=x_vars, y_vars=y_vars, height=3)
+
+g = g.map_diag(sns.kdeplot, fill=True)
+g = g.map_offdiag(sns.scatterplot, size=penguins["body_mass_g"])
+g = g.add_legend()
+
+g
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-38-83.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Custom FacetGrids
+
+Just like `PairGrid`s it is possible to construct `FacetGrid`s from scratch,
+
+
+```python
+sns.FacetGrid(penguins, col="island", row="species")
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-39-85.png" width="40%" style="display: block; margin: auto;" /&gt;
+
+---
+
+
+```python
+g = sns.FacetGrid(penguins, col="island", hue="species")
+
+g = g.map(sns.scatterplot, "bill_length_mm", "bill_depth_mm")
+g = g.add_legend()
+
+g
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-40-87.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Custom plots / functions
+
+
+```python
+from scipy import stats
+def quantile_plot(x, **kwargs):
+    quantiles, xr = stats.probplot(x, fit=False)
+    plt.scatter(xr, quantiles, **kwargs)
+
+g = sns.FacetGrid(penguins, col="species", height=3, sharex=False)
+g.map(quantile_plot, "body_mass_g", s=2, alpha=0.5)
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-41-89.png" width="80%" style="display: block; margin: auto;" /&gt;
+
+
+
+.footnote[Example from axis grid [tutorial](https://seaborn.pydata.org/tutorial/axis_grids.html#using-custom-functions)]
+
+---
+
+## jointplot
+
+One final figure-level plot, is a joint plot which includes marginal distributions along the x and y-axis.
+
+
+```python
+g = sns.jointplot(data=penguins, x="bill_length_mm", y="bill_depth_mm", hue="species")
+```
+
+```
+## /opt/homebrew/lib/python3.9/site-packages/seaborn/axisgrid.py:1740: UserWarning: Tight layout not applied. tight_layout cannot make axes width small enough to accommodate all axes decorations
+##   f.tight_layout()
+```
+
+```python
+plt.show()
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-42-91.png" width="40%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Adjusting
+
+The main plot (joint) and the margins (marginal) can be modified by keywords or via layering (use `plot_joint()` and `plot_marginals()` methods).
+
+
+```python
+g = sns.jointplot(data=penguins, x="bill_length_mm", y="bill_depth_mm", hue="species", marginal_kws=dict(fill=False))
+```
+
+```
+## /opt/homebrew/lib/python3.9/site-packages/seaborn/axisgrid.py:1740: UserWarning: Tight layout not applied. tight_layout cannot make axes width small enough to accommodate all axes decorations
+##   f.tight_layout()
+```
+
+```python
+g = g.plot_joint(sns.kdeplot, alpha=0.5, levels=5)
+plt.show()
+```
+
+&lt;img src="Lec11_files/figure-html/unnamed-chunk-43-93.png" width="35%" style="display: block; margin: auto;" /&gt;
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

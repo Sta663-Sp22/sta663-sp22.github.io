@@ -1,0 +1,796 @@
+---
+title: "Lec 11 - seaborn"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{python setup}
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+plt.rcParams['figure.dpi'] = 200
+
+penguins = sns.load_dataset("penguins")
+```
+
+```{r r_setup}
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+```
+
+```{r hooks}
+local({
+  hook_err_old <- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old <- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("<string>:1: ", "", x)
+    hook_warn_old(x, options)
+  })
+})
+```
+
+---
+
+## seaborn
+
+> Seaborn is a library for making statistical graphics in Python. It builds on top of **matplotlib** and integrates closely with **pandas** data structures.
+>
+> Seaborn helps you explore and understand your data. Its plotting functions operate on dataframes and arrays containing whole datasets and internally perform the necessary semantic mapping and statistical aggregation to produce informative plots. Its dataset-oriented, declarative API lets you focus on what the different elements of your plots mean, rather than on the details of how to draw them.
+
+.small[
+```{python}
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
+]
+
+--
+
+.small[
+```{python}
+penguins = sns.load_dataset("penguins")
+penguins
+```
+]
+
+---
+
+## Basic plots
+
+.pull-left[
+```{python out.width="66%"}
+sns.relplot(
+  data=penguins,
+  x="bill_length_mm", 
+  y="bill_depth_mm"
+)
+```
+]
+
+.pull-right[
+```{python out.width="66%"}
+sns.relplot(
+  data=penguins,
+  x="bill_length_mm", 
+  y="bill_depth_mm",
+  hue="species"
+)
+```
+]
+
+---
+
+## A more complex plot
+
+```{python out.width="40%"}
+sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species",
+  col="island", row="species"
+)
+```
+
+---
+
+## Figure-level vs. axes-level functions
+
+```{r out.width="66%", echo=FALSE}
+knitr::include_graphics("imgs/seaborn_levels.png")
+```
+
+.footnote[
+These are not the only axes-level functions - we see additional plotting functions in a bit
+]
+
+
+---
+
+## displots
+
+.pull-left[
+```{python out.width="75%"}
+sns.displot(
+  data = penguins,
+  x = "bill_length_mm", hue = "species",
+  alpha = 0.5, aspect = 1.5
+)
+```
+]
+
+.pull-right[
+```{python out.width="75%"}
+sns.displot(
+  data = penguins,
+  x = "bill_length_mm", hue = "species",
+  kind = "kde", fill=True,
+  alpha = 0.5, aspect = 1
+)
+```
+]
+
+---
+
+## catplots
+
+.pull-left[
+```{python out.width="75%"}
+sns.catplot(
+  data = penguins,
+  x = "species", y = "bill_length_mm",
+  hue = "sex"
+)
+```
+]
+
+.pull-right[
+```{python out.width="75%"}
+sns.catplot(
+  data = penguins,
+  x = "species", y = "bill_length_mm",
+  hue = "sex",
+  kind = "box"
+)
+```
+]
+
+
+---
+
+## figure-level plot size
+
+To adjust the size of plots generated via a figure-level plotting function adjust the `aspect` and `height` arguments, figure width is `aspect * height`.
+
+.pull-left[
+```{python out.width="66%"}
+sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species",
+  aspect = 1, height = 3
+)
+```
+]
+
+.pull-right[
+```{python out.width="66%"}
+sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species",
+  aspect = 1, height = 5
+)
+```
+]
+
+.footnote[
+Note this is the size of a facet (Axes) not the figure
+]
+
+---
+
+## figure-level plot details
+
+.pull-left[
+```{python out.width="66%"}
+g = sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species",
+  aspect = 1
+)
+
+g
+
+print(g)
+```
+]
+
+.pull-right[
+```{python out.width="90%"}
+h = sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species", col="island",
+  aspect = 1/2
+)
+
+h
+
+print(h)
+```
+]
+
+---
+
+## FacetGird methods
+
+.small[
+| Method              | Description     |
+|---------------------|:-------------------------------------------------------------------------|
+| `add_legend()`      | Draw a legend, maybe placing it outside axes and resizing the figure     |
+| `despine()`	        | Remove axis spines from the facets.                                      |
+| `facet_axis()`    	| Make the axis identified by these indices active and return it.          |
+| `facet_data()`	    | Generator for name indices and data subsets for each facet.              |
+| `map()`	            | Apply a plotting function to each facet’s subset of the data.            |
+| `map_dataframe()`	  | Like `.map()` but passes args as strings and inserts data in kwargs.     |
+| `refline()`	        | Add a reference line(s) to each facet.                                   |
+| `savefig()`	        | Save an image of the plot.                                               |
+| `set()`	            | Set attributes on each subplot Axes.                                     |
+| `set_axis_labels()`	| Set axis labels on the left column and bottom row of the grid.           |
+| `set_titles()`	    | Draw titles either above each facet or on the grid margins.              |
+| `set_xlabels()`	    | Label the x axis on the bottom row of the grid.                          |
+| `set_xticklabels()`	| Set x axis tick labels of the grid.                                      |
+| `set_ylabels()`	    | Label the y axis on the left column of the grid.                         |
+| `set_yticklabels()`	| Set y axis tick labels on the left column of the grid.                   |
+| `tight_layout()`	  | Call fig.tight_layout within rect that exclude the legend.               |
+]
+
+---
+
+## Adjusting labels
+
+.pull-left[
+```{python out.width="66%"}
+sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species",
+  aspect = 1
+).set_axis_labels(
+  "Bill Length (mm)", "Bill Depth (mm)"
+)
+```
+]
+
+.pull-right[
+```{python out.width="90%"}
+sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species", col="island",
+  aspect = 1/2
+).set_axis_labels(
+  "Bill Length (mm)", "Bill Depth (mm)"
+).set_titles(
+  "{col_var} - {col_name}" 
+)
+```
+]
+
+---
+
+## FacetGrid attributes
+
+<br/><br/>
+
+| Attribute   | Description    |
+|-------------|:--------------------------------------------------------------------|
+| `ax`	      | The `matplotlib.axes.Axes` when no faceting variables are assigned. | 
+| `axes`	    | An array of the `matplotlib.axes.Axes` objects in the grid.         | 
+| `axes_dict` | A mapping of facet names to corresponding `matplotlib.axes.Axes`.   | 
+| `figure`	  | Access the `matplotlib.figure.Figure` object underlying the grid.   | 
+| `legend`    |	The `matplotlib.legend.Legend` object, if present.                  | 
+
+---
+
+## Using axes to modify plots
+
+.pull-left[
+```{python out.width="66%"}
+g = sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species",
+  aspect = 1
+)
+g.ax.axvline(
+  x = penguins.bill_length_mm.mean(), c="k"
+)
+```
+]
+
+.pull-right[
+```{python out.width="90%"}
+h = sns.relplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species", col="island",
+  aspect = 1/2
+)
+mean_bill_dep = penguins.bill_depth_mm.mean()
+
+[ ax.axhline(y=mean_bill_dep, c="c") 
+  for row in h.axes for ax in row ]
+
+```
+]
+
+---
+
+## Why figure-level functions
+
+.pull-left[
+#### Advantages:
+* Easy faceting by data variables
+* Legend outside of plot by default
+* Easy figure-level customization
+* Different figure size parameterization
+]
+
+.pull-right[
+#### Disadvantages:
+* Many parameters not in function signature
+* Cannot be part of a larger matplotlib figure
+* Different API from matplotlib
+* Different figure size parameterization
+]
+
+.footnote[Details based on [seaborn docs](https://seaborn.pydata.org/tutorial/function_overview.html#relative-merits-of-figure-level-functions)]
+
+---
+
+## lmplots
+
+There is one last figure-level plot type - `lmplot()` which is a convenient interface to fitting and ploting regression models across subsets of data,
+
+```{python out.width="100%"}
+sns.lmplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species", col="island",
+  aspect = 1, truncate=False
+)
+```
+
+---
+
+## axes-level functions
+
+These functions return a `matplotlib.pyplot.Axes` object instead of a `FacetGrid` giving more direct control over the plot using basic matplotlib tools.
+
+.pull-left[
+```{python axes_scatter, eval=FALSE}
+plt.figure()
+
+sns.scatterplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species"
+)
+
+plt.xlabel("Bill Length (mm)")
+plt.ylabel("Bill Depth (mm)")
+plt.title("Length vs. Depth")
+
+plt.show()
+```
+]
+
+.pull-right[
+```{python ref.label="axes_scatter", echo=FALSE, out.width="85%"}
+```
+]
+
+---
+
+## subplots - pyplot style
+
+.pull-left[
+```{python pyplot_sub, eval=FALSE}
+plt.figure(figsize=(4,6), layout="constrained")
+
+plt.subplot(211)
+sns.scatterplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species"
+)
+
+plt.subplot(212)
+sns.countplot(
+  data=penguins,
+  x="species"
+)
+
+plt.show()
+```
+]
+
+.pull-right[
+```{python ref.label="pyplot_sub", echo=FALSE, out.width="66%"}
+```
+]
+
+---
+
+## subplots - OO style
+
+.pull-left[
+```{python oo_sub, eval=FALSE}
+fig, axs = plt.subplots(
+  2, 1, figsize=(4,6), 
+  layout="constrained",
+  sharex=True  
+)
+
+sns.scatterplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species",
+  ax = axs[0]
+)
+
+sns.kdeplot(
+  data=penguins,
+  x="bill_length_mm", hue="species",
+  fill=True, alpha=0.5,
+  ax = axs[1]
+)
+
+plt.show()
+```
+]
+
+.pull-right[
+```{python ref.label="oo_sub", echo=FALSE, out.width="66%"}
+```
+]
+
+
+---
+
+## layering plots
+
+.pull-left[
+```{python layer, eval=FALSE}
+plt.figure(layout="constrained")
+
+sns.kdeplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species"
+)
+
+sns.scatterplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species", alpha=0.5
+)
+
+sns.rugplot(
+  data=penguins,
+  x="bill_length_mm", y="bill_depth_mm",
+  hue="species"
+)
+
+plt.legend()
+
+plt.show()
+```
+]
+
+.pull-right[
+```{python ref.label="layer", echo=FALSE, out.width="85%"}
+```
+]
+
+---
+
+## Themes
+
+Seaborn comes with a number of themes (`darkgrid`, `whitegrid`, `dark`, `white`, and `ticks`) which can be enabled by `sns.set_theme()` at the figure level or `sns.axes_style()` at the axes level.
+
+.pull-left[ .small[
+```{python out.width="45%"}
+def sinplot():
+    x = np.linspace(0, 14, 100)
+    for i in range(1, 7):
+        plt.plot(x, np.sin(x + i * .5) * (7 - i))
+        
+sinplot()
+plt.show()
+```
+] ]
+
+
+.pull-right[ .small[
+```{python out.width="45%"}
+with sns.axes_style("darkgrid"):
+  sinplot()
+  plt.show()
+```
+] ]
+
+---
+
+.pull-left[ .small[
+```{python out.width="45%"}
+with sns.axes_style("whitegrid"):
+  sinplot()
+  plt.show()
+  
+with sns.axes_style("dark"):
+  sinplot()
+  plt.show()
+```
+] ]
+
+.pull-right[ .small[
+```{python out.width="45%"}
+with sns.axes_style("white"):
+  sinplot()
+  plt.show()
+
+with sns.axes_style("ticks"):
+  sinplot()
+  plt.show()
+```
+] ]
+
+---
+
+## Context
+
+.pull-left[ .small[
+```{python out.width="40%"}
+sns.set_context("notebook")
+sinplot()
+plt.show()
+  
+sns.set_context("paper")
+sinplot()
+plt.show()
+```
+] ]
+
+.pull-right[ .small[
+```{python out.width="40%"}
+sns.set_context("talk")
+sinplot()
+plt.show()
+
+sns.set_context("poster")
+sinplot()
+plt.show()
+```
+] ]
+
+---
+
+## Color palettes
+
+```{python include=FALSE}
+# cleanup
+plt.close('all')
+
+def show_palette(pal=None, n=8):
+  x = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")[:n]
+  
+  plt.figure(figsize = (9,1), layout="constrained")
+  sns.countplot(x=x, palette = sns.color_palette(pal, n))
+  plt.axis("off")
+  plt.show()
+  plt.close()
+```
+
+```{python include=FALSE}
+from io import BytesIO
+import matplotlib.image as mpimage
+
+def show_cont_palette(pal):
+  pal = sns.color_palette(pal, as_cmap=True)
+  png = BytesIO(pal._repr_png_())
+  img = mpimage.imread(png,"png")
+
+  plt.figure(figsize = (9,1), layout="constrained")
+  plt.imshow(img)
+  plt.axis("off")
+  plt.show()
+  plt.close()
+```
+
+All of the examples below are the result of calls to `sns.color_palette()` with `as_cmap=True` for the continuous case,
+
+.pull-left[ .small[
+```{python out.width="75%"}
+show_palette()
+show_palette("tab10")
+show_palette("hls")
+show_palette("husl")
+show_palette("Set2")
+```
+] ]
+
+.pull-right[ .small[
+```{python out.width="75%"}
+show_cont_palette("cubehelix")
+show_cont_palette("light:b")
+show_cont_palette("dark:salmon_r")
+show_cont_palette("YlOrBr")
+show_cont_palette("vlag")
+```
+] ]
+
+.footnote[
+See more examples in the color palettes [tutorial](https://seaborn.pydata.org/tutorial/color_palettes.html)
+]
+
+---
+
+## Pair plots
+
+```{python out.width="45%"}
+sns.pairplot(data = penguins, height=5)
+```
+
+---
+
+```{python out.width="50%"}
+sns.pairplot(data = penguins, hue="species", height=5, corner=True)
+```
+
+---
+
+## PairGrid
+
+`pairplot()` is a special case of the more general `PairGrid` - once constructed there are methods that allow for mapping plot functions of the different axes,
+
+```{python out.width="40%"}
+sns.PairGrid(penguins, hue="species", height=5)
+```
+
+---
+
+## Mapping
+
+.pull-left-narrow[
+```{python pairgrid1, eval=FALSE}
+g = sns.PairGrid(
+  penguins, hue="species",
+  height=3
+)
+
+g = g.map_diag(
+  sns.histplot, alpha=0.5
+)
+
+g = g.map_lower(
+  sns.scatterplot
+)
+
+g = g.map_upper(
+  sns.kdeplot
+)
+
+g
+```
+]
+
+.pull-right-wide[
+```{python ref.label="pairgrid1", echo=FALSE, out.width="75%"}
+```
+]
+
+---
+
+## Pair subsets
+
+```{python out.width="100%"}
+x_vars = ["body_mass_g", "bill_length_mm", "bill_depth_mm", "flipper_length_mm"]
+y_vars = ["body_mass_g"]
+
+g = sns.PairGrid(penguins, hue="species", x_vars=x_vars, y_vars=y_vars, height=3)
+
+g = g.map_diag(sns.kdeplot, fill=True)
+g = g.map_offdiag(sns.scatterplot, size=penguins["body_mass_g"])
+g = g.add_legend()
+
+g
+```
+
+---
+
+## Custom FacetGrids
+
+Just like `PairGrid`s it is possible to construct `FacetGrid`s from scratch,
+
+```{python out.width="40%"}
+sns.FacetGrid(penguins, col="island", row="species")
+```
+
+---
+
+```{python out.width="75%"}
+g = sns.FacetGrid(penguins, col="island", hue="species")
+
+g = g.map(sns.scatterplot, "bill_length_mm", "bill_depth_mm")
+g = g.add_legend()
+
+g
+```
+
+---
+
+## Custom plots / functions
+
+```{python out.width="80%"}
+from scipy import stats
+def quantile_plot(x, **kwargs):
+    quantiles, xr = stats.probplot(x, fit=False)
+    plt.scatter(xr, quantiles, **kwargs)
+
+g = sns.FacetGrid(penguins, col="species", height=3, sharex=False)
+g.map(quantile_plot, "body_mass_g", s=2, alpha=0.5)
+```
+
+
+
+.footnote[Example from axis grid [tutorial](https://seaborn.pydata.org/tutorial/axis_grids.html#using-custom-functions)]
+
+---
+
+## jointplot
+
+One final figure-level plot, is a joint plot which includes marginal distributions along the x and y-axis.
+
+```{python out.width="40%"}
+g = sns.jointplot(data=penguins, x="bill_length_mm", y="bill_depth_mm", hue="species")
+plt.show()
+```
+
+---
+
+## Adjusting
+
+The main plot (joint) and the margins (marginal) can be modified by keywords or via layering (use `plot_joint()` and `plot_marginals()` methods).
+
+```{python out.width="35%"}
+g = sns.jointplot(data=penguins, x="bill_length_mm", y="bill_depth_mm", hue="species", marginal_kws=dict(fill=False))
+g = g.plot_joint(sns.kdeplot, alpha=0.5, levels=5)
+plt.show()
+```
+
