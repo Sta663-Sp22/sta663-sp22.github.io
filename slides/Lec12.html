@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 12 - Numerical optimization</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs-2.11/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 12 - Numerical optimization
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+```python
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+plt.rcParams['figure.dpi'] = 200
+
+from scipy import optimize
+```
+
+
+```r
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+```
+
+
+```r
+local({
+  hook_err_old &lt;- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old &lt;- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("&lt;string&gt;:1: ", "", x)
+    hook_warn_old(x, options)
+  })
+})
+```
+
+---
+
+## Numerical optimization - line search
+
+Today we will be discussing one particular approach for numerical optimization - line search. This is a family of algorithmic approaches that attempt to find (global or local) minima via iteration on an initial guess. Generally they are an attempt to solve,
+
+$$
+\underset{\alpha&gt;0}{\text{min}} f(x_k + \alpha \, p_k)
+$$
+where `\(f()\)` is the function we are attempting to minimize, `\(x_k\)` is our current guess at iteration `\(k\)` and `\(\alpha\)` is the step length and `\(p_k\)` is the direction of movement.
+
+
+We will only be dipping our toes in the water of this area but the goal is to provide some context for some of the more common (and easier) use cases. With that in mind, we will be looking at methods for smooth functions (2nd derivative exists and is continuous).
+
+---
+
+## Naive Gradient Descent
+
+We will start with a naive approach to gradient descent where we choose a step size and determine the direction based on the gradient of the function.
+
+
+```python
+def grad_desc_1d(x0, f, grad, step, max_step=100, tol = 1e-6):
+  all_x_i = [x0]
+  all_f_i = [f(x0)]
+  
+  x_i = x0
+  
+  try:
+    for i in range(max_step):
+      dx_i = grad(x_i)
+      x_i = x_i - dx_i * step
+      f_x_i = f(x_i)
+      
+      all_x_i.append(x_i)
+      all_f_i.append(f_x_i)
+      
+      if np.abs(dx_i) &lt; tol:
+        break
+    
+  except OverflowError as err:
+    print(f"{type(err).__name__}: {err}")
+  
+  if len(all_x_i) == max_step+1:
+    print("Warning - Failed to converge!")
+  
+  return all_x_i, all_f_i
+```
+
+---
+
+
+
+## A basic example
+
+.pull-left[
+$$
+`\begin{aligned}
+f(x) &amp;= x^2 \\
+\nabla f(x) &amp;= 2x
+\end{aligned}`
+$$
+]
+
+.pull-right[
+
+```python
+f = lambda x: x**2
+grad = lambda x: 2*x
+```
+]
+
+--
+
+&lt;div&gt;
+
+.pull-left[
+
+```python
+opt = grad_desc_1d(-2., f, grad, step=0.25)
+plot_1d_traj( (-2, 2), f, opt )
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-4-1.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+--
+
+.pull-right[
+
+```python
+opt = grad_desc_1d(-2, f, grad, step=0.5)
+plot_1d_traj( (-2, 2), f, opt )
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-5-3.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+&lt;/div&gt;
+
+---
+
+## Where can it go wrong?
+
+.pull-left[
+
+```python
+opt = grad_desc_1d(-2, f, grad, step=0.9)
+plot_1d_traj( (-2,2), f, opt )
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-6-5.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+--
+
+.pull-right[
+
+```python
+opt = grad_desc_1d(-2, f, grad, step=1)
+```
+
+```
+## Warning - Failed to converge!
+```
+
+```python
+plot_1d_traj( (-2,2), f, opt )
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-7-7.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+
+
+---
+
+## Local minima of a quartic
+
+.pull-left[
+$$
+`\begin{aligned}
+f(x) &amp;= x^4 + x^3 -x^2 - x \\
+\nabla f(x) &amp;= 4x^3 + 3x^2 - 2x - 1
+\end{aligned}`
+$$
+]
+
+.pull-right[
+
+```python
+f = lambda x: x**4 + x**3 - x**2 - x 
+grad = lambda x: 4*x**3 + 3*x**2 - 2*x - 1
+```
+]
+
+--
+
+&lt;div&gt;
+
+.pull-left[
+
+
+```python
+opt = grad_desc_1d(-1.5, f, grad, step=0.2)
+plot_1d_traj( (-1.5, 1.5), f, opt )
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-9-9.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+--
+
+.pull-right[
+
+```python
+opt = grad_desc_1d(-1.5, f, grad, step=0.25)
+plot_1d_traj( (-1.5, 1.5), f, opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-10-11.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+&lt;/div&gt;
+
+---
+
+## Alternative starting points
+
+.pull-left[
+
+
+```python
+opt = grad_desc_1d(1.5, f, grad, step=0.2)
+plot_1d_traj( (-1.5, 1.5), f, opt )
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-11-13.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+--
+
+.pull-right[
+
+```python
+opt = grad_desc_1d(1.25, f, grad, step=0.2)
+plot_1d_traj( (-1.5, 1.5), f, opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-12-15.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+&lt;/div&gt;
+
+---
+
+## Problematic step sizes
+
+If the step size is too large it is possible for the algorithm to 
+
+.pull-left[
+
+
+```python
+opt = grad_desc_1d(-1.5, f, grad, step=0.75)
+```
+
+```
+## OverflowError: (34, 'Result too large')
+```
+
+```python
+plot_1d_traj( (-1.5, 1.5), f, opt )
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-13-17.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+--
+
+.pull-right[
+
+```python
+opt = grad_desc_1d(1.5, f, grad, step=0.25)
+```
+
+```
+## OverflowError: (34, 'Result too large')
+```
+
+```python
+plot_1d_traj( (-1.5, 1.5), f, opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-14-19.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+##  Gradient Descent w/ backtracking
+
+.pull-left[
+As we have just seen having too large of a step can&lt;br/&gt;
+be problematic, one solution is to allow the step size&lt;br/&gt;
+to adapt.
+
+Backtracking involves checking if the proposed move is&lt;br/&gt;
+advantageous (i.e. `\(f(x_k+\alpha p_k) &lt; f(x_k)\)`),
+
+* If it is advantageous then accept &lt;br/&gt;
+  `\(x_{k+1} = x_k+\alpha p_k\)`.
+
+* If not, shrink `\(\alpha\)` by a factor `\(\tau\)` (e.g. 0.5) &lt;br/&gt;
+  and check again.
+  
+Pick larger `\(\alpha\)` to start as this will not fix &lt;br/&gt;
+inefficiency of small step size.
+]
+
+.footnote[
+This is a hand wavy version of the [Armijo-Goldstein condition](https://en.wikipedia.org/wiki/Backtracking_line_search) &lt;br/&gt; 
+Check `\(f(x_k-\alpha \nabla f(x_k)) \leq f(x_k) - c \alpha (\nabla f(x_k))^2\)`.
+]
+
+.pull-right[ .small[
+
+```python
+def grad_desc_1d_bt(x, f, grad, step, tau=0.5, max_step=100, max_back=10, tol = 1e-6):
+  all_x_i = [x]
+  all_f_i = [f(x)]
+  
+  try:
+    for i in range(max_step):
+      dx = grad(x)
+      
+*     for j in range(max_back):
+*       new_x = x + step * (-dx)
+*       new_f_x = f(new_x)
+*  
+*       if (new_f_x &lt; all_f_i[-1]):
+*         break
+*  
+*       step = step * tau
+      
+      x = new_x
+      f_x = new_f_x
+      
+      all_x_i.append(x)
+      all_f_i.append(f_x)
+      
+      if np.abs(dx) &lt; tol:
+        break
+    
+  except OverflowError as err:
+    print(f"{type(err).__name__}: {err}")
+  
+  if len(all_x_i) == max_step+1:
+    print("Warning - Failed to converge!")
+  
+  return all_x_i, all_f_i
+```
+] ]
+
+---
+
+.pull-left[
+
+```python
+opt = grad_desc_1d_bt(-1.5, f, grad, step=0.75, tau=0.5)
+plot_1d_traj( (-1.5, 1.5), f, opt )
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-16-21.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+--
+
+.pull-right[
+
+```python
+opt = grad_desc_1d_bt(1.5, f, grad, step=0.25, tau=0.5)
+plot_1d_traj( (-1.5, 1.5), f, opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-17-23.png" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## A 2d cost function
+
+
+
+
+We will be using `mk_quad()` to create quadratic functions with varying conditioning (as specified by the `epsilon` parameter).
+
+$$
+`\begin{align}
+f(x,y) &amp;= 0.33(x^2 + \epsilon^2 y^2 ) \\
+\nabla f(x,y) &amp;= \left[ \begin{matrix}
+0.66 \, x \\
+0.66 \, \epsilon^2 \, y 
+\end{matrix} \right] \\
+\nabla^2 f(x,y) &amp;= \left[\begin{array}{cc}
+0.66  &amp; 0 \\
+0     &amp; 0.66 \, \epsilon^2
+\end{array}\right]
+\end{align}`
+$$
+
+---
+
+## Examples
+
+
+
+.pull-left[
+
+```python
+f, grad, hess = mk_quad(0.7)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.7$")
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-20-25.png" width="100%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_quad(0.02)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.02$")
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-21-27.png" width="100%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## 2d gradient descent w/ backtracking
+
+.midi[
+
+```python
+def grad_desc_2d(x0, f, grad, step, tau=0.5, max_step=100, max_back=10, tol = 1e-6):
+  x_i = x0
+  all_x_i = [x_i[0]]
+  all_y_i = [x_i[1]]
+  all_f_i = [f(x_i)]
+  
+  for i in range(max_step):
+    dx_i = grad(x_i)
+    
+    for j in range(max_back):
+      new_x_i = x_i - dx_i * step
+      new_f_i = f(new_x_i)
+      
+      if (new_f_i &lt; all_f_i[-1]):
+        break
+      
+      step = step * tau
+      
+    x_i, f_i = new_x_i, new_f_i
+      
+    all_x_i.append(x_i[0])
+    all_y_i.append(x_i[1])
+    all_f_i.append(f_i)
+      
+*   if np.sqrt(np.sum(dx_i**2)) &lt; tol:
+      break
+  
+  return all_x_i, all_y_i, all_f_i
+```
+]
+
+---
+
+## Well conditioned cost function
+
+.pull-left[
+
+```python
+f, grad, hess = mk_quad(0.7)
+opt = grad_desc_2d((1.6, 1.1), f, grad, step=1)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.7$", traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-23-29.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_quad(0.7)
+opt = grad_desc_2d((1.6, 1.1), f, grad, step=2)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.7$", traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-24-31.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Ill-conditioned cost function
+
+.pull-left[
+
+```python
+f, grad, hess = mk_quad(0.02)
+opt = grad_desc_2d((1.6, 1.1), f, grad, step=1)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.02$", traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-25-33.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_quad(0.02)
+opt = grad_desc_2d((1.6, 1.1), f, grad, step=2)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.02$", traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-26-35.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Rosenbrock function (very ill conditioned)
+
+.pull-left[
+
+```python
+f, grad, hess = mk_rosenbrock()
+opt = grad_desc_2d((1.6, 1.1), f, grad, step=0.25)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-27-37.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_rosenbrock()
+opt = grad_desc_2d((-0.5, 0), f, grad, step=0.25)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-28-39.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Taylor Expansion
+
+For any arbitary smooth function, we can construct a 2nd order taylor approximation as follows,
+
+$$
+`\begin{align}
+f(x_k + \alpha \, p_k) 
+&amp;= f(x_k) + \alpha \, p_k^T \nabla f(x_k + \alpha \, p_k) \\
+&amp;= f(x_k) + \alpha \, p_k^T \nabla f(x_k) + \frac{1}{2} \alpha^2 p_k^T \, \nabla^2 f(x_k + \alpha \, p_k) \, p_k \\
+&amp;\approx f(x_k) + \alpha \, p_k^T \nabla f(x_k) + \frac{1}{2} \alpha^2 p_k^T \, \nabla^2 f(x_k) \, p_k
+\end{align}`
+$$
+---
+
+## Newton's Method in 1d
+
+Lets simplify things for now and consider just the 1d case and write `\(\alpha\,p_k\)` as `\(\Delta\)`,
+
+$$
+f(x_k + \Delta) \approx f(x_k) + \Delta f'(x_k) + \frac{1}{2} \Delta^2 f''(x_k)
+$$
+
+to find the `\(\Delta\)` that minimizes this function we can take a derivative with regard to `\(\Delta\)` and set the equation equal to zero which gives,
+
+$$
+0 = f'(x_k) + \Delta f''(x_k) \;\; \Rightarrow \;\; \Delta = -\frac{f'(x_k)}{f''(x_k)}
+$$
+which then suggests an iterative update rule of 
+
+$$
+x\_{k+1} = x\_{k} -\frac{f'(x\_k)}{f''(x\_k)}
+$$
+
+---
+
+## Generalizing to `\(n\)`d
+
+Based on the same argument we can see the follow result for a function in `\(\mathbb{R}^n\)`,
+
+$$
+f(x_k + \Delta) \approx f(x_k) + \Delta^T \nabla f(x_k) + \frac{1}{2} \Delta^T \, \nabla^2 f(x_k) \,\Delta
+$$
+
+$$
+0 = \nabla f(x_k) + \nabla^2 f(x_k) \, \Delta \;\; \Rightarrow \;\; \Delta = -\left(\nabla^2 f(x_k)\right)^{-1} \nabla f(x_k) f(x_k)
+$$
+which then suggests an iterative update rule of 
+
+$$
+x\_{k+1} = x\_{k} - (\nabla^2 f(x\_k))^{-1} \, \nabla f(x\_k)
+$$
+
+---
+
+
+```python
+def newtons_method(x0, f, grad, hess, max_iter=100, max_back=10, tol=1e-8):
+    all_x_i = [x0[0]]
+    all_y_i = [x0[1]]
+    all_f_i = [f(x0)]
+    
+    x_i = x0
+    
+    for i in range(max_iter):
+      g_i = grad(x_i)
+      step = - np.linalg.solve(hess(x_i), g_i)
+      
+      for j in range(max_back):
+        new_x_i = x_i + step
+        new_f_i = f(new_x_i)
+      
+        if (new_f_i &lt; all_f_i[-1]):
+          break
+      
+        step /= 2
+      
+      x_i, f_i = new_x_i, new_f_i
+      
+      all_x_i.append(x_i[0])
+      all_y_i.append(x_i[1])
+      all_f_i.append(f_i)
+      
+      if np.sqrt(np.sum(g_i**2)) &lt; tol:
+        break
+    
+    return all_x_i, all_y_i, all_f_i
+```
+
+
+.footnote[Based on Chapter 5.1 from [Core Statistics](https://www.maths.ed.ac.uk/~swood34/core-statistics.pdf)]
+
+---
+
+## Well conditioned quadratic cost function
+
+.pull-left[
+
+```python
+f, grad, hess = mk_quad(0.7)
+opt = newtons_method((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-30-41.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_quad(0.02)
+opt = newtons_method((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-31-43.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Rosenbrock function (very ill conditioned)
+
+.pull-left[
+
+```python
+f, grad, hess = mk_rosenbrock()
+opt = newtons_method((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-32-45.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_rosenbrock()
+opt = newtons_method((-0.5, 0), f, grad, hess)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-33-47.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Conjugate gradients
+
+This is a general approach for solving a system of linear equations with the form `\(Ax=b\)` where `\(A\)` is an `\(n \times n\)` symmetric positive definite matrix and b is `\(n \times 1\)` with `\(x\)` unknown.
+
+This type of problem can also be expressed as a quadratic minimization problems of the form,
+
+$$
+\underset{x}{\text{min}} \; f(x) = \frac{1}{2} x^T \, A \, x - b^T x + c
+$$
+
+The goal is then to find `\(n\)` conjugate vectors ( `\(p^T_i \, A \, p_j = 0\)` for all `\(i \neq j\)`) and their coefficients such that 
+
+$$ x\_* = \sum_{i=1}^n \alpha_i \, p_i $$
+
+---
+
+## Conjugate gradient algorithm
+
+.pull-left[
+Given `\(x_0\)` we set the following initial values,
+
+`$$\begin{align}
+r_0 &amp;= \nabla f(x_0) \\
+p_0 &amp;= -r_0 \\
+k &amp;= 0
+\end{align}$$`
+
+while `\(\|r_k\|_2 &gt; \text{tol}\)`,
+
+`$$\begin{align}
+\alpha_k &amp;= \frac{r_k^T \, p_k}{p_k^T \, \nabla^2 f(x_k) \, p_k} \\
+x_{k+1} &amp;= x_k + \alpha_k \, p_k \\
+r_{k+1} &amp;= \nabla f(x_{k+1}) \\
+\beta_{k} &amp;= \frac{ r^T_{k+1} \, \nabla^2 f(x_k)  \, p_{k} }{p_k^T \, \nabla^2 f(x_k) \, p_k} \\
+p_{k+1} &amp;= -r_{k+1} + \beta_{k} \, p_k \\
+k &amp;= k+1
+\end{align}$$`
+]
+
+.footnote[
+From Chapter 5.1 of [Numerical Optimization](https://find.library.duke.edu/catalog/DUKE004973775) 2006
+]
+
+.pull-right[
+
+```python
+def conjugate_gradient(x0, f, grad, hess, max_iter=100, tol=1e-8):
+    all_x_i = [x0[0]]
+    all_y_i = [x0[1]]
+    all_f_i = [f(x0)]
+    
+    x_i = x0
+    r_i = grad(x0)
+    p_i = -r_i
+    
+    for i in range(max_iter):
+      a_i = - r_i.T @ p_i / (p_i.T @ hess(x_i) @ p_i)
+      x_i_new = x_i + a_i * p_i
+      r_i_new = grad(x_i_new)
+      b_i = (r_i_new.T @ hess(x_i) @ p_i) / (p_i.T @ hess(x_i) @ p_i)
+      p_i_new = -r_i_new + b_i * p_i
+      
+      x_i, r_i, p_i = x_i_new, r_i_new, p_i_new
+      
+      all_x_i.append(x_i[0])
+      all_y_i.append(x_i[1])
+      all_f_i.append(f(x_i))
+      
+      if np.sqrt(np.sum(r_i_new**2)) &lt; tol:
+        break
+    
+    return all_x_i, all_y_i, all_f_i
+```
+]
+
+---
+
+## Trajectory
+
+.pull-left[
+
+```python
+f, grad, hess = mk_quad(0.7)
+opt = conjugate_gradient((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.7$", traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-35-49.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_quad(0.02)
+opt = conjugate_gradient((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.02$", traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-36-51.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Rosenbrock's function 
+
+.pull-left[
+
+```python
+f, grad, hess = mk_rosenbrock()
+opt = conjugate_gradient((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-37-53.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_rosenbrock()
+opt = conjugate_gradient((-0.5, 0), f, grad, hess)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-38-55.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+
+---
+
+## CG in scipy
+
+Scipy's optimize module implements the conjugate gradient algorithm by Polak and Ribiere, a variant that does not require the hessian,
+
+.pull-left[
+#### Differences:
+
+* `\(\alpha_k\)` is calculated via a line search along the direction `\(p_k\)`
+
+* `\(\beta_{k+1}\)` is replaced with
+
+$$
+\beta\_{k+1}^{PR} = \frac{\nabla f(x\_{k+1}) \left(\nabla f(x\_{k+1}) - \nabla f(x\_{k})\right)}{\nabla f(x\_k)^T \, \nabla f(x\_k)}
+$$
+
+]
+
+.pull-right[
+
+```python
+def conjugate_gradient_scipy(x0, f, grad, tol=1e-8):
+    all_x_i = [x0[0]]
+    all_y_i = [x0[1]]
+    all_f_i = [f(x0)]
+    
+    def store(X):
+        x, y = X
+        all_x_i.append(x)
+        all_y_i.append(y)
+        all_f_i.append(f(X))
+    
+    optimize.minimize(
+      f, x0, jac=grad, method="CG", 
+      callback=store, tol=tol
+    )
+    
+    return all_x_i, all_y_i, all_f_i
+```
+]
+
+---
+
+## Trajectory
+
+.pull-left[
+
+```python
+f, grad, hess = mk_quad(0.7)
+opt = conjugate_gradient_scipy((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.7$", traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-40-57.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_quad(0.02)
+opt = conjugate_gradient_scipy((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.02$", traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-41-59.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Rosenbrock's function 
+
+.pull-left[
+
+```python
+f, grad, hess = mk_rosenbrock()
+opt = conjugate_gradient_scipy((1.6, 1.1), f, grad)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-42-61.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_rosenbrock()
+opt = conjugate_gradient_scipy((-0.5, 0), f, grad)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-43-63.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Method: Newton-CG
+
+Is a variant of Newtons method but does not require inverting the hessian, or even a hessian function - in which case it can be estimated by finite differencing of the gradient.
+
+.pull-left[
+
+```python
+def newton_cg(x0, f, grad, hess=None, tol=1e-8):
+    all_x_i = [x0[0]]
+    all_y_i = [x0[1]]
+    all_f_i = [f(x0)]
+    
+    def store(X):
+        x, y = X
+        all_x_i.append(x)
+        all_y_i.append(y)
+        all_f_i.append(f(X))
+    
+    optimize.minimize(
+      f, x0, jac=grad, hess=hess, tol=tol,
+      method="Newton-CG", callback=store 
+    )
+    
+    return all_x_i, all_y_i, all_f_i
+```
+]
+
+---
+
+## Trajectory - well conditioned
+
+.pull-left[
+
+```python
+f, grad, hess = mk_quad(0.7)
+opt = newton_cg((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt, title="w/o hessian")
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-45-65.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_quad(0.7)
+opt = newton_cg((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt, title="w/ hessian")
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-46-67.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Trajectory - ill-conditioned
+
+.pull-left[
+
+```python
+f, grad, hess = mk_quad(0.02)
+opt = newton_cg((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt, title="w/o hessian")
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-47-69.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_quad(0.02)
+opt = newton_cg((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt, title="w/ hessian")
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-48-71.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Rosenbrock's function 
+
+.pull-left[
+
+```python
+f, grad, hess = mk_rosenbrock()
+opt = newton_cg((1.6, 1.1), f, grad)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt, title="w/o hessian")
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-49-73.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_rosenbrock()
+opt = newton_cg((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt, title="w/ hessian")
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-50-75.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Method: BFGS
+
+The Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm is a quasi-newton which iterative improves its approximation of the hessian,
+.pull-left[
+
+```python
+def bfgs(x0, f, grad, hess=None, tol=1e-8):
+    all_x_i = [x0[0]]
+    all_y_i = [x0[1]]
+    all_f_i = [f(x0)]
+    
+    def store(X):
+        x, y = X
+        all_x_i.append(x)
+        all_y_i.append(y)
+        all_f_i.append(f(X))
+    
+    optimize.minimize(
+      f, x0, jac=grad, tol=tol,
+      method="BFGS", callback=store 
+    )
+    
+    return all_x_i, all_y_i, all_f_i
+```
+]
+
+---
+
+## Trajectory
+
+.pull-left[
+
+```python
+f, grad, hess = mk_quad(0.7)
+opt = bfgs((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-52-77.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_quad(0.02)
+opt = bfgs((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-53-79.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Rosenbrock's function 
+
+.pull-left[
+
+```python
+f, grad, hess = mk_rosenbrock()
+opt = bfgs((1.6, 1.1), f, grad)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-54-81.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_rosenbrock()
+opt = bfgs((-0.5, 0), f, grad)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-55-83.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+
+---
+
+## Method: Nelder-Mead
+
+This is a gradient free method that uses a series of simplexes which are used to iteratively bracket the minimum.
+
+.pull-left[
+
+```python
+def nelder_mead(x0, f, grad, hess=None, tol=1e-8):
+    all_x_i = [x0[0]]
+    all_y_i = [x0[1]]
+    all_f_i = [f(x0)]
+    
+    def store(X):
+        x, y = X
+        all_x_i.append(x)
+        all_y_i.append(y)
+        all_f_i.append(f(X))
+    
+    optimize.minimize(
+      f, x0, tol=tol,
+      method="Nelder-Mead", callback=store 
+    )
+    
+    return all_x_i, all_y_i, all_f_i
+```
+]
+
+---
+
+## Nelder-Mead
+
+
+.center[
+&lt;iframe width="1000" height="560" src="http://nelder-mead.s3-website.us-east-2.amazonaws.com/"&gt;
+&lt;/iframe&gt;
+]
+
+.footnote[From https://github.com/greg-rychlewski/nelder-mead]
+
+---
+
+## Trajectory
+
+.pull-left[
+
+```python
+f, grad, hess = mk_quad(0.7)
+opt = nelder_mead((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-57-85.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_quad(0.02)
+opt = nelder_mead((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-58-87.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Rosenbrock's function 
+
+.pull-left[
+
+```python
+f, grad, hess = mk_rosenbrock()
+opt = nelder_mead((1.6, 1.1), f, grad)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-59-89.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+f, grad, hess = mk_rosenbrock()
+opt = nelder_mead((-0.5, 0), f, grad)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+
+&lt;img src="Lec12_files/figure-html/unnamed-chunk-60-91.png" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightLines": true,
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

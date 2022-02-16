@@ -1,0 +1,1193 @@
+---
+title: "Lec 12 - Numerical optimization"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightLines: true
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{python setup}
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+plt.rcParams['figure.dpi'] = 200
+
+from scipy import optimize
+```
+
+```{r r_setup}
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+```
+
+```{r hooks}
+local({
+  hook_err_old <- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old <- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("<string>:1: ", "", x)
+    hook_warn_old(x, options)
+  })
+})
+```
+
+---
+
+## Numerical optimization - line search
+
+Today we will be discussing one particular approach for numerical optimization - line search. This is a family of algorithmic approaches that attempt to find (global or local) minima via iteration on an initial guess. Generally they are an attempt to solve,
+
+$$
+\underset{\alpha>0}{\text{min}} f(x_k + \alpha \, p_k)
+$$
+where $f()$ is the function we are attempting to minimize, $x_k$ is our current guess at iteration $k$ and $\alpha$ is the step length and $p_k$ is the direction of movement.
+
+
+We will only be dipping our toes in the water of this area but the goal is to provide some context for some of the more common (and easier) use cases. With that in mind, we will be looking at methods for smooth functions (2nd derivative exists and is continuous).
+
+---
+
+## Naive Gradient Descent
+
+We will start with a naive approach to gradient descent where we choose a step size and determine the direction based on the gradient of the function.
+
+```{python}
+def grad_desc_1d(x0, f, grad, step, max_step=100, tol = 1e-6):
+  all_x_i = [x0]
+  all_f_i = [f(x0)]
+  
+  x_i = x0
+  
+  try:
+    for i in range(max_step):
+      dx_i = grad(x_i)
+      x_i = x_i - dx_i * step
+      f_x_i = f(x_i)
+      
+      all_x_i.append(x_i)
+      all_f_i.append(f_x_i)
+      
+      if np.abs(dx_i) < tol:
+        break
+    
+  except OverflowError as err:
+    print(f"{type(err).__name__}: {err}")
+  
+  if len(all_x_i) == max_step+1:
+    print("Warning - Failed to converge!")
+  
+  return all_x_i, all_f_i
+```
+
+---
+
+```{python include=FALSE}
+def plot_1d_traj(x, f, traj, title="", figsize=(5,3)):
+  plt.figure(figsize=figsize, layout="constrained")
+  
+  x_range = x[1]-x[0]
+
+  x_focus = np.linspace(x[0], x[1], 101)
+  x_ext = np.linspace(x[0]-0.2*x_range, x[1]+0.2*x_range, 141)
+
+  plt.plot(x_focus, f(x_focus), "-k")
+  
+  xlim = plt.xlim()
+  ylim = plt.ylim()
+  
+  plt.plot(x_ext, f(x_ext), "-k")
+
+  plt.plot(traj[0], traj[1], ".-b", ms = 10)
+
+  plt.xlim(xlim)
+  plt.ylim(ylim)
+  
+  plt.show()
+  
+  plt.close('all')
+```
+
+## A basic example
+
+.pull-left[
+$$
+\begin{aligned}
+f(x) &= x^2 \\
+\nabla f(x) &= 2x
+\end{aligned}
+$$
+]
+
+.pull-right[
+```{python}
+f = lambda x: x**2
+grad = lambda x: 2*x
+```
+]
+
+--
+
+<div>
+
+.pull-left[
+```{python out.width="90%"}
+opt = grad_desc_1d(-2., f, grad, step=0.25)
+plot_1d_traj( (-2, 2), f, opt )
+```
+]
+
+--
+
+.pull-right[
+```{python out.width="90%"}
+opt = grad_desc_1d(-2, f, grad, step=0.5)
+plot_1d_traj( (-2, 2), f, opt )
+```
+]
+</div>
+
+---
+
+## Where can it go wrong?
+
+.pull-left[
+```{python out.width="90%"}
+opt = grad_desc_1d(-2, f, grad, step=0.9)
+plot_1d_traj( (-2,2), f, opt )
+```
+]
+
+--
+
+.pull-right[
+```{python out.width="90%"}
+opt = grad_desc_1d(-2, f, grad, step=1)
+plot_1d_traj( (-2,2), f, opt )
+```
+]
+
+
+
+---
+
+## Local minima of a quartic
+
+.pull-left[
+$$
+\begin{aligned}
+f(x) &= x^4 + x^3 -x^2 - x \\
+\nabla f(x) &= 4x^3 + 3x^2 - 2x - 1
+\end{aligned}
+$$
+]
+
+.pull-right[
+```{python}
+f = lambda x: x**4 + x**3 - x**2 - x 
+grad = lambda x: 4*x**3 + 3*x**2 - 2*x - 1
+```
+]
+
+--
+
+<div>
+
+.pull-left[
+
+```{python out.width="90%", error=TRUE}
+opt = grad_desc_1d(-1.5, f, grad, step=0.2)
+plot_1d_traj( (-1.5, 1.5), f, opt )
+```
+]
+
+--
+
+.pull-right[
+```{python out.width="90%", error=TRUE}
+opt = grad_desc_1d(-1.5, f, grad, step=0.25)
+plot_1d_traj( (-1.5, 1.5), f, opt)
+```
+]
+
+</div>
+
+---
+
+## Alternative starting points
+
+.pull-left[
+
+```{python out.width="90%", error=TRUE}
+opt = grad_desc_1d(1.5, f, grad, step=0.2)
+plot_1d_traj( (-1.5, 1.5), f, opt )
+```
+]
+
+--
+
+.pull-right[
+```{python out.width="90%", error=TRUE}
+opt = grad_desc_1d(1.25, f, grad, step=0.2)
+plot_1d_traj( (-1.5, 1.5), f, opt)
+```
+]
+
+</div>
+
+---
+
+## Problematic step sizes
+
+If the step size is too large it is possible for the algorithm to 
+
+.pull-left[
+
+```{python out.width="90%", error=TRUE}
+opt = grad_desc_1d(-1.5, f, grad, step=0.75)
+plot_1d_traj( (-1.5, 1.5), f, opt )
+```
+]
+
+--
+
+.pull-right[
+```{python out.width="90%", error=TRUE}
+opt = grad_desc_1d(1.5, f, grad, step=0.25)
+plot_1d_traj( (-1.5, 1.5), f, opt)
+```
+]
+
+---
+
+##  Gradient Descent w/ backtracking
+
+.pull-left[
+As we have just seen having too large of a step can<br/>
+be problematic, one solution is to allow the step size<br/>
+to adapt.
+
+Backtracking involves checking if the proposed move is<br/>
+advantageous (i.e. $f(x_k+\alpha p_k) < f(x_k)$),
+
+* If it is advantageous then accept <br/>
+  $x_{k+1} = x_k+\alpha p_k$.
+
+* If not, shrink $\alpha$ by a factor $\tau$ (e.g. 0.5) <br/>
+  and check again.
+  
+Pick larger $\alpha$ to start as this will not fix <br/>
+inefficiency of small step size.
+]
+
+.footnote[
+This is a hand wavy version of the [Armijo-Goldstein condition](https://en.wikipedia.org/wiki/Backtracking_line_search) <br/> 
+Check $f(x_k-\alpha \nabla f(x_k)) \leq f(x_k) - c \alpha (\nabla f(x_k))^2$.
+]
+
+.pull-right[ .small[
+```{python}
+def grad_desc_1d_bt(x, f, grad, step, tau=0.5, max_step=100, max_back=10, tol = 1e-6):
+  all_x_i = [x]
+  all_f_i = [f(x)]
+  
+  try:
+    for i in range(max_step):
+      dx = grad(x)
+      
+      for j in range(max_back):        #<<
+        new_x = x + step * (-dx)       #<<
+        new_f_x = f(new_x)             #<<
+                                       #<<
+        if (new_f_x < all_f_i[-1]):    #<<
+          break                        #<<
+                                       #<<
+        step = step * tau              #<<
+      
+      x = new_x
+      f_x = new_f_x
+      
+      all_x_i.append(x)
+      all_f_i.append(f_x)
+      
+      if np.abs(dx) < tol:
+        break
+    
+  except OverflowError as err:
+    print(f"{type(err).__name__}: {err}")
+  
+  if len(all_x_i) == max_step+1:
+    print("Warning - Failed to converge!")
+  
+  return all_x_i, all_f_i
+```
+] ]
+
+---
+
+.pull-left[
+```{python out.width="90%", error=TRUE}
+opt = grad_desc_1d_bt(-1.5, f, grad, step=0.75, tau=0.5)
+plot_1d_traj( (-1.5, 1.5), f, opt )
+```
+]
+
+--
+
+.pull-right[
+```{python out.width="90%", error=TRUE}
+opt = grad_desc_1d_bt(1.5, f, grad, step=0.25, tau=0.5)
+plot_1d_traj( (-1.5, 1.5), f, opt)
+```
+]
+
+---
+
+## A 2d cost function
+
+```{python include=FALSE}
+# Code from https://scipy-lectures.org/ on optimization
+
+def mk_quad(epsilon, ndim=2):
+  def f(x):
+    x = np.asarray(x)
+    y = x.copy()
+    y *= np.power(epsilon, np.arange(ndim))
+    return .33*np.sum(y**2)
+  
+  def gradient(x):
+    x = np.asarray(x)
+    y = x.copy()
+    scaling = np.power(epsilon, np.arange(ndim))
+    y *= scaling
+    return .33*2*scaling*y
+  
+  def hessian(x):
+    scaling = np.power(epsilon, np.arange(ndim))
+    return .33*2*np.diag(scaling)
+  
+  return f, gradient, hessian
+
+def mk_rosenbrock():
+  def f(x):
+    x = np.asarray(x)
+    y = 4*x
+    y[0] += 1
+    y[1:] += 3
+    return np.sum(.5*(1 - y[:-1])**2 + (y[1:] - y[:-1]**2)**2)
+  
+  def gradient(x):
+    x = np.asarray(x)
+    y = 4*x
+    y[0] += 1
+    y[1:] += 3
+    xm = y[1:-1]
+    xm_m1 = y[:-2]
+    xm_p1 = y[2:]
+    der = np.zeros_like(y)
+    der[1:-1] = 2*(xm - xm_m1**2) - 4*(xm_p1 - xm**2)*xm - .5*2*(1 - xm)
+    der[0] = -4*y[0]*(y[1] - y[0]**2) - .5*2*(1 - y[0])
+    der[-1] = 2*(y[-1] - y[-2]**2)
+    return 4*der
+  
+  def hessian(x):
+    x = np.asarray(x)
+    y = 4*x
+    y[0] += 1
+    y[1:] += 3
+    
+    H = np.diag(-4*y[:-1], 1) - np.diag(4*y[:-1], -1)
+    diagonal = np.zeros_like(y)
+    diagonal[0] = 12*y[0]**2 - 4*y[1] + 2*.5
+    diagonal[-1] = 2
+    diagonal[1:-1] = 3 + 12*y[1:-1]**2 - 4*y[2:]*.5
+    H = H + np.diag(diagonal)
+    return 4*4*H
+  
+  return f, gradient, hessian
+
+
+```
+
+
+We will be using `mk_quad()` to create quadratic functions with varying conditioning (as specified by the `epsilon` parameter).
+
+$$
+\begin{align}
+f(x,y) &= 0.33(x^2 + \epsilon^2 y^2 ) \\
+\nabla f(x,y) &= \left[ \begin{matrix}
+0.66 \, x \\
+0.66 \, \epsilon^2 \, y 
+\end{matrix} \right] \\
+\nabla^2 f(x,y) &= \left[\begin{array}{cc}
+0.66  & 0 \\
+0     & 0.66 \, \epsilon^2
+\end{array}\right]
+\end{align}
+$$
+
+---
+
+## Examples
+
+```{python include=FALSE}
+def super_fmt(value):
+    if value > 1:
+        if np.abs(int(value) - value) < .1:
+            out = '$10^{%.1i}$' % value
+        else:
+            out = '$10^{%.1f}$' % value
+    else:
+        value = np.exp(value - .01)
+        if value > .1:
+            out = '%1.1f' % value
+        elif value > .01:
+            out = '%.2f' % value
+        else:
+            out = '%.2e' % value
+    return out
+
+def plot_2d_traj(x, y, f, traj=None, title="", figsize=(5,5)):
+  x_min, x_max = x
+  y_min, y_max = y
+  
+  plt.figure(figsize=figsize, layout="constrained")
+  
+  x, y = np.mgrid[x_min:x_max:100j, y_min:y_max:100j]
+  x = x.T
+  y = y.T
+  
+  plt.figure(figsize=figsize)
+  #plt.clf()
+  #plt.axes([0, 0, 1, 1])
+  
+  X = np.concatenate((x[np.newaxis, ...], y[np.newaxis, ...]), axis=0)
+  z = np.apply_along_axis(f, 0, X)
+  log_z = np.log(z + .01)
+  plt.imshow(
+    log_z,
+    extent=[x_min, x_max, y_min, y_max],
+    cmap=plt.cm.gray_r, origin='lower',
+    vmax=log_z.min() + 1.5*log_z.ptp()
+  )
+  contours = plt.contour(
+    log_z,
+    extent=[x_min, x_max, y_min, y_max],
+    cmap=plt.cm.gnuplot, origin='lower'
+  )
+  
+  plt.clabel(contours, inline=1, fmt=super_fmt, fontsize=12)
+  
+  if not traj is None:
+    plt.plot(traj[0], traj[1], ".-b", ms = 10)
+  
+  if not title == "":
+    plt.title(title)
+  
+  plt.xlim(x_min, x_max)
+  plt.ylim(y_min, y_max)
+  
+  plt.show()
+  plt.close('all')
+  
+```
+
+.pull-left[
+```{python out.width="100%"}
+f, grad, hess = mk_quad(0.7)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.7$")
+```
+]
+
+.pull-right[
+```{python out.width="100%"}
+f, grad, hess = mk_quad(0.02)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.02$")
+```
+]
+
+---
+
+## 2d gradient descent w/ backtracking
+
+.midi[
+```{python}
+def grad_desc_2d(x0, f, grad, step, tau=0.5, max_step=100, max_back=10, tol = 1e-6):
+  x_i = x0
+  all_x_i = [x_i[0]]
+  all_y_i = [x_i[1]]
+  all_f_i = [f(x_i)]
+  
+  for i in range(max_step):
+    dx_i = grad(x_i)
+    
+    for j in range(max_back):
+      new_x_i = x_i - dx_i * step
+      new_f_i = f(new_x_i)
+      
+      if (new_f_i < all_f_i[-1]):
+        break
+      
+      step = step * tau
+      
+    x_i, f_i = new_x_i, new_f_i
+      
+    all_x_i.append(x_i[0])
+    all_y_i.append(x_i[1])
+    all_f_i.append(f_i)
+      
+    if np.sqrt(np.sum(dx_i**2)) < tol:   #<<
+      break
+  
+  return all_x_i, all_y_i, all_f_i
+```
+]
+
+---
+
+## Well conditioned cost function
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.7)
+opt = grad_desc_2d((1.6, 1.1), f, grad, step=1)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.7$", traj=opt)
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.7)
+opt = grad_desc_2d((1.6, 1.1), f, grad, step=2)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.7$", traj=opt)
+```
+]
+
+---
+
+## Ill-conditioned cost function
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.02)
+opt = grad_desc_2d((1.6, 1.1), f, grad, step=1)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.02$", traj=opt)
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.02)
+opt = grad_desc_2d((1.6, 1.1), f, grad, step=2)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.02$", traj=opt)
+```
+]
+
+---
+
+## Rosenbrock function (very ill conditioned)
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_rosenbrock()
+opt = grad_desc_2d((1.6, 1.1), f, grad, step=0.25)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_rosenbrock()
+opt = grad_desc_2d((-0.5, 0), f, grad, step=0.25)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+]
+
+---
+
+## Taylor Expansion
+
+For any arbitary smooth function, we can construct a 2nd order taylor approximation as follows,
+
+$$
+\begin{align}
+f(x_k + \alpha \, p_k) 
+&= f(x_k) + \alpha \, p_k^T \nabla f(x_k + \alpha \, p_k) \\
+&= f(x_k) + \alpha \, p_k^T \nabla f(x_k) + \frac{1}{2} \alpha^2 p_k^T \, \nabla^2 f(x_k + \alpha \, p_k) \, p_k \\
+&\approx f(x_k) + \alpha \, p_k^T \nabla f(x_k) + \frac{1}{2} \alpha^2 p_k^T \, \nabla^2 f(x_k) \, p_k
+\end{align}
+$$
+---
+
+## Newton's Method in 1d
+
+Lets simplify things for now and consider just the 1d case and write $\alpha\,p_k$ as $\Delta$,
+
+$$
+f(x_k + \Delta) \approx f(x_k) + \Delta f'(x_k) + \frac{1}{2} \Delta^2 f''(x_k)
+$$
+
+to find the $\Delta$ that minimizes this function we can take a derivative with regard to $\Delta$ and set the equation equal to zero which gives,
+
+$$
+0 = f'(x_k) + \Delta f''(x_k) \;\; \Rightarrow \;\; \Delta = -\frac{f'(x_k)}{f''(x_k)}
+$$
+which then suggests an iterative update rule of 
+
+$$
+x\_{k+1} = x\_{k} -\frac{f'(x\_k)}{f''(x\_k)}
+$$
+
+---
+
+## Generalizing to $n$d
+
+Based on the same argument we can see the follow result for a function in $\mathbb{R}^n$,
+
+$$
+f(x_k + \Delta) \approx f(x_k) + \Delta^T \nabla f(x_k) + \frac{1}{2} \Delta^T \, \nabla^2 f(x_k) \,\Delta
+$$
+
+$$
+0 = \nabla f(x_k) + \nabla^2 f(x_k) \, \Delta \;\; \Rightarrow \;\; \Delta = -\left(\nabla^2 f(x_k)\right)^{-1} \nabla f(x_k) f(x_k)
+$$
+which then suggests an iterative update rule of 
+
+$$
+x\_{k+1} = x\_{k} - (\nabla^2 f(x\_k))^{-1} \, \nabla f(x\_k)
+$$
+
+---
+
+```{python}
+def newtons_method(x0, f, grad, hess, max_iter=100, max_back=10, tol=1e-8):
+    all_x_i = [x0[0]]
+    all_y_i = [x0[1]]
+    all_f_i = [f(x0)]
+    
+    x_i = x0
+    
+    for i in range(max_iter):
+      g_i = grad(x_i)
+      step = - np.linalg.solve(hess(x_i), g_i)
+      
+      for j in range(max_back):
+        new_x_i = x_i + step
+        new_f_i = f(new_x_i)
+      
+        if (new_f_i < all_f_i[-1]):
+          break
+      
+        step /= 2
+      
+      x_i, f_i = new_x_i, new_f_i
+      
+      all_x_i.append(x_i[0])
+      all_y_i.append(x_i[1])
+      all_f_i.append(f_i)
+      
+      if np.sqrt(np.sum(g_i**2)) < tol:
+        break
+    
+    return all_x_i, all_y_i, all_f_i
+```
+
+
+.footnote[Based on Chapter 5.1 from [Core Statistics](https://www.maths.ed.ac.uk/~swood34/core-statistics.pdf)]
+
+---
+
+## Well conditioned quadratic cost function
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.7)
+opt = newtons_method((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt)
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.02)
+opt = newtons_method((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt)
+```
+]
+
+---
+
+## Rosenbrock function (very ill conditioned)
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_rosenbrock()
+opt = newtons_method((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_rosenbrock()
+opt = newtons_method((-0.5, 0), f, grad, hess)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+]
+
+---
+
+## Conjugate gradients
+
+This is a general approach for solving a system of linear equations with the form $Ax=b$ where $A$ is an $n \times n$ symmetric positive definite matrix and b is $n \times 1$ with $x$ unknown.
+
+This type of problem can also be expressed as a quadratic minimization problems of the form,
+
+$$
+\underset{x}{\text{min}} \; f(x) = \frac{1}{2} x^T \, A \, x - b^T x + c
+$$
+
+The goal is then to find $n$ conjugate vectors ( $p^T_i \, A \, p_j = 0$ for all $i \neq j$) and their coefficients such that 
+
+$$ x\_* = \sum_{i=1}^n \alpha_i \, p_i $$
+
+---
+
+## Conjugate gradient algorithm
+
+.pull-left[
+Given $x_0$ we set the following initial values,
+
+$$\begin{align}
+r_0 &= \nabla f(x_0) \\
+p_0 &= -r_0 \\
+k &= 0
+\end{align}$$
+
+while $\|r_k\|_2 > \text{tol}$,
+
+$$\begin{align}
+\alpha_k &= \frac{r_k^T \, p_k}{p_k^T \, \nabla^2 f(x_k) \, p_k} \\
+x_{k+1} &= x_k + \alpha_k \, p_k \\
+r_{k+1} &= \nabla f(x_{k+1}) \\
+\beta_{k} &= \frac{ r^T_{k+1} \, \nabla^2 f(x_k)  \, p_{k} }{p_k^T \, \nabla^2 f(x_k) \, p_k} \\
+p_{k+1} &= -r_{k+1} + \beta_{k} \, p_k \\
+k &= k+1
+\end{align}$$
+]
+
+.footnote[
+From Chapter 5.1 of [Numerical Optimization](https://find.library.duke.edu/catalog/DUKE004973775) 2006
+]
+
+.pull-right[
+```{python}
+def conjugate_gradient(x0, f, grad, hess, max_iter=100, tol=1e-8):
+    all_x_i = [x0[0]]
+    all_y_i = [x0[1]]
+    all_f_i = [f(x0)]
+    
+    x_i = x0
+    r_i = grad(x0)
+    p_i = -r_i
+    
+    for i in range(max_iter):
+      a_i = - r_i.T @ p_i / (p_i.T @ hess(x_i) @ p_i)
+      x_i_new = x_i + a_i * p_i
+      r_i_new = grad(x_i_new)
+      b_i = (r_i_new.T @ hess(x_i) @ p_i) / (p_i.T @ hess(x_i) @ p_i)
+      p_i_new = -r_i_new + b_i * p_i
+      
+      x_i, r_i, p_i = x_i_new, r_i_new, p_i_new
+      
+      all_x_i.append(x_i[0])
+      all_y_i.append(x_i[1])
+      all_f_i.append(f(x_i))
+      
+      if np.sqrt(np.sum(r_i_new**2)) < tol:
+        break
+    
+    return all_x_i, all_y_i, all_f_i
+```
+]
+
+---
+
+## Trajectory
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.7)
+opt = conjugate_gradient((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.7$", traj=opt)
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.02)
+opt = conjugate_gradient((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.02$", traj=opt)
+```
+]
+
+---
+
+## Rosenbrock's function 
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_rosenbrock()
+opt = conjugate_gradient((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_rosenbrock()
+opt = conjugate_gradient((-0.5, 0), f, grad, hess)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+]
+
+
+---
+
+## CG in scipy
+
+Scipy's optimize module implements the conjugate gradient algorithm by Polak and Ribiere, a variant that does not require the hessian,
+
+.pull-left[
+#### Differences:
+
+* $\alpha_k$ is calculated via a line search along the direction $p_k$
+
+* $\beta_{k+1}$ is replaced with
+
+$$
+\beta\_{k+1}^{PR} = \frac{\nabla f(x\_{k+1}) \left(\nabla f(x\_{k+1}) - \nabla f(x\_{k})\right)}{\nabla f(x\_k)^T \, \nabla f(x\_k)}
+$$
+
+]
+
+.pull-right[
+```{python}
+def conjugate_gradient_scipy(x0, f, grad, tol=1e-8):
+    all_x_i = [x0[0]]
+    all_y_i = [x0[1]]
+    all_f_i = [f(x0)]
+    
+    def store(X):
+        x, y = X
+        all_x_i.append(x)
+        all_y_i.append(y)
+        all_f_i.append(f(X))
+    
+    optimize.minimize(
+      f, x0, jac=grad, method="CG", 
+      callback=store, tol=tol
+    )
+    
+    return all_x_i, all_y_i, all_f_i
+```
+]
+
+---
+
+## Trajectory
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.7)
+opt = conjugate_gradient_scipy((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.7$", traj=opt)
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.02)
+opt = conjugate_gradient_scipy((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, title="$\\epsilon=0.02$", traj=opt)
+```
+]
+
+---
+
+## Rosenbrock's function 
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_rosenbrock()
+opt = conjugate_gradient_scipy((1.6, 1.1), f, grad)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_rosenbrock()
+opt = conjugate_gradient_scipy((-0.5, 0), f, grad)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+]
+
+---
+
+## Method: Newton-CG
+
+Is a variant of Newtons method but does not require inverting the hessian, or even a hessian function - in which case it can be estimated by finite differencing of the gradient.
+
+.pull-left[
+```{python}
+def newton_cg(x0, f, grad, hess=None, tol=1e-8):
+    all_x_i = [x0[0]]
+    all_y_i = [x0[1]]
+    all_f_i = [f(x0)]
+    
+    def store(X):
+        x, y = X
+        all_x_i.append(x)
+        all_y_i.append(y)
+        all_f_i.append(f(X))
+    
+    optimize.minimize(
+      f, x0, jac=grad, hess=hess, tol=tol,
+      method="Newton-CG", callback=store 
+    )
+    
+    return all_x_i, all_y_i, all_f_i
+```
+]
+
+---
+
+## Trajectory - well conditioned
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.7)
+opt = newton_cg((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt, title="w/o hessian")
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.7)
+opt = newton_cg((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt, title="w/ hessian")
+```
+]
+
+---
+
+## Trajectory - ill-conditioned
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.02)
+opt = newton_cg((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt, title="w/o hessian")
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.02)
+opt = newton_cg((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt, title="w/ hessian")
+```
+]
+
+---
+
+## Rosenbrock's function 
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_rosenbrock()
+opt = newton_cg((1.6, 1.1), f, grad)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt, title="w/o hessian")
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_rosenbrock()
+opt = newton_cg((1.6, 1.1), f, grad, hess)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt, title="w/ hessian")
+```
+]
+
+---
+
+## Method: BFGS
+
+The Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm is a quasi-newton which iterative improves its approximation of the hessian,
+.pull-left[
+```{python}
+def bfgs(x0, f, grad, hess=None, tol=1e-8):
+    all_x_i = [x0[0]]
+    all_y_i = [x0[1]]
+    all_f_i = [f(x0)]
+    
+    def store(X):
+        x, y = X
+        all_x_i.append(x)
+        all_y_i.append(y)
+        all_f_i.append(f(X))
+    
+    optimize.minimize(
+      f, x0, jac=grad, tol=tol,
+      method="BFGS", callback=store 
+    )
+    
+    return all_x_i, all_y_i, all_f_i
+```
+]
+
+---
+
+## Trajectory
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.7)
+opt = bfgs((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt)
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.02)
+opt = bfgs((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt)
+```
+]
+
+---
+
+## Rosenbrock's function 
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_rosenbrock()
+opt = bfgs((1.6, 1.1), f, grad)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_rosenbrock()
+opt = bfgs((-0.5, 0), f, grad)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+]
+
+
+---
+
+## Method: Nelder-Mead
+
+This is a gradient free method that uses a series of simplexes which are used to iteratively bracket the minimum.
+
+.pull-left[
+```{python}
+def nelder_mead(x0, f, grad, hess=None, tol=1e-8):
+    all_x_i = [x0[0]]
+    all_y_i = [x0[1]]
+    all_f_i = [f(x0)]
+    
+    def store(X):
+        x, y = X
+        all_x_i.append(x)
+        all_y_i.append(y)
+        all_f_i.append(f(X))
+    
+    optimize.minimize(
+      f, x0, tol=tol,
+      method="Nelder-Mead", callback=store 
+    )
+    
+    return all_x_i, all_y_i, all_f_i
+```
+]
+
+---
+
+## Nelder-Mead
+
+
+.center[
+<iframe width="1000" height="560" src="http://nelder-mead.s3-website.us-east-2.amazonaws.com/">
+</iframe>
+]
+
+.footnote[From https://github.com/greg-rychlewski/nelder-mead]
+
+---
+
+## Trajectory
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.7)
+opt = nelder_mead((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt)
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_quad(0.02)
+opt = nelder_mead((1.6, 1.1), f, grad)
+plot_2d_traj((-1,2), (-1,2), f, traj=opt)
+```
+]
+
+---
+
+## Rosenbrock's function 
+
+.pull-left[
+```{python out.width="95%"}
+f, grad, hess = mk_rosenbrock()
+opt = nelder_mead((1.6, 1.1), f, grad)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+]
+
+.pull-right[
+```{python out.width="95%"}
+f, grad, hess = mk_rosenbrock()
+opt = nelder_mead((-0.5, 0), f, grad)
+plot_2d_traj((-2,2), (-2,2), f, traj=opt)
+```
+]
+
+
