@@ -717,14 +717,22 @@ optimize.minimize(f, np.ones(n), jac=grad, method="BFGS", tol=1e-10)
 
 ---
 
-```{python}
-g = sns.catplot(
+.small[
+```{python warning=FALSE}
+sns.catplot(
   y = "method", x = "value", hue = "variable", col="name", kind="bar",
-  data = df.melt(id_vars=["name","method"], value_vars=["nit", "nfev", "njev", "nhev"]).astype({"value": "float64"})
+  data = df.melt(
+    id_vars=["name","method"], value_vars=["nit", "nfev", "njev", "nhev"]
+  ).astype(
+    {"value": "float64"}
+  ).query(
+    "name != '2d'"
+  )
+).set(
+  xscale="log"
 )
-_ = [[ax.set_xscale('log') for row in g.axes for ax in row]]
-plt.show()
 ```
+]
 
 ---
 
