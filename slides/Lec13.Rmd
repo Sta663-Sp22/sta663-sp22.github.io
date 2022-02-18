@@ -1,0 +1,744 @@
+---
+title: "Lec 13 - Numerical optimization (cont.)"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightLines: true
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{python setup}
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+import timeit
+
+plt.rcParams['figure.dpi'] = 200
+
+from scipy import optimize
+```
+
+```{r r_setup}
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+```
+
+```{r hooks}
+local({
+  hook_err_old <- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old <- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("<string>:1: ", "", x)
+    hook_warn_old(x, options)
+  })
+})
+```
+
+```{python utility, include=FALSE}
+# Code from https://scipy-lectures.org/ on optimization
+def mk_quad(epsilon, ndim=2):
+  def f(x):
+    x = np.asarray(x)
+    y = x.copy()
+    y *= np.power(epsilon, np.arange(ndim))
+    return .33*np.sum(y**2)
+  
+  def gradient(x):
+    x = np.asarray(x)
+    y = x.copy()
+    scaling = np.power(epsilon, np.arange(ndim))
+    y *= scaling
+    return .33*2*scaling*y
+  
+  def hessian(x):
+    scaling = np.power(epsilon, np.arange(ndim))
+    return .33*2*np.diag(scaling)
+  
+  return f, gradient, hessian
+
+def mk_rosenbrock(y=None):
+  def f(x):
+    x = np.asarray(x)
+    y = 4*x
+    y[0] += 1
+    y[1:] += 3
+    return np.sum(.5*(1 - y[:-1])**2 + (y[1:] - y[:-1]**2)**2)
+  
+  def gradient(x):
+    x = np.asarray(x)
+    y = 4*x
+    y[0] += 1
+    y[1:] += 3
+    xm = y[1:-1]
+    xm_m1 = y[:-2]
+    xm_p1 = y[2:]
+    der = np.zeros_like(y)
+    der[1:-1] = 2*(xm - xm_m1**2) - 4*(xm_p1 - xm**2)*xm - .5*2*(1 - xm)
+    der[0] = -4*y[0]*(y[1] - y[0]**2) - .5*2*(1 - y[0])
+    der[-1] = 2*(y[-1] - y[-2]**2)
+    return 4*der
+  
+  def hessian(x):
+    x = np.asarray(x)
+    y = 4*x
+    y[0] += 1
+    y[1:] += 3
+    
+    H = np.diag(-4*y[:-1], 1) - np.diag(4*y[:-1], -1)
+    diagonal = np.zeros_like(y)
+    diagonal[0] = 12*y[0]**2 - 4*y[1] + 2*.5
+    diagonal[-1] = 2
+    diagonal[1:-1] = 3 + 12*y[1:-1]**2 - 4*y[2:]*.5
+    H = H + np.diag(diagonal)
+    return 4*4*H
+  
+  return f, gradient, hessian
+
+def super_fmt(value):
+    if value > 1:
+        if np.abs(int(value) - value) < .1:
+            out = '$10^{%.1i}$' % value
+        else:
+            out = '$10^{%.1f}$' % value
+    else:
+        value = np.exp(value - .01)
+        if value > .1:
+            out = '%1.1f' % value
+        elif value > .01:
+            out = '%.2f' % value
+        else:
+            out = '%.2e' % value
+    return out
+
+def plot_2d_traj(x, y, f, traj=None, title="", figsize=(5,5)):
+  x_min, x_max = x
+  y_min, y_max = y
+  
+  x, y = np.mgrid[x_min:x_max:100j, y_min:y_max:100j]
+  x = x.T
+  y = y.T
+  
+  plt.figure(figsize=figsize, layout="constrained")
+  
+  X = np.concatenate((x[np.newaxis, ...], y[np.newaxis, ...]), axis=0)
+  z = np.apply_along_axis(f, 0, X)
+  log_z = np.log(z + .01)
+  plt.imshow(
+    log_z,
+    extent=[x_min, x_max, y_min, y_max],
+    cmap=plt.cm.gray_r, origin='lower',
+    vmax=log_z.min() + 1.5*log_z.ptp()
+  )
+  contours = plt.contour(
+    log_z,
+    extent=[x_min, x_max, y_min, y_max],
+    cmap=plt.cm.gnuplot, origin='lower'
+  )
+  
+  plt.clabel(contours, inline=1, fmt=super_fmt, fontsize=12)
+  
+  if not traj is None:
+    plt.plot(traj[0], traj[1], ".-b", ms = 10)
+  
+  if not title == "":
+    plt.title(title)
+  
+  plt.xlim(x_min, x_max)
+  plt.ylim(y_min, y_max)
+  
+  plt.show()
+
+```
+
+```{python newtons, include=FALSE}
+def newtons_method(x0, f, grad, hess, max_iter=200, max_back=10, tol=1e-8):
+    success=False
+    nit = 0
+    nfev = 0
+    njev = 0
+    nhev = 0
+    
+    prev_f_i = f(x0)
+    nfev += 1
+    x_i = x0
+    
+    for i in range(max_iter):
+      g_i = grad(x_i)
+      njev += 1
+      
+      step = - np.linalg.solve(hess(x_i), g_i)
+      nhev += 1
+      
+      for j in range(max_back):
+        new_x_i = x_i + step
+        new_f_i = f(new_x_i)
+        nfev += 1
+      
+        if (new_f_i < prev_f_i):
+          break
+      
+        step /= 2
+      
+      x_i, f_i = new_x_i, new_f_i
+      
+      nit += 1
+      if np.sqrt(np.sum(g_i**2)) < tol:
+        success=True
+        break
+    
+    return {"nit":nit, "nfev":nfev, "njev": njev, "nhev": nhev, "success": success}
+```
+
+```{python cg, include=FALSE}
+def conjugate_gradient(x0, f, grad, hess, max_iter=200, tol=1e-8):
+    success=False
+    nit = 0
+    nfev = 0
+    njev = 0
+    nhev = 0
+    
+    x_i = x0
+    r_i = grad(x0)
+    p_i = -r_i
+    
+    njev += 1
+    
+    for i in range(max_iter):
+      H_i = hess(x_i)
+      a_i = - r_i.T @ p_i / (p_i.T @ H_i @ p_i)
+      x_i_new = x_i + a_i * p_i
+      r_i_new = grad(x_i_new)
+      b_i = (r_i_new.T @ H_i @ p_i) / (p_i.T @ H_i @ p_i)
+      p_i_new = -r_i_new + b_i * p_i
+      
+      x_i, r_i, p_i = x_i_new, r_i_new, p_i_new
+      
+      njev += 1
+      nhev += 1
+      nit += 1
+      
+      if np.sqrt(np.sum(r_i_new**2)) < tol:
+        success=True
+        break
+    
+    return {"nit":nit, "nfev":nfev, "njev": njev, "nhev": nhev, "success": success}
+```
+
+
+---
+
+## Method Summary
+
+<br/>
+
+| SciPy Method | Description                                                    | Gradient | Hessian  |
+|:-------------|:---------------------------------------------------------------|:--------:|:--------:|
+| ---          | Newton's method (naive)                                        |    ✓     |    ✓     |
+| ---          | Conjugate Gradient (naive)                                     |    ✓     |    ✓     |
+| CG           | Nonlinear Conjugate Gradient (Polak and Ribiere variation)     |    ✓     |    ✗     |
+| Newton-CG    | Truncated Newton method (Newton w/ CG step direction)          |    ✓     | Optional |
+| BFGS         | Broyden, Fletcher, Goldfarb, and Shanno (Quasi-newton method)  | Optional |    ✗     |
+| L-BFGS-B     | Limited-memory BFGS (Quasi-newton method)  | Optional |    ✗     |
+| Nelder-Mead  | Nelder-Mead simplex reflection method                          |    ✗     |    ✗     |
+| 
+
+
+---
+
+## Methods collection
+
+```{python}
+def define_methods(x0, f, grad, hess, tol=1e-8):
+  return {
+    "naive_newton":    lambda: newtons_method(x0, f, grad, hess, tol=tol),
+    "naive_cg":        lambda: conjugate_gradient(x0, f, grad, hess, tol=tol),
+    "cg":              lambda: optimize.minimize(f, x0, jac=grad, method="CG", tol=tol),
+    "newton-cg":       lambda: optimize.minimize(f, x0, jac=grad, hess=None, method="Newton-CG", tol=tol),
+    "newton-cg w/ H":  lambda: optimize.minimize(f, x0, jac=grad, hess=hess, method="Newton-CG", tol=tol),
+    "bfgs":            lambda: optimize.minimize(f, x0, jac=grad, method="BFGS", tol=tol),
+    "bfgs w/o G":      lambda: optimize.minimize(f, x0, method="BFGS", tol=tol),
+    "l-bfgs":          lambda: optimize.minimize(f, x0, method="L-BFGS-B", tol=tol),
+    "nelder-mead":     lambda: optimize.minimize(f, x0, method="Nelder-Mead", tol=tol)
+  }
+```
+
+---
+
+## Method Timings
+```{python}
+x0 = (1.6, 1.1)
+f, grad, hess = mk_quad(0.7)
+methods = define_methods(x0, f, grad, hess)
+
+df = pd.DataFrame({
+  key: timeit.Timer(methods[key]).repeat(10, 100) for key in methods
+})
+  
+df
+```
+
+---
+
+```{python out.width="75%"}
+g = sns.catplot(data=df.melt(), y="variable", x="value", aspect=2)
+g.ax.set_xlabel("Time (100 iter)")
+g.ax.set_ylabel("")
+plt.show()
+```
+
+---
+
+## Timings across cost functions
+
+.pull-left[ .small[
+```{python}
+def time_cost_func(x0, name, cost_func, *args):
+  x0 = (1.6, 1.1)  
+  f, grad, hess = cost_func(*args)
+  methods = define_methods(x0, f, grad, hess)
+  
+  return ( pd.DataFrame({
+      key: timeit.Timer(methods[key]).repeat(10, 20) for key in methods
+    })
+    .melt()
+    .assign(cost_func = name)
+  )
+
+df = pd.concat([
+  time_cost_func(x0, "Well-cond quad", mk_quad, 0.7),
+  time_cost_func(x0, "Ill-cond quad", mk_quad, 0.02),
+  time_cost_func(x0, "Rosenbrock", mk_rosenbrock)
+])
+```
+] ]
+
+.pull-right[.small[
+```{python}
+df
+```
+] ]
+
+---
+
+```{python}
+g = sns.catplot(data=df, y="variable", x="value", hue="cost_func", alpha=0.5, aspect=2)
+g.ax.set_xlabel("Time (20 iter)")
+g.ax.set_ylabel("")
+plt.show()
+```
+
+
+---
+
+## Profiling - BFGS
+
+.small[
+```{python}
+import cProfile
+
+f, grad, hess = mk_quad(0.7)
+
+def run():
+  for i  in range(100):
+    optimize.minimize(fun = f, x0 = (1.6, 1.1), jac=grad, method="BFGS", tol=1e-11)
+
+cProfile.run('run()', sort="tottime")
+```
+]
+
+---
+
+## Profiling - Nelder-Mead
+
+.small[
+```{python}
+def run():
+  for i  in range(100):
+    optimize.minimize(fun = f, x0 = (1.6, 1.1), method="Nelder-Mead", tol=1e-11)
+
+cProfile.run('run()', sort="tottime")
+```
+]
+
+---
+
+## `optimize.minimize()` output
+
+```{python}
+f, grad, hess = mk_quad(0.7)
+```
+
+.pull-left[ .small[
+```{python}
+optimize.minimize(fun = f, x0 = (1.6, 1.1), jac=grad, method="BFGS")
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+optimize.minimize(fun = f, x0 = (1.6, 1.1), jac=grad, hess=hess, method="Newton-CG")
+```
+] ]
+
+
+---
+
+## Collect
+
+.pull-left[ .small[
+```{python}
+def run_collect(name, x0, cost_func, *args, tol=1e-8, skip=[]):
+  f, grad, hess = cost_func(*args)
+  methods = define_methods(x0, f, grad, hess, tol)
+  
+  res = []
+  for method in methods:
+    if method in skip:
+      continue
+    
+    x = methods[method]()
+    
+    d = {
+      "name":    name,
+      "method":  method,
+      "nit":     x["nit"],
+      "nfev":    x["nfev"],
+      "njev":    x.get("njev"),
+      "nhev":    x.get("nhev"),
+      "success": x["success"],
+      "message": x["message"]
+    }
+    res.append( pd.DataFrame(d, index=[1]) )
+  
+  return pd.concat(res)
+
+df = pd.concat([
+  run_collect(name, (1.6, 1.1), cost_func, arg, skip=['naive_newton', 'naive_cg']) 
+  for name, cost_func, arg in zip(
+    ("Well-cond quad", "Ill-cond quad", "Rosenbrock"), 
+    (mk_quad, mk_quad, mk_rosenbrock), 
+    (0.7,0.02, None)
+  )
+])
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+df.drop(["message"], axis=1)
+```
+] ]
+
+---
+
+```{python}
+sns.catplot(
+  y = "method", x = "value", hue = "variable", col="name", kind="bar",
+  data = df.melt(id_vars=["name","method"], value_vars=["nit", "nfev", "njev", "nhev"]).astype({"value": "float64"})
+)
+```
+
+---
+
+## Exercise 1
+
+Try minimizing the following function using different optimization methods starting from $x_0 = [0,0]$, which appears to work best?
+
+$$
+\begin{align}
+f(x) = \exp(x_1-1) + \exp(-x_2+1) + (x_1-x_2)^2
+\end{align}
+$$
+```{python echo=FALSE, out.width="40%"}
+f = lambda x: np.exp(x[0]-1) + np.exp(-x[1]+1) + (x[0]-x[1])**2
+plot_2d_traj((-2,3), (-2,3), f)
+```
+
+---
+
+## Random starting locations
+
+.pull-left[
+```{python}
+rng = np.random.default_rng(seed=1234)
+x0s = rng.uniform(-2,2, (100,2))
+
+df = pd.concat([
+  run_collect(name, x0, cost_func, arg, skip=['naive_newton', 'naive_cg']) 
+  for name, cost_func, arg in zip(
+    ("Well-cond quad", "Ill-cond quad", "Rosenbrock"), 
+    (mk_quad, mk_quad, mk_rosenbrock), 
+    (0.7,0.02, None)
+  )
+  for x0 in x0s
+])
+```
+]
+
+.pull-right[.small[
+```{python}
+df.drop(["message"], axis=1)
+```
+] ]
+
+---
+
+## Performance
+
+```{python}
+sns.catplot(
+  y = "method", x = "value", hue = "variable", col="name", kind="bar",
+  data = df.melt(id_vars=["name","method"], value_vars=["nit", "nfev", "njev", "nhev"]).astype({"value": "float64"})
+)
+```
+
+---
+
+## MVN Cost Function
+
+.pull-left[
+
+For an $n$-dimensional multivariate normal we define <br/>
+the $n \times 1$ vectors $x$ and $\mu$ and the $n \times n$ <br/>
+covariance matrix $\Sigma$,
+
+<br/>
+
+.small[
+$$
+\begin{align}
+f(x) &= \frac{1}{\sqrt{\det(2\pi\Sigma)}} \exp \left[-\frac{1}{2} (x-\mu)^T \Sigma^{-1} (x-\mu) \right] \\
+\\
+\nabla f(x) &= -f(x) \Sigma^{-1}(x-\mu) \\
+\\
+\nabla^2 f(x) &= f(x) \left( \Sigma^{-1}(x-\mu)(x-\mu)^T\Sigma^{-1} - \Sigma^{-1}\right) \\
+\end{align}
+$$
+] ]
+
+.pull-right[ .small[
+
+```{python}
+def mk_mvn(mu, Sigma):
+  Sigma_inv = np.linalg.inv(Sigma)
+  #norm_const = 1 / (np.sqrt(np.linalg.det(2*np.pi*Sigma)))
+  norm_const = 1
+  
+  def f(x):
+    x_m = x - mu
+    return -(norm_const * 
+      np.exp( -0.5 * (x_m.T @ Sigma_inv @ x_m).item() ))
+  
+  def grad(x):
+    return (-f(x) * Sigma_inv @ (x - mu))
+  
+  def hess(x):
+    n = len(x)
+    x_m = x - mu
+    return f(x) * ((Sigma_inv @ x_m).reshape((n,1)) @ (x_m.T @ Sigma_inv).reshape((1,n)) - Sigma_inv)
+  
+  return f, grad, hess
+```
+] ]
+
+.footnote[From Section 8.1.1 of the [Matrix Cookbook](https://www.math.uwaterloo.ca/~hwolkowi/matrixcookbook.pdf)]
+
+
+---
+
+## Gradient checking
+
+One of the most common issues when implementing an optimizer is to get the gradient calculation wrong which can produce problematic results. It is possible to numerically check the gradient function by comparing results between the gradient function and finite differences from the objective function via `optimize.check_grad()`.
+
+.pull-left[
+```{python}
+# 2d
+f, grad, hess = mk_mvn(np.zeros(2), np.eye(2,2))
+optimize.check_grad(f, grad, [0,0])
+optimize.check_grad(f, grad, [1,1])
+```
+
+```{python}
+# 4d
+f, grad, hess = mk_mvn(np.zeros(4), np.eye(4,4))
+optimize.check_grad(f, grad, [0,0,0,0])
+optimize.check_grad(f, grad, [1,1,1,1])
+```
+]
+
+.pull-right[
+```{python}
+# 20d
+f, grad, hess = mk_mvn(np.zeros(20), np.eye(20))
+optimize.check_grad(f, grad, np.zeros(20))
+optimize.check_grad(f, grad, np.ones(20))
+```
+
+```{python}
+# 50d
+f, grad, hess = mk_mvn(np.zeros(50), np.eye(50))
+optimize.check_grad(f, grad, np.zeros(50))
+optimize.check_grad(f, grad, np.ones(50))
+```
+]
+
+---
+
+## Testing optimizers
+
+.pull-left[ .small[
+```{python}
+f, grad, hess = mk_mvn(np.zeros(4), np.eye(4,4))
+optimize.minimize(fun=f, x0=[1,1,1,1], jac=grad, method="CG", tol=1e-11)
+optimize.minimize(fun=f, x0=[1,1,1,1], jac=grad, method="BFGS", tol=1e-11)
+```
+] ] 
+
+.pull-right[ .small[
+```{python}
+n = 20
+f, grad, hess = mk_mvn(np.zeros(n), np.eye(n,n))
+optimize.minimize(fun=f, x0=np.ones(n), jac=grad, method="CG", tol=1e-11)
+```
+] ]
+
+---
+
+## Unit MVNs
+
+.pull-left[
+```{python}
+df = pd.concat([
+  run_collect(
+    name, np.ones(n), mk_mvn, 
+    np.zeros(n), np.eye(n), 
+    tol=1e-10, 
+    skip=['naive_newton', 'naive_cg']
+  ) 
+  for name, n in zip(
+    ("2d", "5d", "10d", "20d", "50d"), 
+    (2, 5, 10, 20, 50)
+  )
+])
+```
+]
+
+.pull-right[ .small[
+```{python}
+df.drop(["message"], axis=1)
+```
+] ]
+
+---
+
+## Adding correlation
+
+.pull-left[
+```{python}
+def build_Sigma(n):
+  S = np.full((n,n), 0.5)
+  np.fill_diagonal(S, 1)
+  return S
+
+df = pd.concat([
+  run_collect(
+    name, np.ones(n), mk_mvn, 
+    np.zeros(n), build_Sigma(n), 
+    tol=1e-9/n, 
+    skip=['naive_newton', 'naive_cg']
+  ) 
+  for name, n in zip(
+    ("2d", "5d", "10d", "20d", "50d"), 
+    (2, 5, 10, 20, 50)
+  )
+])
+```
+]
+
+.pull-right[ .small[
+```{python}
+df.drop(["message"], axis=1)
+```
+] ]
+
+---
+
+```{python include=FALSE}
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
+```
+
+```{python}
+df
+```
+
+---
+
+## What's going on?
+
+```{python}
+n = 50
+f, grad, hess = mk_mvn(np.zeros(n), build_Sigma(n))
+```
+
+.pull-left[ .small[
+```{python}
+optimize.minimize(f, np.ones(n), jac=grad, method="CG", tol=1e-10)
+optimize.minimize(f, np.ones(n), jac=grad, method="CG", tol=1e-8)
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+optimize.minimize(f, np.ones(n), jac=grad, method="BFGS", tol=1e-10)
+```
+] ]
+
+---
+
+```{python}
+g = sns.catplot(
+  y = "method", x = "value", hue = "variable", col="name", kind="bar",
+  data = df.melt(id_vars=["name","method"], value_vars=["nit", "nfev", "njev", "nhev"]).astype({"value": "float64"})
+)
+_ = [[ax.set_xscale('log') for row in g.axes for ax in row]]
+plt.show()
+```
+
+---
+
+## Some general advice
+
+* Having access to the gradient is almost always helpful / necessary
+
+* Having access to the hessian can be helpful, but usually does not significantly improve things
+
+* In general, **BFGS** or **L-BFGS** should be a first choice for most problems (either well- or ill-conditioned)
+
+  * **CG** can perform better for well-conditioned problems with cheap function evaluations
+  
+```{r echo=FALSE, out.width="80%", fig.align="center"}
+knitr::include_graphics("imgs/scipy_opt_summary.png")
+```
+
