@@ -126,16 +126,16 @@ df
 
 ```
 ##    naive_newton  naive_cg        cg  ...  bfgs w/o G    l-bfgs  nelder-mead
-## 0      0.023563  0.040446  0.012082  ...    0.065788  0.036301     0.146798
-## 1      0.023060  0.040964  0.011677  ...    0.065560  0.035865     0.146410
-## 2      0.023302  0.041063  0.011598  ...    0.065504  0.036052     0.146640
-## 3      0.022774  0.040909  0.011547  ...    0.065739  0.035793     0.146002
-## 4      0.023025  0.040963  0.011583  ...    0.065754  0.036427     0.146700
-## 5      0.023001  0.040741  0.011775  ...    0.065971  0.035845     0.146597
-## 6      0.022881  0.040973  0.011757  ...    0.065741  0.036109     0.146857
-## 7      0.023208  0.040178  0.011600  ...    0.065504  0.036133     0.146382
-## 8      0.022823  0.039915  0.011462  ...    0.065885  0.036326     0.147206
-## 9      0.022740  0.040594  0.011547  ...    0.065205  0.035679     0.146789
+## 0      0.023537  0.039970  0.011881  ...    0.066303  0.036481     0.147036
+## 1      0.022836  0.040031  0.011484  ...    0.066409  0.036509     0.145659
+## 2      0.023006  0.040840  0.011460  ...    0.065983  0.036171     0.146303
+## 3      0.023108  0.040619  0.011740  ...    0.065224  0.036673     0.146443
+## 4      0.022910  0.040613  0.011933  ...    0.065597  0.036137     0.146067
+## 5      0.022782  0.040496  0.011701  ...    0.066092  0.036383     0.147324
+## 6      0.022979  0.040472  0.011504  ...    0.065924  0.036287     0.146281
+## 7      0.023019  0.040539  0.011490  ...    0.066140  0.036171     0.146400
+## 8      0.022744  0.039657  0.011497  ...    0.065693  0.036117     0.145820
+## 9      0.022946  0.039879  0.011523  ...    0.065842  0.036078     0.146332
 ## 
 ## [10 rows x 9 columns]
 ```
@@ -187,17 +187,17 @@ df
 
 ```
 ##         variable     value       cost_func
-## 0   naive_newton  0.004722  Well-cond quad
-## 1   naive_newton  0.004614  Well-cond quad
-## 2   naive_newton  0.004580  Well-cond quad
-## 3   naive_newton  0.004583  Well-cond quad
-## 4   naive_newton  0.004608  Well-cond quad
+## 0   naive_newton  0.004699  Well-cond quad
+## 1   naive_newton  0.004590  Well-cond quad
+## 2   naive_newton  0.004567  Well-cond quad
+## 3   naive_newton  0.004557  Well-cond quad
+## 4   naive_newton  0.004553  Well-cond quad
 ## ..           ...       ...             ...
-## 85   nelder-mead  0.048077      Rosenbrock
-## 86   nelder-mead  0.047702      Rosenbrock
-## 87   nelder-mead  0.048485      Rosenbrock
-## 88   nelder-mead  0.047949      Rosenbrock
-## 89   nelder-mead  0.048108      Rosenbrock
+## 85   nelder-mead  0.047754      Rosenbrock
+## 86   nelder-mead  0.047654      Rosenbrock
+## 87   nelder-mead  0.047935      Rosenbrock
+## 88   nelder-mead  0.047746      Rosenbrock
+## 89   nelder-mead  0.047725      Rosenbrock
 ## 
 ## [270 rows x 3 columns]
 ```
@@ -241,7 +241,7 @@ cProfile.run('run()', sort="tottime")
 ## 
 ##    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
 ##       100    0.010    0.000    0.046    0.000 _optimize.py:1253(_minimize_bfgs)
-## 13700/13600    0.004    0.000    0.016    0.000 {built-in method numpy.core._multiarray_umath.implement_array_function}
+## 13700/13600    0.004    0.000    0.015    0.000 {built-in method numpy.core._multiarray_umath.implement_array_function}
 ##      4200    0.003    0.000    0.003    0.000 {method 'reduce' of 'numpy.ufunc' objects}
 ##      1000    0.002    0.000    0.003    0.000 &lt;string&gt;:8(gradient)
 ##      1000    0.002    0.000    0.006    0.000 &lt;string&gt;:2(f)
@@ -253,35 +253,35 @@ cProfile.run('run()', sort="tottime")
 ##       900    0.001    0.000    0.013    0.000 _linesearch.py:73(phi)
 ##      2100    0.001    0.000    0.001    0.000 shape_base.py:23(atleast_1d)
 ##      1000    0.001    0.000    0.008    0.000 _differentiable_functions.py:132(fun_wrapped)
-##      1000    0.001    0.000    0.006    0.000 _differentiable_functions.py:162(grad_wrapped)
-##       900    0.001    0.000    0.027    0.000 _optimize.py:1084(_line_search_wolfe12)
+##      1000    0.001    0.000    0.005    0.000 _differentiable_functions.py:162(grad_wrapped)
 ##       900    0.001    0.000    0.026    0.000 _linesearch.py:31(line_search_wolfe1)
+##       900    0.001    0.000    0.027    0.000 _optimize.py:1084(_line_search_wolfe12)
 ##      1000    0.001    0.000    0.012    0.000 _differentiable_functions.py:264(fun)
 ##      2100    0.001    0.000    0.001    0.000 {built-in method numpy.array}
 ##      1000    0.001    0.000    0.003    0.000 _optimize.py:166(vecnorm)
 ##      2100    0.001    0.000    0.002    0.000 &lt;__array_function__ internals&gt;:177(atleast_1d)
 ##      2000    0.001    0.000    0.001    0.000 {built-in method numpy.arange}
 ##      2100    0.001    0.000    0.002    0.000 &lt;__array_function__ internals&gt;:177(copy)
-##      2000    0.000    0.000    0.005    0.000 &lt;__array_function__ internals&gt;:177(array_equal)
+##      2000    0.001    0.000    0.005    0.000 &lt;__array_function__ internals&gt;:177(array_equal)
 ##      1000    0.000    0.000    0.002    0.000 fromnumeric.py:2160(sum)
 ##      2100    0.000    0.000    0.000    0.000 fromnumeric.py:70(&lt;dictcomp&gt;)
-##       900    0.000    0.000    0.002    0.000 _differentiable_functions.py:240(update_x)
 ##      8400    0.000    0.000    0.000    0.000 {built-in method numpy.asarray}
 ##      1000    0.000    0.000    0.008    0.000 _differentiable_functions.py:270(grad)
+##       900    0.000    0.000    0.002    0.000 _differentiable_functions.py:240(update_x)
 ##       100    0.000    0.000    0.002    0.000 _differentiable_functions.py:86(__init__)
 ##      1000    0.000    0.000    0.002    0.000 fromnumeric.py:2675(amax)
-##       100    0.000    0.000    0.047    0.000 _minimize.py:45(minimize)
 ##      2000    0.000    0.000    0.000    0.000 {method 'copy' of 'numpy.ndarray' objects}
 ##      2000    0.000    0.000    0.002    0.000 {method 'all' of 'numpy.ndarray' objects}
+##       100    0.000    0.000    0.047    0.000 _minimize.py:45(minimize)
 ##      2000    0.000    0.000    0.002    0.000 _methods.py:60(_all)
 ##      1900    0.000    0.000    0.000    0.000 {built-in method numpy.zeros}
-##      2100    0.000    0.000    0.001    0.000 function_base.py:846(copy)
 ##      5200    0.000    0.000    0.000    0.000 multiarray.py:736(dot)
+##      2100    0.000    0.000    0.001    0.000 function_base.py:846(copy)
 ##      1000    0.000    0.000    0.003    0.000 &lt;__array_function__ internals&gt;:177(sum)
 ##      1100    0.000    0.000    0.008    0.000 _differentiable_functions.py:249(_update_fun)
-##      2100    0.000    0.000    0.000    0.000 {method 'items' of 'dict' objects}
-##      1100    0.000    0.000    0.006    0.000 _differentiable_functions.py:254(_update_grad)
 ##      1000    0.000    0.000    0.003    0.000 &lt;__array_function__ internals&gt;:177(amax)
+##      1100    0.000    0.000    0.006    0.000 _differentiable_functions.py:254(_update_grad)
+##      2100    0.000    0.000    0.000    0.000 {method 'items' of 'dict' objects}
 ##      1000    0.000    0.000    0.008    0.000 _differentiable_functions.py:154(update_fun)
 ##      1000    0.000    0.000    0.000    0.000 {method 'astype' of 'numpy.ndarray' objects}
 ##      1000    0.000    0.000    0.006    0.000 _differentiable_functions.py:166(update_grad)
@@ -289,40 +289,40 @@ cProfile.run('run()', sort="tottime")
 ##      2500    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}
 ##      2100    0.000    0.000    0.000    0.000 function_base.py:842(_copy_dispatcher)
 ##      1000    0.000    0.000    0.000    0.000 numeric.py:1859(isscalar)
-##       900    0.000    0.000    0.000    0.000 {built-in method builtins.min}
 ##      2000    0.000    0.000    0.000    0.000 numeric.py:2384(_array_equal_dispatcher)
+##       900    0.000    0.000    0.000    0.000 {built-in method builtins.min}
 ##      2400    0.000    0.000    0.000    0.000 {built-in method builtins.len}
-##      2200    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
 ##      2100    0.000    0.000    0.000    0.000 shape_base.py:19(_atleast_1d_dispatcher)
+##      2200    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
 ##       100    0.000    0.000    0.000    0.000 twodim_base.py:161(eye)
 ##      2200    0.000    0.000    0.000    0.000 {built-in method numpy.asanyarray}
 ##       100    0.000    0.000    0.002    0.000 _optimize.py:175(_prepare_scalar_function)
 ##      1000    0.000    0.000    0.000    0.000 fromnumeric.py:2155(_sum_dispatcher)
 ##      1000    0.000    0.000    0.000    0.000 fromnumeric.py:2670(_amax_dispatcher)
 ##       100    0.000    0.000    0.000    0.000 shape_base.py:81(atleast_2d)
-##         1    0.000    0.000    0.047    0.047 &lt;string&gt;:1(run)
 ##       900    0.000    0.000    0.000    0.000 {method 'pop' of 'dict' objects}
+##         1    0.000    0.000    0.047    0.047 &lt;string&gt;:1(run)
 ##       100    0.000    0.000    0.000    0.000 _minimize.py:933(standardize_constraints)
 ##       100    0.000    0.000    0.000    0.000 fromnumeric.py:2305(any)
 ##       700    0.000    0.000    0.000    0.000 {built-in method builtins.callable}
-##       100    0.000    0.000    0.000    0.000 &lt;__array_function__ internals&gt;:177(any)
 ##       100    0.000    0.000    0.000    0.000 {method 'flatten' of 'numpy.ndarray' objects}
+##       100    0.000    0.000    0.000    0.000 &lt;__array_function__ internals&gt;:177(any)
 ##       100    0.000    0.000    0.000    0.000 &lt;__array_function__ internals&gt;:177(norm)
 ##       100    0.000    0.000    0.000    0.000 &lt;__array_function__ internals&gt;:177(atleast_2d)
 ##       100    0.000    0.000    0.000    0.000 {method 'reshape' of 'numpy.ndarray' objects}
 ##       100    0.000    0.000    0.000    0.000 {method 'any' of 'numpy.ndarray' objects}
 ##       100    0.000    0.000    0.000    0.000 {built-in method builtins.getattr}
 ##       100    0.000    0.000    0.000    0.000 _methods.py:54(_any)
+##       100    0.000    0.000    0.000    0.000 _base.py:1291(isspmatrix)
+##       100    0.000    0.000    0.000    0.000 linalg.py:116(isComplexType)
 ##       200    0.000    0.000    0.000    0.000 {built-in method builtins.issubclass}
 ##       100    0.000    0.000    0.000    0.000 {method 'ravel' of 'numpy.ndarray' objects}
-##       100    0.000    0.000    0.000    0.000 linalg.py:116(isComplexType)
-##       100    0.000    0.000    0.000    0.000 _base.py:1291(isspmatrix)
 ##       100    0.000    0.000    0.000    0.000 _optimize.py:147(_check_unknown_options)
-##         1    0.000    0.000    0.047    0.047 {built-in method builtins.exec}
-##       100    0.000    0.000    0.000    0.000 fromnumeric.py:2300(_any_dispatcher)
-##       100    0.000    0.000    0.000    0.000 linalg.py:2345(_norm_dispatcher)
 ##       100    0.000    0.000    0.000    0.000 {method 'lower' of 'str' objects}
+##       100    0.000    0.000    0.000    0.000 linalg.py:2345(_norm_dispatcher)
+##       100    0.000    0.000    0.000    0.000 fromnumeric.py:2300(_any_dispatcher)
 ##       100    0.000    0.000    0.000    0.000 {method 'setdefault' of 'dict' objects}
+##         1    0.000    0.000    0.047    0.047 {built-in method builtins.exec}
 ##       100    0.000    0.000    0.000    0.000 _optimize.py:255(hess)
 ##       100    0.000    0.000    0.000    0.000 shape_base.py:77(_atleast_2d_dispatcher)
 ##         1    0.000    0.000    0.047    0.047 &lt;string&gt;:1(&lt;module&gt;)
@@ -345,81 +345,81 @@ cProfile.run('run()', sort="tottime")
 ```
 
 ```
-##          756504 function calls in 0.268 seconds
+##          756504 function calls in 0.270 seconds
 ## 
 ##    Ordered by: internal time
 ## 
 ##    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-##       100    0.071    0.001    0.267    0.003 _optimize.py:635(_minimize_neldermead)
+##       100    0.071    0.001    0.269    0.003 _optimize.py:635(_minimize_neldermead)
 ##     18600    0.034    0.000    0.087    0.000 &lt;string&gt;:2(f)
 ##     38000    0.028    0.000    0.028    0.000 {method 'reduce' of 'numpy.ufunc' objects}
-##     86400    0.016    0.000    0.107    0.000 {built-in method numpy.core._multiarray_umath.implement_array_function}
-##     28500    0.013    0.000    0.041    0.000 fromnumeric.py:69(_wrapreduction)
+##     86400    0.017    0.000    0.108    0.000 {built-in method numpy.core._multiarray_umath.implement_array_function}
+##     28500    0.013    0.000    0.040    0.000 fromnumeric.py:69(_wrapreduction)
 ##     18600    0.011    0.000    0.117    0.000 _optimize.py:491(function_wrapper)
 ##     18600    0.008    0.000    0.035    0.000 fromnumeric.py:2160(sum)
 ##     29400    0.007    0.000    0.019    0.000 fromnumeric.py:51(_wrapfunc)
 ##     19600    0.006    0.000    0.006    0.000 {method 'take' of 'numpy.ndarray' objects}
 ##     28500    0.005    0.000    0.005    0.000 fromnumeric.py:70(&lt;dictcomp&gt;)
 ##     18800    0.005    0.000    0.005    0.000 {built-in method numpy.array}
-##     18600    0.004    0.000    0.004    0.000 {built-in method numpy.arange}
-##     19600    0.004    0.000    0.016    0.000 fromnumeric.py:93(take)
-##     19600    0.004    0.000    0.025    0.000 &lt;__array_function__ internals&gt;:177(take)
+##     19600    0.005    0.000    0.025    0.000 &lt;__array_function__ internals&gt;:177(take)
+##     19600    0.005    0.000    0.016    0.000 fromnumeric.py:93(take)
 ##     18600    0.004    0.000    0.044    0.000 &lt;__array_function__ internals&gt;:177(sum)
+##     18600    0.004    0.000    0.004    0.000 {built-in method numpy.arange}
 ##     18600    0.004    0.000    0.016    0.000 &lt;__array_function__ internals&gt;:177(copy)
 ##      9800    0.004    0.000    0.004    0.000 {method 'argsort' of 'numpy.ndarray' objects}
 ##      9700    0.003    0.000    0.017    0.000 fromnumeric.py:2675(amax)
 ##      9600    0.003    0.000    0.006    0.000 fromnumeric.py:1755(ravel)
 ##     18600    0.003    0.000    0.003    0.000 {method 'copy' of 'numpy.ndarray' objects}
 ##     47000    0.003    0.000    0.003    0.000 {built-in method builtins.isinstance}
-##      9800    0.002    0.000    0.009    0.000 fromnumeric.py:1012(argsort)
-##      9800    0.002    0.000    0.014    0.000 &lt;__array_function__ internals&gt;:177(argsort)
 ##     18600    0.002    0.000    0.007    0.000 function_base.py:846(copy)
-##      9600    0.002    0.000    0.010    0.000 &lt;__array_function__ internals&gt;:177(ravel)
+##      9800    0.002    0.000    0.010    0.000 fromnumeric.py:1012(argsort)
+##      9800    0.002    0.000    0.015    0.000 &lt;__array_function__ internals&gt;:177(argsort)
+##      9600    0.002    0.000    0.011    0.000 &lt;__array_function__ internals&gt;:177(ravel)
 ##      9700    0.002    0.000    0.022    0.000 &lt;__array_function__ internals&gt;:177(amax)
 ##     18600    0.002    0.000    0.003    0.000 numeric.py:1859(isscalar)
 ##     29500    0.002    0.000    0.002    0.000 {built-in method builtins.getattr}
-##     28500    0.001    0.000    0.001    0.000 {method 'items' of 'dict' objects}
-##     18600    0.001    0.000    0.001    0.000 fromnumeric.py:2155(_sum_dispatcher)
 ##      9600    0.001    0.000    0.001    0.000 {method 'ravel' of 'numpy.ndarray' objects}
 ##     18600    0.001    0.000    0.001    0.000 function_base.py:842(_copy_dispatcher)
+##     18600    0.001    0.000    0.001    0.000 fromnumeric.py:2155(_sum_dispatcher)
 ##     19600    0.001    0.000    0.001    0.000 fromnumeric.py:89(_take_dispatcher)
+##     28500    0.001    0.000    0.001    0.000 {method 'items' of 'dict' objects}
 ##     18800    0.001    0.000    0.001    0.000 {built-in method numpy.asarray}
 ##      9800    0.001    0.000    0.001    0.000 fromnumeric.py:1008(_argsort_dispatcher)
 ##      9600    0.001    0.000    0.001    0.000 fromnumeric.py:1751(_ravel_dispatcher)
 ##      9700    0.001    0.000    0.001    0.000 fromnumeric.py:2670(_amax_dispatcher)
 ##      9700    0.001    0.000    0.001    0.000 {built-in method numpy.asanyarray}
-##       100    0.000    0.000    0.268    0.003 _minimize.py:45(minimize)
+##       100    0.000    0.000    0.270    0.003 _minimize.py:45(minimize)
+##         1    0.000    0.000    0.270    0.270 &lt;string&gt;:1(run)
 ##       100    0.000    0.000    0.000    0.000 shape_base.py:23(atleast_1d)
-##         1    0.000    0.000    0.268    0.268 &lt;string&gt;:1(run)
 ##       100    0.000    0.000    0.000    0.000 _minimize.py:933(standardize_constraints)
-##       100    0.000    0.000    0.000    0.000 type_check.py:84(asfarray)
 ##       100    0.000    0.000    0.000    0.000 numeric.py:289(full)
-##       200    0.000    0.000    0.000    0.000 {built-in method numpy.empty}
+##       100    0.000    0.000    0.000    0.000 type_check.py:84(asfarray)
 ##       100    0.000    0.000    0.000    0.000 numerictypes.py:356(issubdtype)
+##       200    0.000    0.000    0.000    0.000 {built-in method numpy.empty}
+##       100    0.000    0.000    0.000    0.000 &lt;__array_function__ internals&gt;:177(copyto)
 ##       100    0.000    0.000    0.000    0.000 fromnumeric.py:2800(amin)
 ##       100    0.000    0.000    0.000    0.000 fromnumeric.py:2305(any)
-##       100    0.000    0.000    0.000    0.000 &lt;__array_function__ internals&gt;:177(copyto)
-##       100    0.000    0.000    0.000    0.000 {method 'flatten' of 'numpy.ndarray' objects}
 ##       100    0.000    0.000    0.000    0.000 &lt;__array_function__ internals&gt;:177(atleast_1d)
 ##       200    0.000    0.000    0.000    0.000 numerictypes.py:282(issubclass_)
-##       100    0.000    0.000    0.000    0.000 &lt;__array_function__ internals&gt;:177(any)
 ##       100    0.000    0.000    0.000    0.000 &lt;__array_function__ internals&gt;:177(asfarray)
+##       100    0.000    0.000    0.000    0.000 &lt;__array_function__ internals&gt;:177(any)
+##       100    0.000    0.000    0.000    0.000 {method 'flatten' of 'numpy.ndarray' objects}
 ##       100    0.000    0.000    0.000    0.000 &lt;__array_function__ internals&gt;:177(amin)
-##       300    0.000    0.000    0.000    0.000 {built-in method builtins.issubclass}
 ##       100    0.000    0.000    0.000    0.000 _optimize.py:484(_wrap_scalar_function_maxfun_validation)
+##       300    0.000    0.000    0.000    0.000 {built-in method builtins.issubclass}
 ##       200    0.000    0.000    0.000    0.000 {built-in method builtins.len}
 ##       200    0.000    0.000    0.000    0.000 {method 'setdefault' of 'dict' objects}
-##       200    0.000    0.000    0.000    0.000 {built-in method builtins.callable}
 ##       100    0.000    0.000    0.000    0.000 _optimize.py:147(_check_unknown_options)
-##         1    0.000    0.000    0.268    0.268 {built-in method builtins.exec}
+##       200    0.000    0.000    0.000    0.000 {built-in method builtins.callable}
+##       100    0.000    0.000    0.000    0.000 fromnumeric.py:2300(_any_dispatcher)
+##         1    0.000    0.000    0.270    0.270 {built-in method builtins.exec}
 ##       100    0.000    0.000    0.000    0.000 multiarray.py:1071(copyto)
 ##       100    0.000    0.000    0.000    0.000 {method 'lower' of 'str' objects}
-##       100    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
-##       100    0.000    0.000    0.000    0.000 fromnumeric.py:2300(_any_dispatcher)
 ##       100    0.000    0.000    0.000    0.000 type_check.py:80(_asfarray_dispatcher)
 ##       100    0.000    0.000    0.000    0.000 fromnumeric.py:2795(_amin_dispatcher)
+##       100    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
 ##       100    0.000    0.000    0.000    0.000 shape_base.py:19(_atleast_1d_dispatcher)
-##         1    0.000    0.000    0.268    0.268 &lt;string&gt;:1(&lt;module&gt;)
+##         1    0.000    0.000    0.270    0.270 &lt;string&gt;:1(&lt;module&gt;)
 ##         1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
 ```
 ]
@@ -623,17 +623,19 @@ df.drop(["message"], axis=1)
 
 ---
 
-## Performance
+## Performance (random start)
 
 
 ```python
 sns.catplot(
   y = "method", x = "value", hue = "variable", col="name", kind="bar",
   data = df.melt(id_vars=["name","method"], value_vars=["nit", "nfev", "njev", "nhev"]).astype({"value": "float64"})
+).set(
+  xlabel="", ylabel=""
 )
 ```
 
-&lt;img src="Lec13_files/figure-html/unnamed-chunk-18-9.png" width="4197" style="display: block; margin: auto;" /&gt;
+&lt;img src="Lec13_files/figure-html/unnamed-chunk-18-9.png" width="4145" style="display: block; margin: auto;" /&gt;
 
 ---
 
@@ -1187,7 +1189,6 @@ optimize.minimize(f, np.ones(n), jac=grad, method="BFGS", tol=1e-10)
 
 ---
 
-.small[
 
 ```python
 sns.catplot(
@@ -1200,12 +1201,12 @@ sns.catplot(
     "name != '2d'"
   )
 ).set(
-  xscale="log"
+  xscale="log", xlabel="", ylabel=""
 )
 ```
 
-&lt;img src="Lec13_files/figure-html/unnamed-chunk-35-11.png" width="5536" style="display: block; margin: auto;" /&gt;
-]
+&lt;img src="Lec13_files/figure-html/unnamed-chunk-35-11.png" width="5484" style="display: block; margin: auto;" /&gt;
+
 
 ---
 

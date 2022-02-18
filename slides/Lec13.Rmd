@@ -504,12 +504,14 @@ df.drop(["message"], axis=1)
 
 ---
 
-## Performance
+## Performance (random start)
 
 ```{python}
 sns.catplot(
   y = "method", x = "value", hue = "variable", col="name", kind="bar",
   data = df.melt(id_vars=["name","method"], value_vars=["nit", "nfev", "njev", "nhev"]).astype({"value": "float64"})
+).set(
+  xlabel="", ylabel=""
 )
 ```
 
@@ -717,7 +719,6 @@ optimize.minimize(f, np.ones(n), jac=grad, method="BFGS", tol=1e-10)
 
 ---
 
-.small[
 ```{python warning=FALSE}
 sns.catplot(
   y = "method", x = "value", hue = "variable", col="name", kind="bar",
@@ -729,10 +730,10 @@ sns.catplot(
     "name != '2d'"
   )
 ).set(
-  xscale="log"
+  xscale="log", xlabel="", ylabel=""
 )
 ```
-]
+
 
 ---
 
