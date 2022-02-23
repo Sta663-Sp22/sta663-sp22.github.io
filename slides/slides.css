@@ -208,6 +208,10 @@ li{
 
 .small .remark-code, .remark-inline-code { font-size: 85%; }
 
+.small li {
+  margin: 5px 0;
+}
+
 img, video, iframe {
   max-width: 100%;
 }

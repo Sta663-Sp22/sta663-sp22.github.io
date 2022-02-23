@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 13 - scikit-learn</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs-2.11/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 13 - scikit-learn
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+```python
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+plt.rcParams['figure.dpi'] = 200
+```
+
+
+```r
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+```
+
+
+```r
+local({
+  hook_err_old &lt;- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old &lt;- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("&lt;string&gt;:1: ", "", x)
+    hook_warn_old(x, options)
+  })
+})
+```
+
+---
+
+## scikit-learn
+
+&gt; Scikit-learn is an open source machine learning library that supports supervised and unsupervised learning. It also provides various tools for model fitting, data preprocessing, model selection, model evaluation, and many other utilities.
+
+&amp;nbsp;
+
+&gt; * Simple and efficient tools for predictive data analysis
+&gt; * Accessible to everybody, and reusable in various contexts
+&gt; * Built on NumPy, SciPy, and matplotlib
+&gt; * Open source, commercially usable - BSD license
+
+
+.footnote[
+This is one of several other "scikits" (e.g. scikit-image) which are scientific toolboxes built on top of scipy.
+]
+
+---
+
+## Submodules
+
+The `sklearn` package contains a large number of submodules which are specialized for different tasks / models,
+
+.pull-left[ .small[
+- `sklearn.base` - Base classes and utility functions
+- `sklearn.calibration` - Probability Calibration
+- `sklearn.cluster` - Clustering
+- `sklearn.compose` - Composite Estimators
+- `sklearn.covariance` - Covariance Estimators
+- `sklearn.cross_decomposition` - Cross decomposition
+- `sklearn.datasets` - Datasets
+- `sklearn.decomposition` - Matrix Decomposition
+- `sklearn.discriminant_analysis` - Discriminant Analysis
+- `sklearn.ensemble` - Ensemble Methods
+- `sklearn.exceptions` - Exceptions and warnings
+- `sklearn.experimental` - Experimental
+- `sklearn.feature_extraction` - Feature Extraction
+- `sklearn.feature_selection` - Feature Selection
+- `sklearn.gaussian_process` - Gaussian Processes
+- `sklearn.impute` - Impute
+- `sklearn.inspection` - Inspection
+- `sklearn.isotonic` - Isotonic regression
+- `sklearn.kernel_approximation` - Kernel Approximation
+] ]
+
+.pull-right[ .small[
+- `sklearn.kernel_ridge` - Kernel Ridge Regression
+- `sklearn.linear_model` - Linear Models
+- `sklearn.manifold` - Manifold Learning
+- `sklearn.metrics` - Metrics
+- `sklearn.mixture` - Gaussian Mixture Models
+- `sklearn.model_selection` - Model Selection
+- `sklearn.multiclass` - Multiclass classification
+- `sklearn.multioutput` - Multioutput regression and classification
+- `sklearn.naive_bayes` - Naive Bayes
+- `sklearn.neighbors` - Nearest Neighbors
+- `sklearn.neural_network` - Neural network models
+- `sklearn.pipeline` - Pipeline
+- `sklearn.preprocessing` - Preprocessing and Normalization
+- `sklearn.random_projection` - Random projection
+- `sklearn.semi_supervised` - Semi-Supervised Learning
+- `sklearn.svm` - Support Vector Machines
+- `sklearn.tree` - Decision Trees
+- `sklearn.utils` - Utilities
+] ]
+
+---
+class: center, middle
+
+# Model Fitting
+
+---
+
+## Sample data
+
+To begin, we will examine a simple data set on the size and weight of a number of books. The goal is to model the weight of a book using some combination of the other features in the data. 
+
+.pull-left[
+The included columns are:
+* `volume` - book volumes in cubic centimeters
+* `weight` - book weights in grams
+* `cover` - a categorical variable with levels `"hb"` hardback, `"pb"` paperback
+]
+
+.pull-right[
+
+```python
+books = pd.read_csv("data/daag_books.csv")
+books
+```
+
+```
+##     volume  weight cover
+## 0      885     800    hb
+## 1     1016     950    hb
+## 2     1125    1050    hb
+## 3      239     350    hb
+## 4      701     750    hb
+## 5      641     600    hb
+## 6     1228    1075    hb
+## 7      412     250    pb
+## 8      953     700    pb
+## 9      929     650    pb
+## 10    1492     975    pb
+## 11     419     350    pb
+## 12    1010     950    pb
+## 13     595     425    pb
+## 14    1034     725    pb
+```
+]
+
+.footnote[These data come from the `allbacks` data set from the `DAAG` package in R]
+
+---
+
+
+```python
+sns.relplot(data=books, x="volume", y="weight", hue="cover")
+```
+
+&lt;img src="Lec14_files/figure-html/unnamed-chunk-2-1.png" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Linear regression
+
+scikit-learn uses an object oriented system for implementing the various modeling approaches, the class for `LinearRegression` is part of the `linear_model` submodule.
+
+
+```python
+from sklearn.linear_model import LinearRegression 
+```
+
+--
+
+Each modeling class needs to be constructed (potentially with options) and then the resulting object will provide attributes and methods. 
+
+.pull-left[
+
+```python
+lm = LinearRegression()
+
+m = lm.fit(
+  X = books[["volume"]],
+  y = books.weight
+)
+
+m.coef_
+```
+
+```
+## array([0.70863714])
+```
+
+```python
+m.intercept_
+```
+
+```
+## 107.679310613766
+```
+]
+
+--
+
+.pull-right[
+Note `lm` and `m` are labels for the same object,
+
+
+```python
+lm.coef_
+```
+
+```
+## array([0.70863714])
+```
+
+```python
+lm.intercept_
+```
+
+```
+## 107.679310613766
+```
+]
+
+---
+
+## A couple of considerations
+
+When fitting a model, scikit-learn expects `X` to be a 2d array-like object (e.g. a `np.array` or `pd.DataFrame`) but will not accept a `pd.Series` or 1d `np.array`.
+
+.pull-left[
+
+```python
+lm.fit(
+  X = books.volume,
+  y = books.weight
+)
+```
+
+```
+## ValueError: Expected 2D array, got 1D array instead:
+## array=[ 885 1016 1125  239  701  641 1228  412  953  929 1492  419 1010  595
+##  1034].
+## Reshape your data either using array.reshape(-1, 1) if your data has a single feature or array.reshape(1, -1) if it contains a single sample.
+```
+]
+
+.pull-right[
+
+```python
+lm.fit(
+  X = np.array(books.volume),
+  y = books.weight
+)
+```
+
+```
+## ValueError: Expected 2D array, got 1D array instead:
+## array=[ 885 1016 1125  239  701  641 1228  412  953  929 1492  419 1010  595
+##  1034].
+## Reshape your data either using array.reshape(-1, 1) if your data has a single feature or array.reshape(1, -1) if it contains a single sample.
+```
+]
+
+--
+
+&lt;br/&gt;
+
+&lt;div&gt;
+.pull-left[
+
+```python
+lm.fit(
+  X = np.array(books.volume).reshape(-1,1),
+  y = books.weight
+)
+```
+
+```
+## LinearRegression()
+```
+]
+&lt;/div&gt;
+
+---
+
+## Model parameters
+
+Depending on the model being used, there will be a number of parameters that can be configured when creating the model object or via the `set_params()` method.
+
+
+```python
+lm.get_params()
+```
+
+```
+## {'copy_X': True, 'fit_intercept': True, 'n_jobs': None, 'normalize': 'deprecated', 'positive': False}
+```
+
+--
+
+
+```python
+lm.set_params(fit_intercept = False)
+```
+
+```
+## LinearRegression(fit_intercept=False)
+```
+
+--
+
+
+```python
+lm = lm.fit(X = books[["volume"]], y = books.weight)
+lm.intercept_
+```
+
+```
+## 0.0
+```
+
+```python
+lm.coef_
+```
+
+```
+## array([0.81932487])
+```
+
+---
+
+## Model prediction
+
+Once the model coefficients have been fit, it is possible to predict using the model via the `predict()` method, this method requires a matrix-like `X` as input and in the case of `LinearRegression` returns an array of predicted y values. 
+
+
+```python
+lm.predict(X = books[["volume"]])
+```
+
+```
+## array([ 725.10251417,  832.43407276,  921.74048411,  195.81864507,
+##         574.34673721,  525.18724472, 1006.13094621,  337.5618484 ,
+##         780.81660565,  761.15280865, 1222.43271315,  343.29712253,
+##         827.51812351,  487.49830048,  847.1819205 ])
+```
+
+
+```python
+books["weight_lm_pred"] = lm.predict(X = books[["volume"]])
+books
+```
+
+```
+##     volume  weight cover  weight_lm_pred
+## 0      885     800    hb      725.102514
+## 1     1016     950    hb      832.434073
+## 2     1125    1050    hb      921.740484
+## 3      239     350    hb      195.818645
+## 4      701     750    hb      574.346737
+## 5      641     600    hb      525.187245
+## 6     1228    1075    hb     1006.130946
+## 7      412     250    pb      337.561848
+## 8      953     700    pb      780.816606
+## 9      929     650    pb      761.152809
+## 10    1492     975    pb     1222.432713
+## 11     419     350    pb      343.297123
+## 12    1010     950    pb      827.518124
+## 13     595     425    pb      487.498300
+## 14    1034     725    pb      847.181921
+```
+
+---
+
+
+```python
+plt.figure()
+sns.scatterplot(data=books, x="volume", y="weight", hue="cover")
+sns.lineplot(data=books, x="volume", y="weight_lm_pred", color="green")
+plt.show()
+```
+
+&lt;img src="Lec14_files/figure-html/unnamed-chunk-14-3.png" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Residuals?
+
+There is no built in functionality for calculating residuals, so this needs to be done by hand.
+
+
+```python
+books["resid_lm_pred"] = books["weight"] - books["weight_lm_pred"]
+
+plt.figure(layout="constrained")
+ax = sns.scatterplot(data=books, x="volume", y="resid_lm_pred", hue="cover")
+ax.axhline(c="k", ls="--", lw=1)
+plt.show()
+```
+
+&lt;img src="Lec14_files/figure-html/unnamed-chunk-15-5.png" width="40%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Categorical variables?
+
+Scikit-learn expects that the model matrix be numeric before fitting,
+
+
+```python
+lm = lm.fit(
+  X = books[["volume", "cover"]],
+  y = books.weight
+)
+```
+
+```
+## ValueError: could not convert string to float: 'hb'
+```
+
+--
+
+the obvious solution here is dummy coding the categorical variables - this can be done with pandas via `pd.get_dummies()` or with a scikit-learn preprocessor, we'll demo the former first.
+
+
+```python
+pd.get_dummies(books[["volume", "cover"]])
+```
+
+```
+##     volume  cover_hb  cover_pb
+## 0      885         1         0
+## 1     1016         1         0
+## 2     1125         1         0
+## 3      239         1         0
+## 4      701         1         0
+## 5      641         1         0
+## 6     1228         1         0
+## 7      412         0         1
+## 8      953         0         1
+## 9      929         0         1
+## 10    1492         0         1
+## 11     419         0         1
+## 12    1010         0         1
+## 13     595         0         1
+## 14    1034         0         1
+```
+
+---
+
+
+```python
+lm = LinearRegression().fit(
+  X = pd.get_dummies(books[["volume", "cover"]]),
+  y = books.weight
+)
+
+lm.intercept_
+```
+
+```
+## 105.93920788192202
+```
+
+```python
+lm.coef_
+```
+
+```
+## array([  0.71795374,  92.02363569, -92.02363569])
+```
+
+
+.footnote[Do these results look reasonable? What went wrong?]
+
+---
+
+## Quick comparison with R
+
+
+```r
+d = read.csv('data/daag_books.csv')
+d['cover_hb'] = ifelse(d$cover == "hb", 1, 0)
+d['cover_pb'] = ifelse(d$cover == "pb", 1, 0)
+(lm = lm(weight~volume+cover_hb+cover_pb, data=d))
+```
+
+```
+## 
+## Call:
+## lm(formula = weight ~ volume + cover_hb + cover_pb, data = d)
+## 
+## Coefficients:
+## (Intercept)       volume     cover_hb     cover_pb  
+##      13.916        0.718      184.047           NA
+```
+
+```r
+summary(lm)
+```
+
+```
+## 
+## Call:
+## lm(formula = weight ~ volume + cover_hb + cover_pb, data = d)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -110.10  -32.32  -16.10   28.93  210.95 
+## 
+## Coefficients: (1 not defined because of singularities)
+##              Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)  13.91557   59.45408   0.234 0.818887    
+## volume        0.71795    0.06153  11.669  6.6e-08 ***
+## cover_hb    184.04727   40.49420   4.545 0.000672 ***
+## cover_pb           NA         NA      NA       NA    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 78.2 on 12 degrees of freedom
+## Multiple R-squared:  0.9275,	Adjusted R-squared:  0.9154 
+## F-statistic: 76.73 on 2 and 12 DF,  p-value: 1.455e-07
+```
+
+---
+
+## Avoiding co-linearity
+
+.pull-left[
+
+```python
+lm = LinearRegression(fit_intercept = False).fit(
+  X = pd.get_dummies(books[["volume", "cover"]]),
+  y = books.weight
+)
+
+lm.intercept_
+```
+
+```
+## 0.0
+```
+
+```python
+lm.coef_
+```
+
+```
+## array([  0.71795374, 197.96284357,  13.91557219])
+```
+
+```python
+lm.feature_names_in_
+```
+
+```
+## array(['volume', 'cover_hb', 'cover_pb'], dtype=object)
+```
+]
+
+.pull-right[
+
+```python
+lm = LinearRegression().fit(
+  X = pd.get_dummies(books[["volume", "cover"]], drop_first=True),
+  y = books.weight
+)
+
+lm.intercept_
+```
+
+```
+## 197.96284357271753
+```
+
+```python
+lm.coef_
+```
+
+```
+## array([   0.71795374, -184.04727138])
+```
+
+```python
+lm.feature_names_in_
+```
+
+```
+## array(['volume', 'cover_pb'], dtype=object)
+```
+]
+
+---
+
+## Preprocessors
+
+These are a set of transformer classes present in the `sklearn.preprocessing` submodule that are designed to help with the preparation of raw feature data into quantities more suitable for downstream modeling tools.
+
+Like the modeling classes, they have an object oriented design that shares a common interface (methods and attributes) for bringing in data, transforming it, and returning it.
+
+---
+
+## OneHotEncoder
+
+For dummy coding we can use the `OneHotEncoder` preprocessor, the default is to use one hot encoding but standard dummy coding can be achieved via the `drop` parameter.
+
+
+```python
+from sklearn.preprocessing import OneHotEncoder
+```
+
+.pull-left[
+
+```python
+enc = OneHotEncoder(sparse=False)
+enc.fit(X = books[["cover"]])
+```
+
+```
+## OneHotEncoder(sparse=False)
+```
+
+```python
+enc.transform(X = books[["cover"]])
+```
+
+```
+## array([[1., 0.],
+##        [1., 0.],
+##        [1., 0.],
+##        [1., 0.],
+##        [1., 0.],
+##        [1., 0.],
+##        [1., 0.],
+##        [0., 1.],
+##        [0., 1.],
+##        [0., 1.],
+##        [0., 1.],
+##        [0., 1.],
+##        [0., 1.],
+##        [0., 1.],
+##        [0., 1.]])
+```
+]
+
+.pull-right[
+
+```python
+enc = OneHotEncoder(sparse=False, drop="first")
+enc.fit_transform(X = books[["cover"]])
+```
+
+```
+## array([[0.],
+##        [0.],
+##        [0.],
+##        [0.],
+##        [0.],
+##        [0.],
+##        [0.],
+##        [1.],
+##        [1.],
+##        [1.],
+##        [1.],
+##        [1.],
+##        [1.],
+##        [1.],
+##        [1.]])
+```
+]
+
+---
+
+## Other useful bits
+
+
+
+
+```python
+enc.get_feature_names_out()
+```
+
+```
+## array(['cover_hb', 'cover_pb'], dtype=object)
+```
+
+```python
+f = enc.transform(X = books[["cover"]])
+enc.inverse_transform(f)
+```
+
+```
+## array([['hb'],
+##        ['hb'],
+##        ['hb'],
+##        ['hb'],
+##        ['hb'],
+##        ['hb'],
+##        ['hb'],
+##        ['pb'],
+##        ['pb'],
+##        ['pb'],
+##        ['pb'],
+##        ['pb'],
+##        ['pb'],
+##        ['pb'],
+##        ['pb']], dtype=object)
+```
+
+---
+
+## A cautionary note
+
+Unlike `pd.get_dummies()` it is not safe to use `OneHotEncoder` with both numerical and categorical features, as the former will also be transformed.
+
+.small[
+
+```python
+enc = OneHotEncoder(sparse=False)
+X = enc.fit_transform(
+  X = books[["volume", "cover"]]
+)
+
+pd.DataFrame(
+  data=X,
+  columns = enc.get_feature_names_out()
+)
+```
+
+```
+##     volume_239  volume_412  volume_419  ...  volume_1492  cover_hb  cover_pb
+## 0          0.0         0.0         0.0  ...          0.0       1.0       0.0
+## 1          0.0         0.0         0.0  ...          0.0       1.0       0.0
+## 2          0.0         0.0         0.0  ...          0.0       1.0       0.0
+## 3          1.0         0.0         0.0  ...          0.0       1.0       0.0
+## 4          0.0         0.0         0.0  ...          0.0       1.0       0.0
+## 5          0.0         0.0         0.0  ...          0.0       1.0       0.0
+## 6          0.0         0.0         0.0  ...          0.0       1.0       0.0
+## 7          0.0         1.0         0.0  ...          0.0       0.0       1.0
+## 8          0.0         0.0         0.0  ...          0.0       0.0       1.0
+## 9          0.0         0.0         0.0  ...          0.0       0.0       1.0
+## 10         0.0         0.0         0.0  ...          1.0       0.0       1.0
+## 11         0.0         0.0         1.0  ...          0.0       0.0       1.0
+## 12         0.0         0.0         0.0  ...          0.0       0.0       1.0
+## 13         0.0         0.0         0.0  ...          0.0       0.0       1.0
+## 14         0.0         0.0         0.0  ...          0.0       0.0       1.0
+## 
+## [15 rows x 17 columns]
+```
+]
+
+---
+
+## Putting it together
+
+.pull-left[
+
+```python
+cover = OneHotEncoder(
+  sparse=False
+).fit_transform(
+  books[["cover"]]
+)
+X = np.c_[books.volume, cover]
+
+lm2 = LinearRegression(fit_intercept=False).fit(
+  X = X,
+  y = books.weight
+)
+
+lm2.coef_
+```
+
+```
+## array([  0.71795374, 197.96284357,  13.91557219])
+```
+]
+
+--
+
+.pull-right[ .small[
+
+```python
+books["weight_lm2_pred"] = lm2.predict(X=X)
+books.drop(["weight_lm_pred", "resid_lm_pred"], axis=1)
+```
+
+```
+##     volume  weight cover  weight_lm2_pred
+## 0      885     800    hb       833.351907
+## 1     1016     950    hb       927.403847
+## 2     1125    1050    hb      1005.660805
+## 3      239     350    hb       369.553788
+## 4      701     750    hb       701.248418
+## 5      641     600    hb       658.171193
+## 6     1228    1075    hb      1079.610041
+## 7      412     250    pb       309.712515
+## 8      953     700    pb       698.125490
+## 9      929     650    pb       680.894600
+## 10    1492     975    pb      1085.102558
+## 11     419     350    pb       314.738191
+## 12    1010     950    pb       739.048853
+## 13     595     425    pb       441.098050
+## 14    1034     725    pb       756.279743
+```
+] ]
+
+.footnote[We'll see a more elegant way of doing this in the near future]
+
+---
+
+.pull-left[ .small[
+
+```python
+plt.figure()
+sns.scatterplot(data=books, x="volume", y="weight", hue="cover")
+sns.lineplot(data=books, x="volume", y="weight_lm2_pred", hue="cover")
+plt.show()
+```
+
+&lt;img src="Lec14_files/figure-html/unnamed-chunk-30-1.png" width="672" style="display: block; margin: auto;" /&gt;
+] ]
+
+.pull-right[ .small[
+
+```python
+books["resid_lm2_pred"] = books["weight"] - books["weight_lm2_pred"]
+
+plt.figure(layout="constrained")
+ax = sns.scatterplot(data=books, x="volume", y="resid_lm2_pred", hue="cover")
+ax.axhline(c="k", ls="--", lw=1)
+plt.show()
+```
+
+&lt;img src="Lec14_files/figure-html/unnamed-chunk-31-3.png" width="672" style="display: block; margin: auto;" /&gt;
+] ]
+
+---
+
+## Model performance
+
+Scikit-learn comes with a number of builtin functions for measuring model performance in the `sklearn.metrics` submodule - these are generally just functions that take the vectors `y_true` and `y_pred` and return the score as a scalar.
+
+
+```python
+from sklearn.metrics import mean_squared_error, r2_score
+```
+
+.pull-left[
+
+```python
+r2_score(books.weight, books.weight_lm_pred)
+```
+
+```
+## 0.7800969547785038
+```
+
+```python
+mean_squared_error(books.weight, books.weight_lm_pred) # MSE
+```
+
+```
+## 14833.68208377448
+```
+
+```python
+mean_squared_error(books.weight, books.weight_lm_pred, squared=False) # RMSE
+```
+
+```
+## 121.79360444528473
+```
+]
+
+.pull-right[
+
+```python
+r2_score(books.weight, books.weight_lm2_pred)
+```
+
+```
+## 0.9274775756821679
+```
+
+```python
+mean_squared_error(books.weight, books.weight_lm2_pred) # MSE
+```
+
+```
+## 4892.040422595093
+```
+
+```python
+mean_squared_error(books.weight, books.weight_lm2_pred, squared=False) # RMSE
+```
+
+```
+## 69.94312276839727
+```
+]
+
+.footnote[See [API Docs](https://scikit-learn.org/stable/modules/classes.html#module-sklearn.metrics) for a list of available metrics]
+
+---
+
+## Exercise 1
+
+Create and fit a model for the `books` data that includes an interaction effect between `volume` and `cover`. 
+
+You will need to do this manually with `pd.getdummies()` or `OneHotEncoder()`.
+
+---
+
+## Polynomial regression
+
+We will now look at another flavor of regession model, that involves preprocessing and a hyperparameter - namely polynomial regression.
+
+
+```python
+df = pd.read_csv("data/gp.csv")
+sns.relplot(data=df, x="x", y="y")
+```
+
+&lt;img src="Lec14_files/figure-html/unnamed-chunk-35-5.png" width="40%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## By hand
+
+It is certainly possible to construct the necessary model matrix by hand (or even use a function to automate the process), but this is less then desirable generally - particularly if we want to do anything fancy (e.g. cross validation)
+
+.pull-left[ .small[
+
+```python
+X = np.c_[
+    np.ones(df.shape[0]),
+    df.x,
+    df.x**2,
+    df.x**3
+]
+
+plm = LinearRegression(fit_intercept = False).fit(X=X, y=df.y)
+
+plm.coef_
+```
+
+```
+## array([ 2.36985684, -8.49429068, 13.95066369, -8.39215284])
+```
+] ]
+
+--
+
+.pull-right[ .small[
+
+```python
+df["y_pred"] = plm.predict(X=X)
+plt.figure(layout="constrained")
+sns.scatterplot(data=df, x="x", y="y")
+sns.lineplot(data=df, x="x", y="y_pred", color="k")
+plt.show()
+```
+
+&lt;img src="Lec14_files/figure-html/unnamed-chunk-37-7.png" width="66%" style="display: block; margin: auto;" /&gt;
+] ]
+
+---
+
+## PolynomialFeatures
+
+This is another transformer class from `sklearn.preprocessing` that simplifies the process of constructing polynormial features for your model matrix. Usage is similar to that of `OneHotEncoder`.
+
+
+```python
+from sklearn.preprocessing import PolynomialFeatures
+X = np.array(range(6)).reshape(-1,1)
+```
+
+.pull-left[
+
+```python
+pf = PolynomialFeatures(degree=3)
+pf.fit(X)
+```
+
+```
+## PolynomialFeatures(degree=3)
+```
+
+```python
+pf.transform(X)
+```
+
+```
+## array([[  1.,   0.,   0.,   0.],
+##        [  1.,   1.,   1.,   1.],
+##        [  1.,   2.,   4.,   8.],
+##        [  1.,   3.,   9.,  27.],
+##        [  1.,   4.,  16.,  64.],
+##        [  1.,   5.,  25., 125.]])
+```
+
+```python
+pf.get_feature_names_out()
+```
+
+```
+## array(['1', 'x0', 'x0^2', 'x0^3'], dtype=object)
+```
+]
+
+--
+
+.pull-right[
+
+```python
+pf = PolynomialFeatures(degree=2, include_bias=False)
+pf.fit_transform(X)
+```
+
+```
+## array([[ 0.,  0.],
+##        [ 1.,  1.],
+##        [ 2.,  4.],
+##        [ 3.,  9.],
+##        [ 4., 16.],
+##        [ 5., 25.]])
+```
+
+```python
+pf.get_feature_names_out()
+```
+
+```
+## array(['x0', 'x0^2'], dtype=object)
+```
+]
+
+---
+
+## Interactions
+
+If the feature matrix `X` has more than one column then `PolynomialFeatures` transformer will include interaction terms with total degree up to `degree`.
+
+.pull-left[
+
+```python
+X.reshape(-1, 2)
+```
+
+```
+## array([[0, 1],
+##        [2, 3],
+##        [4, 5]])
+```
+
+```python
+pf = PolynomialFeatures(degree=3, include_bias=False)
+pf.fit_transform(X.reshape(-1, 2))
+```
+
+```
+## array([[  0.,   1.,   0.,   0.,   1.,   0.,   0.,   0.,   1.],
+##        [  2.,   3.,   4.,   6.,   9.,   8.,  12.,  18.,  27.],
+##        [  4.,   5.,  16.,  20.,  25.,  64.,  80., 100., 125.]])
+```
+
+```python
+pf.get_feature_names_out()
+```
+
+```
+## array(['x0', 'x1', 'x0^2', 'x0 x1', 'x1^2', 'x0^3', 'x0^2 x1', 'x0 x1^2',
+##        'x1^3'], dtype=object)
+```
+]
+
+.pull-right[
+
+```python
+X.reshape(-1, 3)
+```
+
+```
+## array([[0, 1, 2],
+##        [3, 4, 5]])
+```
+
+```python
+pf = PolynomialFeatures(degree=2, include_bias=False)
+pf.fit_transform(X.reshape(-1, 3))
+```
+
+```
+## array([[ 0.,  1.,  2.,  0.,  0.,  0.,  1.,  2.,  4.],
+##        [ 3.,  4.,  5.,  9., 12., 15., 16., 20., 25.]])
+```
+
+```python
+pf.get_feature_names_out()
+```
+
+```
+## array(['x0', 'x1', 'x2', 'x0^2', 'x0 x1', 'x0 x2', 'x1^2', 'x1 x2',
+##        'x2^2'], dtype=object)
+```
+]
+
+---
+
+## Modeling with PolynomialFeatures
+
+.pull-left[
+
+```python
+def poly_model(X, y, degree):
+  X  = PolynomialFeatures(
+    degree=degree, include_bias=False
+  ).fit_transform(
+    X=X
+  )
+  y_pred = LinearRegression().fit(X=X, y=y).predict(X)
+  return mean_squared_error(y, y_pred, squared=False)
+
+poly_model(X = df[["x"]], y = df.y, degree = 2)
+```
+
+```
+## 0.5449418707295371
+```
+
+```python
+poly_model(X = df[["x"]], y = df.y, degree = 3)
+```
+
+```
+## 0.5208157900621085
+```
+]
+
+--
+
+.pull-right[
+
+```python
+degrees = range(1,11)
+rmses = [poly_model(X=df[["x"]], y=df.y, degree=d) 
+         for d in degrees]
+sns.relplot(x=degrees, y=rmses)
+```
+
+&lt;img src="Lec14_files/figure-html/unnamed-chunk-44-9.png" width="66%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+&lt;img src="Lec14_files/figure-html/unnamed-chunk-45-11.png" width="60%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Pipelines
+
+You may have noticed that `PolynomialFeatures` takes a model matrix as input and returns a new model matrix as output which is then used as the input for `LinearRegression`. This is not an accident, and by structuring the library in this way sklearn is designed to enable the connection of these steps together, into what sklearn calls a *pipeline*.
+
+
+```python
+from sklearn.pipeline import make_pipeline
+
+p = make_pipeline(
+    PolynomialFeatures(degree=4),
+    LinearRegression()
+)
+
+p
+```
+
+```
+## Pipeline(steps=[('polynomialfeatures', PolynomialFeatures(degree=4)),
+##                 ('linearregression', LinearRegression())])
+```
+
+---
+
+## Using Pipelines
+
+Once constructed, this object can be used just like our previous `LinearRegression` model (i.e. fit to our data and then used for prediction)
+
+
+```python
+p = p.fit(X = df[["x"]], y = df.y)
+p
+```
+
+```
+## Pipeline(steps=[('polynomialfeatures', PolynomialFeatures(degree=4)),
+##                 ('linearregression', LinearRegression())])
+```
+
+--
+
+
+```python
+p.predict(X = df[["x"]])
+```
+
+```
+## array([ 1.6295693 ,  1.65734929,  1.6610466 ,  1.67779767,  1.69667491,
+##         1.70475286,  1.75280126,  1.78471392,  1.79049912,  1.82690007,
+##         1.82966357,  1.83376043,  1.84494343,  1.86002819,  1.86228095,
+##         1.86619112,  1.86837909,  1.87065283,  1.88417882,  1.8844024 ,
+##         1.88527174,  1.88577463,  1.88544367,  1.86890805,  1.86365035,
+##         1.86252922,  1.86047349,  1.85377801,  1.84937708,  1.83754576,
+##         1.82623453,  1.82024199,  1.81799793,  1.79767794,  1.77255319,
+##         1.77034143,  1.76574288,  1.75371272,  1.74389585,  1.73804309,
+##         1.73356954,  1.65527727,  1.64812184,  1.61867613,  1.6041325 ,
+##         1.5960389 ,  1.56080881,  1.55036459,  1.54004364,  1.50903953,
+##         1.45096594,  1.43589836,  1.41886389,  1.39423307,  1.36180712,
+##         1.23072992,  1.21355164,  1.11776117,  1.11522002,  1.09595388,
+##         1.06449719,  1.04672121,  1.03662739,  1.01407206,  0.98208703,
+##         0.98081577,  0.96176797,  0.87491417,  0.87117573,  0.84223005,
+##         0.84171166,  0.82875003,  0.8085086 ,  0.79166069,  0.78167248,
+##         0.78078036,  0.73538157,  0.7181484 ,  0.70046945,  0.67233502,
+##         0.67229069,  0.64782899,  0.64050946,  0.63726823,  0.63526047,
+##         0.62323271,  0.61965166,  0.61705548,  0.6141438 ,  0.60978056,
+##         0.60347713,  0.5909255 ,  0.566617  ,  0.50905785,  0.44706202,
+##         0.44177711,  0.43291379,  0.40957833,  0.38480262,  0.38288511,
+##         0.38067928,  0.3791518 ,  0.37610476,  0.36932957,  0.36493067,
+##         0.35806518,  0.3475729 ,  0.3466828 ,  0.33332696,  0.30717941,
+##         0.3006981 ,  0.29675876,  0.29337641,  0.29333354,  0.27631567,
+##         0.26899076,  0.2676092 ,  0.2672602 ,  0.26716133,  0.26241605,
+##         0.25405246,  0.25334542,  0.25322869,  0.25322576,  0.25410989,
+##         0.25622496,  0.25808334,  0.25849729,  0.26029845,  0.26043195,
+##         0.26319956,  0.26466962,  0.26480578,  0.2648598 ,  0.26488966,
+##         0.28177285,  0.28525208,  0.28861016,  0.28917644,  0.29004253,
+##         0.29444629,  0.29559749,  0.30233373,  0.30622039,  0.31322114,
+##         0.31798208,  0.32104799,  0.32700307,  0.32822585,  0.32927281,
+##         0.3326599 ,  0.33397022,  0.33710573,  0.34110873,  0.34140708,
+##         0.34707419,  0.35926445,  0.37678278,  0.37774536,  0.38884519,
+##         0.39078249,  0.39517758,  0.40743395,  0.41040931,  0.42032703,
+##         0.43577431,  0.46157615,  0.46668313,  0.47144763,  0.47196742,
+##         0.47425178,  0.47510175,  0.47762453,  0.48381558,  0.48473821,
+##         0.4906733 ,  0.50202549,  0.50448149,  0.50674907,  0.50959756,
+##         0.51456778,  0.51694399,  0.51848152,  0.52576027,  0.53292675,
+##         0.53568264,  0.53601729,  0.53790775,  0.53878741,  0.53876248,
+##         0.53838784,  0.53822688,  0.53756849,  0.53748661,  0.53650016,
+##         0.53481469,  0.53372126,  0.53274257,  0.52871724,  0.52377536,
+##         0.52346188,  0.52313791,  0.52286872,  0.49655523,  0.49552641,
+##         0.47578596,  0.4669369 ,  0.43757684,  0.38609879,  0.38104404,
+##         0.31131919,  0.2984486 ,  0.28774333,  0.27189053,  0.25239709,
+##         0.2384553 ,  0.22915234,  0.17792316,  0.17355182,  0.09982541,
+##         0.09880754,  0.09413432,  0.09001771,  0.0844749 ,  0.01787073,
+##        -0.00849026, -0.03051945, -0.06842454, -0.09116713, -0.10695813,
+##        -0.13889128, -0.20217854, -0.2210452 , -0.23334664, -0.39045798,
+##        -0.46280636, -0.47155946, -0.48247123, -0.5697079 , -0.57972246,
+##        -0.68977946, -0.81351875, -0.83477874, -0.88303201, -0.91521502,
+##        -0.96937509, -0.99388351, -1.1634133 , -1.19336585, -1.21548881])
+```
+
+---
+
+
+```python
+plt.figure(layout="constrained")
+sns.scatterplot(data=df, x="x", y="y")
+sns.lineplot(x=df.x, y=p.predict(X = df[["x"]]), color="k")
+plt.show()
+```
+
+&lt;img src="Lec14_files/figure-html/unnamed-chunk-49-11.png" width="40%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Model coefficients (or other attributes)
+
+The attributes of steps are not directly accessible, but can be accessed via `steps` or `named_steps` attributes,
+
+
+```python
+p.coef_
+```
+
+```
+## AttributeError: 'Pipeline' object has no attribute 'coef_'
+```
+
+```python
+p.named_steps["linearregression"].intercept_
+```
+
+```
+## 1.6136636604768615
+```
+
+```python
+p.steps[1][1].coef_
+```
+
+```
+## array([  0.        ,   7.39051417, -57.67175293, 102.72227443,
+##        -55.38181361])
+```
+
+```python
+p.steps
+```
+
+```
+## [('polynomialfeatures', PolynomialFeatures(degree=4)), ('linearregression', LinearRegression())]
+```
+
+--
+
+
+```python
+p.steps[0][1].get_feature_names_out()
+```
+
+```
+## array(['1', 'x', 'x^2', 'x^3', 'x^4'], dtype=object)
+```
+
+.footnote[Anyone notice a problem?]
+
+---
+
+## What about step parameters?
+
+By accessing each step we can adjust their parameters if necessary,
+
+
+```python
+p.named_steps["linearregression"].get_params()
+```
+
+```
+## {'copy_X': True, 'fit_intercept': True, 'n_jobs': None, 'normalize': 'deprecated', 'positive': False}
+```
+
+```python
+p.named_steps["linearregression"].set_params(fit_intercept=False)
+```
+
+```
+## LinearRegression(fit_intercept=False)
+```
+
+```python
+p.fit(X = df[["x"]], y = df.y)
+```
+
+```
+## Pipeline(steps=[('polynomialfeatures', PolynomialFeatures(degree=4)),
+##                 ('linearregression', LinearRegression(fit_intercept=False))])
+```
+
+```python
+p.named_steps["linearregression"].intercept_
+```
+
+```
+## 0.0
+```
+
+```python
+p.named_steps["linearregression"].coef_
+```
+
+```
+## array([  1.61366366,   7.39051417, -57.67175293, 102.72227443,
+##        -55.38181361])
+```
+
+---
+
+These parameters can also be directly accessed at the pipeline level, note how the names are constructed:
+
+
+```python
+p.get_params()
+```
+
+```
+## {'memory': None, 'steps': [('polynomialfeatures', PolynomialFeatures(degree=4)), ('linearregression', LinearRegression(fit_intercept=False))], 'verbose': False, 'polynomialfeatures': PolynomialFeatures(degree=4), 'linearregression': LinearRegression(fit_intercept=False), 'polynomialfeatures__degree': 4, 'polynomialfeatures__include_bias': True, 'polynomialfeatures__interaction_only': False, 'polynomialfeatures__order': 'C', 'linearregression__copy_X': True, 'linearregression__fit_intercept': False, 'linearregression__n_jobs': None, 'linearregression__normalize': 'deprecated', 'linearregression__positive': False}
+```
+
+```python
+p.set_params(linearregression__fit_intercept=True, polynomialfeatures__include_bias=False)
+```
+
+```
+## Pipeline(steps=[('polynomialfeatures',
+##                  PolynomialFeatures(degree=4, include_bias=False)),
+##                 ('linearregression', LinearRegression())])
+```
+
+```python
+p.fit(X = df[["x"]], y = df.y)
+```
+
+```
+## Pipeline(steps=[('polynomialfeatures',
+##                  PolynomialFeatures(degree=4, include_bias=False)),
+##                 ('linearregression', LinearRegression())])
+```
+
+```python
+p.named_steps["linearregression"].intercept_
+```
+
+```
+## 1.6136636604768375
+```
+
+```python
+p.named_steps["linearregression"].coef_
+```
+
+```
+## array([  7.39051417, -57.67175293, 102.72227443, -55.38181361])
+```
+
+---
+
+## Tuning parameters
+
+We've already seen a manual approach to tuning models over the degree parameter, scikit-learn also has built in tools to aide with this process. Here we will leverage `GridSearchCV` to tune the degree parameter in our pipeline.
+
+
+```python
+from sklearn.model_selection import GridSearchCV, KFold
+
+p = make_pipeline(
+    PolynomialFeatures(include_bias=True),
+    LinearRegression(fit_intercept=False)
+)
+
+grid_search = GridSearchCV(
+  estimator = p, 
+  param_grid = {"polynomialfeatures__degree": range(1,11)},
+  scoring = "neg_root_mean_squared_error",
+  cv = KFold(shuffle=True)
+)
+
+grid_search
+```
+
+```
+## GridSearchCV(cv=KFold(n_splits=5, random_state=None, shuffle=True),
+##              estimator=Pipeline(steps=[('polynomialfeatures',
+##                                         PolynomialFeatures()),
+##                                        ('linearregression',
+##                                         LinearRegression(fit_intercept=False))]),
+##              param_grid={'polynomialfeatures__degree': range(1, 11)},
+##              scoring='neg_root_mean_squared_error')
+```
+
+.footnote[Much more detail on this next time - including the proper way to do cross-validation]
+
+---
+
+## Preview - Performing a grid search
+
+
+```python
+grid_search.fit(X = df[["x"]], y = df.y)
+```
+
+```
+## GridSearchCV(cv=KFold(n_splits=5, random_state=None, shuffle=True),
+##              estimator=Pipeline(steps=[('polynomialfeatures',
+##                                         PolynomialFeatures()),
+##                                        ('linearregression',
+##                                         LinearRegression(fit_intercept=False))]),
+##              param_grid={'polynomialfeatures__degree': range(1, 11)},
+##              scoring='neg_root_mean_squared_error')
+```
+
+--
+
+
+```python
+grid_search.best_index_
+```
+
+```
+## 9
+```
+
+```python
+grid_search.best_params_
+```
+
+```
+## {'polynomialfeatures__degree': 10}
+```
+
+```python
+grid_search.best_score_
+```
+
+```
+## -0.18606542718881763
+```
+
+---
+
+## `cv_results_`
+
+
+```python
+grid_search.cv_results_["mean_test_score"]
+```
+
+```
+## array([-0.56055647, -0.55414851, -0.54662235, -0.4660496 , -0.28446434,
+##        -0.28374668, -0.26616867, -0.23083559, -0.22367841, -0.18606543])
+```
+
+```python
+grid_search.cv_results_["rank_test_score"]
+```
+
+```
+## array([10,  9,  8,  7,  6,  5,  4,  3,  2,  1], dtype=int32)
+```
+
+```python
+grid_search.cv_results_["mean_fit_time"]
+```
+
+```
+## array([0.0012239 , 0.00113297, 0.00105224, 0.00109162, 0.00105658,
+##        0.00168719, 0.00103779, 0.00115523, 0.00105133, 0.00106945])
+```
+
+```python
+grid_search.cv_results_.keys()
+```
+
+```
+## dict_keys(['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_polynomialfeatures__degree', 'params', 'split0_test_score', 'split1_test_score', 'split2_test_score', 'split3_test_score', 'split4_test_score', 'mean_test_score', 'std_test_score', 'rank_test_score'])
+```
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightLines": true,
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
