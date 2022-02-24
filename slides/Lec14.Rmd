@@ -1,5 +1,5 @@
 ---
-title: "Lec 13 - scikit-learn"
+title: "Lec 14 - scikit-learn"
 subtitle: "<br/> Statistical Computing and Computation"
 author: "Sta 663 | Spring 2022"
 date: "<br/> Dr. Colin Rundel"

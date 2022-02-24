@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="" xml:lang="">
   <head>
-    <title>Lec 13 - scikit-learn</title>
+    <title>Lec 14 - scikit-learn</title>
     <meta charset="utf-8" />
     <meta name="author" content="Sta 663 | Spring 2022" />
     <script src="libs/header-attrs-2.11/header-attrs.js"></script>
@@ -11,7 +11,7 @@
     <textarea id="source">
 class: center, middle, inverse, title-slide
 
-# Lec 13 - scikit-learn
+# Lec 14 - scikit-learn
 ## <br/> Statistical Computing and Computation
 ### Sta 663 | Spring 2022
 ### <br/> Dr. Colin Rundel
@@ -1309,6 +1309,9 @@ p.coef_
 ## AttributeError: 'Pipeline' object has no attribute 'coef_'
 ```
 
+--
+
+
 ```python
 p.named_steps["linearregression"].intercept_
 ```
@@ -1351,7 +1354,7 @@ p.steps[0][1].get_feature_names_out()
 
 ## What about step parameters?
 
-By accessing each step we can adjust their parameters if necessary,
+By accessing each step we can adjust their parameters (via `set_params()`),
 
 
 ```python
@@ -1369,6 +1372,9 @@ p.named_steps["linearregression"].set_params(fit_intercept=False)
 ```
 ## LinearRegression(fit_intercept=False)
 ```
+
+--
+
 
 ```python
 p.fit(X = df[["x"]], y = df.y)
@@ -1418,6 +1424,9 @@ p.set_params(linearregression__fit_intercept=True, polynomialfeatures__include_b
 ##                  PolynomialFeatures(degree=4, include_bias=False)),
 ##                 ('linearregression', LinearRegression())])
 ```
+
+--
+
 
 ```python
 p.fit(X = df[["x"]], y = df.y)
@@ -1525,7 +1534,7 @@ grid_search.best_score_
 ```
 
 ```
-## -0.18606542718881763
+## -0.18889099237623408
 ```
 
 ---
@@ -1538,8 +1547,8 @@ grid_search.cv_results_["mean_test_score"]
 ```
 
 ```
-## array([-0.56055647, -0.55414851, -0.54662235, -0.4660496 , -0.28446434,
-##        -0.28374668, -0.26616867, -0.23083559, -0.22367841, -0.18606543])
+## array([-0.55570047, -0.54899208, -0.52750544, -0.45902786, -0.28420232,
+##        -0.28457483, -0.26909304, -0.22828417, -0.22074569, -0.18889099])
 ```
 
 ```python
@@ -1547,7 +1556,7 @@ grid_search.cv_results_["rank_test_score"]
 ```
 
 ```
-## array([10,  9,  8,  7,  6,  5,  4,  3,  2,  1], dtype=int32)
+## array([10,  9,  8,  7,  5,  6,  4,  3,  2,  1], dtype=int32)
 ```
 
 ```python
@@ -1555,8 +1564,8 @@ grid_search.cv_results_["mean_fit_time"]
 ```
 
 ```
-## array([0.0012239 , 0.00113297, 0.00105224, 0.00109162, 0.00105658,
-##        0.00168719, 0.00103779, 0.00115523, 0.00105133, 0.00106945])
+## array([0.00114202, 0.00105   , 0.00100303, 0.00101752, 0.00102839,
+##        0.00109878, 0.00272598, 0.00121269, 0.00111055, 0.00105076])
 ```
 
 ```python
