@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 15 - scikit-learn Cross-validation</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs-2.11/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 15 - scikit-learn<br/>Cross-validation
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+```python
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+import sklearn
+
+plt.rcParams['figure.dpi'] = 200
+
+np.set_printoptions(
+  edgeitems=30, linewidth=200,
+  precision = 5, suppress=True
+  #formatter=dict(float=lambda x: "%.5g" % x)
+)
+
+books = pd.read_csv("data/daag_books.csv")
+
+
+from sklearn.metrics import mean_squared_error
+```
+
+
+```r
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+```
+
+
+```r
+local({
+  hook_err_old &lt;- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old &lt;- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("&lt;string&gt;:1: ", "", x)
+    hook_warn_old(x, options)
+  })
+})
+```
+
+---
+
+## Column Transformers
+
+Are a tool for selectively applying transformer(s) to the columns of an array or DataFrame, they function in a way that is similar to a pipeline and similarly have a helper function `make_column_transformer()`.
+
+.small[
+
+```python
+from sklearn.compose import make_column_transformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+
+ct = make_column_transformer(
+  (StandardScaler(), ["volume"]),
+  (OneHotEncoder(), ["cover"]),
+).fit(
+  books
+)
+```
+
+
+```python
+ct.get_feature_names_out()
+```
+
+```
+## array(['standardscaler__volume', 'onehotencoder__cover_hb', 'onehotencoder__cover_pb'], dtype=object)
+```
+
+```python
+ct.transform(books)
+```
+
+```
+## array([[ 0.12101,  1.     ,  0.     ],
+##        [ 0.51997,  1.     ,  0.     ],
+##        [ 0.85192,  1.     ,  0.     ],
+##        [-1.84637,  1.     ,  0.     ],
+##        [-0.43936,  1.     ,  0.     ],
+##        [-0.62209,  1.     ,  0.     ],
+##        [ 1.16561,  1.     ,  0.     ],
+##        [-1.31951,  0.     ,  1.     ],
+##        [ 0.3281 ,  0.     ,  1.     ],
+##        [ 0.25501,  0.     ,  1.     ],
+##        [ 1.96962,  0.     ,  1.     ],
+##        [-1.29819,  0.     ,  1.     ],
+##        [ 0.50169,  0.     ,  1.     ],
+##        [-0.76218,  0.     ,  1.     ],
+##        [ 0.57478,  0.     ,  1.     ]])
+```
+]
+
+---
+
+## Keeping or dropping other columns
+
+One addition important argument is `remainder` which determines what happens to not specified columns. The default is `"drop"` which is why `weight` was removed, the alternative is `"passthrough"` which then retains untransformed columns.
+
+.small[
+
+```python
+ct = make_column_transformer(
+  (StandardScaler(), ["volume"]),
+  (OneHotEncoder(), ["cover"]),
+  remainder = "passthrough"
+).fit(
+  books
+)
+```
+
+
+```python
+ct.get_feature_names_out()
+```
+
+```
+## array(['standardscaler__volume', 'onehotencoder__cover_hb', 'onehotencoder__cover_pb', 'remainder__weight'], dtype=object)
+```
+
+```python
+ct.transform(books)
+```
+
+```
+## array([[   0.12101,    1.     ,    0.     ,  800.     ],
+##        [   0.51997,    1.     ,    0.     ,  950.     ],
+##        [   0.85192,    1.     ,    0.     , 1050.     ],
+##        [  -1.84637,    1.     ,    0.     ,  350.     ],
+##        [  -0.43936,    1.     ,    0.     ,  750.     ],
+##        [  -0.62209,    1.     ,    0.     ,  600.     ],
+##        [   1.16561,    1.     ,    0.     , 1075.     ],
+##        [  -1.31951,    0.     ,    1.     ,  250.     ],
+##        [   0.3281 ,    0.     ,    1.     ,  700.     ],
+##        [   0.25501,    0.     ,    1.     ,  650.     ],
+##        [   1.96962,    0.     ,    1.     ,  975.     ],
+##        [  -1.29819,    0.     ,    1.     ,  350.     ],
+##        [   0.50169,    0.     ,    1.     ,  950.     ],
+##        [  -0.76218,    0.     ,    1.     ,  425.     ],
+##        [   0.57478,    0.     ,    1.     ,  725.     ]])
+```
+]
+
+---
+
+## Column selection
+
+One lingering issue with the above approach is that we've had to hard code the column names (can also use indexes). Often we want to select columns based on their dtype (e.g. categorical vs numerical) this can be done via pandas or sklearn,
+
+
+```python
+from sklearn.compose import make_column_selector
+```
+
+.pull-left[ .small[
+
+```python
+ct = make_column_transformer(
+  ( StandardScaler(), 
+    make_column_selector(dtype_include=np.number)),
+  ( OneHotEncoder(), 
+    make_column_selector(dtype_include=[object, bool]))
+)
+
+ct.fit_transform(books)
+```
+
+```
+## array([[ 0.12101,  0.35936,  1.     ,  0.     ],
+##        [ 0.51997,  0.9369 ,  1.     ,  0.     ],
+##        [ 0.85192,  1.32193,  1.     ,  0.     ],
+##        [-1.84637, -1.37326,  1.     ,  0.     ],
+##        [-0.43936,  0.16685,  1.     ,  0.     ],
+##        [-0.62209, -0.4107 ,  1.     ,  0.     ],
+##        [ 1.16561,  1.41818,  1.     ,  0.     ],
+##        [-1.31951, -1.75829,  0.     ,  1.     ],
+##        [ 0.3281 , -0.02567,  0.     ,  1.     ],
+##        [ 0.25501, -0.21818,  0.     ,  1.     ],
+##        [ 1.96962,  1.03316,  0.     ,  1.     ],
+##        [-1.29819, -1.37326,  0.     ,  1.     ],
+##        [ 0.50169,  0.9369 ,  0.     ,  1.     ],
+##        [-0.76218, -1.08449,  0.     ,  1.     ],
+##        [ 0.57478,  0.07059,  0.     ,  1.     ]])
+```
+] ]
+
+
+.pull-right[.small[
+
+```python
+ct = make_column_transformer(
+  ( StandardScaler(), 
+    books.select_dtypes(include=['number']).columns ),
+  ( OneHotEncoder(), 
+    books.select_dtypes(include=['object']).columns )
+)
+
+ct.fit_transform(books)
+```
+
+```
+## array([[ 0.12101,  0.35936,  1.     ,  0.     ],
+##        [ 0.51997,  0.9369 ,  1.     ,  0.     ],
+##        [ 0.85192,  1.32193,  1.     ,  0.     ],
+##        [-1.84637, -1.37326,  1.     ,  0.     ],
+##        [-0.43936,  0.16685,  1.     ,  0.     ],
+##        [-0.62209, -0.4107 ,  1.     ,  0.     ],
+##        [ 1.16561,  1.41818,  1.     ,  0.     ],
+##        [-1.31951, -1.75829,  0.     ,  1.     ],
+##        [ 0.3281 , -0.02567,  0.     ,  1.     ],
+##        [ 0.25501, -0.21818,  0.     ,  1.     ],
+##        [ 1.96962,  1.03316,  0.     ,  1.     ],
+##        [-1.29819, -1.37326,  0.     ,  1.     ],
+##        [ 0.50169,  0.9369 ,  0.     ,  1.     ],
+##        [-0.76218, -1.08449,  0.     ,  1.     ],
+##        [ 0.57478,  0.07059,  0.     ,  1.     ]])
+```
+] ]
+
+.footnote[`make_column_selector()` also supports selecting via `pattern` or excluding via `dtype_exclude`]
+
+---
+class: center, middle
+
+## Demo 1 - Putting it together &lt;br/&gt; Interaction model
+
+
+---
+class: center, middle
+
+## Cross validation &amp;&lt;br/&gt;hyper parameter tuning
+
+---
+
+## hw2 ridge regression data
+
+.small[
+
+```python
+d = pd.read_csv("data/ridge.csv")
+d
+```
+
+```
+##             y        x1        x2        x3        x4 x5
+## 0   -0.151710  0.353658  1.633932  0.553257  1.415731  A
+## 1    3.579895  1.311354  1.457500  0.072879  0.330330  B
+## 2    0.768329 -0.744034  0.710362 -0.246941  0.008825  B
+## 3    7.788646  0.806624 -0.228695  0.408348 -2.481624  B
+## 4    1.394327  0.837430 -1.091535 -0.860979 -0.810492  A
+## ..        ...       ...       ...       ...       ... ..
+## 495 -0.204932 -0.385814 -0.130371 -0.046242  0.004914  A
+## 496  0.541988  0.845885  0.045291  0.171596  0.332869  A
+## 497 -1.402627 -1.071672 -1.716487 -0.319496 -1.163740  C
+## 498 -0.043645  1.744800 -0.010161  0.422594  0.772606  A
+## 499 -1.550276  0.910775 -1.675396  1.921238 -0.232189  B
+## 
+## [500 rows x 6 columns]
+```
+]
+
+--
+
+.small[
+
+```python
+d = pd.get_dummies(d)
+d
+```
+
+```
+##             y        x1        x2        x3        x4  x5_A  x5_B  x5_C  x5_D
+## 0   -0.151710  0.353658  1.633932  0.553257  1.415731     1     0     0     0
+## 1    3.579895  1.311354  1.457500  0.072879  0.330330     0     1     0     0
+## 2    0.768329 -0.744034  0.710362 -0.246941  0.008825     0     1     0     0
+## 3    7.788646  0.806624 -0.228695  0.408348 -2.481624     0     1     0     0
+## 4    1.394327  0.837430 -1.091535 -0.860979 -0.810492     1     0     0     0
+## ..        ...       ...       ...       ...       ...   ...   ...   ...   ...
+## 495 -0.204932 -0.385814 -0.130371 -0.046242  0.004914     1     0     0     0
+## 496  0.541988  0.845885  0.045291  0.171596  0.332869     1     0     0     0
+## 497 -1.402627 -1.071672 -1.716487 -0.319496 -1.163740     0     0     1     0
+## 498 -0.043645  1.744800 -0.010161  0.422594  0.772606     1     0     0     0
+## 499 -1.550276  0.910775 -1.675396  1.921238 -0.232189     0     1     0     0
+## 
+## [500 rows x 9 columns]
+```
+]
+
+---
+
+## Fitting a ridge regession model
+
+The `linear_model` submodule also contains the `Ridge` model which can be used to fit a ridge regression, usage is identical other than `Ridge()` takes the parameter `alpha` to specify the regularization strength.
+
+
+
+```python
+from sklearn.linear_model import Ridge, LinearRegression
+
+X, y = d.drop(["y"], axis=1), d.y
+
+rg = Ridge(fit_intercept=False, alpha=10).fit(X, y)
+lm = LinearRegression(fit_intercept=False).fit(X, y)
+```
+
+
+```python
+rg.coef_
+```
+
+```
+## array([ 0.97809,  1.96215,  0.00172, -2.94457,  0.45558,  0.09001, -0.28193,  0.79781])
+```
+
+```python
+lm.coef_
+```
+
+```
+## array([ 0.99505,  2.00762,  0.00232, -3.00088,  0.49329,  0.10193, -0.29413,  1.00856])
+```
+
+--
+
+
+```python
+mean_squared_error(y, rg.predict(X))
+```
+
+```
+## 0.019101431349883385
+```
+
+```python
+mean_squared_error(y, lm.predict(X))
+```
+
+```
+## 0.009872435924102045
+```
+
+.footnote[Generally for a Ridge (or Lasso) model it is important to scale the features before fitting - in this case this is not necessary as `\(x\_1,\ldots,x\_4\)` all have mean of ~0 and std dev of ~1 ]
+
+---
+
+## Test-Train split
+
+The most basic form of CV is to split the data into a testing and training set, this can be achieved using `train_test_split` from the `model_selection` submodule.
+
+
+```python
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1234)
+```
+
+--
+
+.pull-left[
+
+```python
+X.shape
+```
+
+```
+## (500, 8)
+```
+
+```python
+X_train.shape
+```
+
+```
+## (400, 8)
+```
+
+```python
+X_test.shape
+```
+
+```
+## (100, 8)
+```
+]
+
+.pull-right[
+
+```python
+y.shape
+```
+
+```
+## (500,)
+```
+
+```python
+y_train.shape
+```
+
+```
+## (400,)
+```
+
+```python
+y_test.shape
+```
+
+```
+## (100,)
+```
+]
+
+---
+
+.pull-left[ .small[
+
+```python
+X_train
+```
+
+```
+##            x1        x2        x3        x4  x5_A  x5_B  x5_C  x5_D
+## 296 -0.261142 -0.887193 -0.441300  0.053902     0     0     1     0
+## 220  0.155596  0.551363  0.749117  0.875181     0     0     1     0
+## 0    0.353658  1.633932  0.553257  1.415731     1     0     0     0
+## 255 -1.206309 -0.073534 -1.920777 -0.554861     1     0     0     0
+## 335 -0.380790 -0.117404 -0.037709  0.202757     0     1     0     0
+## ..        ...       ...       ...       ...   ...   ...   ...   ...
+## 204 -2.646094  1.170804 -0.185098  0.165830     0     1     0     0
+## 53  -0.483511  0.452531  0.223226 -0.753872     0     1     0     0
+## 294 -1.424818 -0.396870 -0.595927 -1.114747     1     0     0     0
+## 211 -1.000845 -0.842665  0.407765  0.375650     0     1     0     0
+## 303  1.037404 -0.961266  0.433180  0.890055     0     1     0     0
+## 
+## [400 rows x 8 columns]
+```
+] ]
+
+.pull-right[ .small[
+
+```python
+y_train
+```
+
+```
+## 296   -2.462944
+## 220   -1.760134
+## 0     -0.151710
+## 255    0.668016
+## 335   -1.178652
+##          ...   
+## 204   -0.657622
+## 53     2.831201
+## 294    1.566109
+## 211   -3.711740
+## 303   -3.552971
+## Name: y, Length: 400, dtype: float64
+```
+] ]
+
+---
+
+## Train vs Test rmse
+
+
+```python
+alpha = np.logspace(-2,1, 100)
+train_rmse = []
+test_rmse = []
+
+for a in alpha:
+    rg = Ridge(alpha=a).fit(X_train, y_train)
+    
+    train_rmse.append( 
+      mean_squared_error(y_train, rg.predict(X_train), squared=False) 
+    )
+    test_rmse.append( 
+      mean_squared_error(y_test, rg.predict(X_test), squared=False) 
+    )
+
+res = pd.DataFrame(data = {"alpha": alpha, "train_rmse": train_rmse, "test_rmse": test_rmse})
+res
+```
+
+```
+##         alpha  train_rmse  test_rmse
+## 0    0.010000    0.097568   0.106985
+## 1    0.010723    0.097568   0.106984
+## 2    0.011498    0.097568   0.106984
+## 3    0.012328    0.097568   0.106983
+## 4    0.013219    0.097568   0.106983
+## ..        ...         ...        ...
+## 95   7.564633    0.126990   0.129414
+## 96   8.111308    0.130591   0.132458
+## 97   8.697490    0.134568   0.135838
+## 98   9.326033    0.138950   0.139581
+## 99  10.000000    0.143764   0.143715
+## 
+## [100 rows x 3 columns]
+```
+
+---
+
+
+```python
+g = sns.relplot(x="alpha", y="value", hue="variable", data = pd.melt(res, id_vars=["alpha"]))
+g.set(xscale="log")
+```
+
+&lt;img src="Lec15_files/figure-html/unnamed-chunk-19-1.png" width="66%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Best alpha?
+
+.pull-left[
+
+```python
+min_i = np.argmin(res.train_rmse)
+min_i
+```
+
+```
+## 0
+```
+
+```python
+res.iloc[[min_i],:]
+```
+
+```
+##    alpha  train_rmse  test_rmse
+## 0   0.01    0.097568   0.106985
+```
+]
+
+.pull-right[
+
+```python
+min_i = np.argmin(res.test_rmse)
+min_i
+```
+
+```
+## 58
+```
+
+```python
+res.iloc[[min_i],:]
+```
+
+```
+##        alpha  train_rmse  test_rmse
+## 58  0.572237    0.097787     0.1068
+```
+]
+
+---
+
+## k-fold cross validation
+
+The previous approach was relatively straight forward, but it required a fair bit of book keeping code to implement and we only examined a single test train split. If we would like to perform k-fold cross validation we can use `cross_val_score` from the `model_selection` submodule. 
+
+
+```python
+from sklearn.model_selection import cross_val_score
+
+cross_val_score(
+  Ridge(alpha=0.59, fit_intercept=False), 
+  X, y, 
+  cv=5, 
+  scoring="neg_root_mean_squared_error"
+)
+```
+
+```
+## array([-0.09364, -0.09995, -0.10474, -0.10273, -0.10597])
+```
+
+
+.footnote[
+🚩🚩🚩 Note that the default k-fold cross validation used here does not shuffle your data which can be massively problematic if your data is ordered 🚩🚩🚩 
+]
+
+---
+
+## Controling k-fold behavior
+
+Rather than providing `cv` as an integer, it is better to specify a cross-validation scheme directly (with additional options). Here we will use the `KFold` class from the `model_selection` submodule. 
+
+
+```python
+from sklearn.model_selection import KFold
+
+cross_val_score(
+  Ridge(alpha=0.59, fit_intercept=False), 
+  X, y, 
+  cv = KFold(n_splits=5, shuffle=True, random_state=1234), 
+  scoring="neg_root_mean_squared_error"
+)
+```
+
+```
+## array([-0.10658, -0.104  , -0.1037 , -0.10125, -0.09228])
+```
+
+
+---
+
+## KFold object
+
+`KFold()` returns a class object which provides the method `split()` which in turn is a generator that returns a tuple with the indexes of the training and testing selects for each fold given a model matrix `X`,
+
+
+```python
+ex = pd.DataFrame(data = list(range(10)), columns=["x"])
+
+cv = KFold(5)
+for train, test in cv.split(ex):
+  print(f'Train: {train} | test: {test}')
+```
+
+```
+## Train: [2 3 4 5 6 7 8 9] | test: [0 1]
+## Train: [0 1 4 5 6 7 8 9] | test: [2 3]
+## Train: [0 1 2 3 6 7 8 9] | test: [4 5]
+## Train: [0 1 2 3 4 5 8 9] | test: [6 7]
+## Train: [0 1 2 3 4 5 6 7] | test: [8 9]
+```
+
+--
+
+
+```python
+cv = KFold(5, shuffle=True, random_state=1234)
+for train, test in cv.split(ex):
+  print(f'Train: {train} | test: {test}')
+```
+
+```
+## Train: [0 1 3 4 5 6 8 9] | test: [2 7]
+## Train: [0 2 3 4 5 6 7 8] | test: [1 9]
+## Train: [1 2 3 4 5 6 7 9] | test: [0 8]
+## Train: [0 1 2 3 6 7 8 9] | test: [4 5]
+## Train: [0 1 2 4 5 7 8 9] | test: [3 6]
+```
+
+
+
+
+---
+
+## Train vs Test rmse (again)
+
+
+```python
+alpha = np.logspace(-2,1, 30)
+test_mean_rmse = []
+test_rmse = []
+cv = KFold(n_splits=5, shuffle=True, random_state=1234)
+
+for a in alpha:
+    rg = Ridge(fit_intercept=False, alpha=a).fit(X_train, y_train)
+    
+    scores = -1 * cross_val_score(
+      rg, X, y, 
+      cv = cv, 
+      scoring="neg_root_mean_squared_error"
+    )
+    test_mean_rmse.append(np.mean(scores))
+    test_rmse.append(scores)
+
+res = pd.DataFrame(
+    data = np.c_[alpha, test_mean_rmse, test_rmse],
+    columns = ["alpha", "mean_rmse"] + ["fold" + str(i) for i in range(1,6) ]
+)
+res
+```
+
+```
+##         alpha  mean_rmse     fold1     fold2     fold3     fold4     fold5
+## 0    0.010000   0.101257  0.106979  0.103691  0.102288  0.101130  0.092195
+## 1    0.012690   0.101257  0.106976  0.103692  0.102292  0.101129  0.092194
+## 2    0.016103   0.101256  0.106971  0.103692  0.102298  0.101126  0.092194
+## 3    0.020434   0.101256  0.106966  0.103693  0.102306  0.101123  0.092193
+## 4    0.025929   0.101256  0.106959  0.103694  0.102316  0.101120  0.092191
+## 5    0.032903   0.101256  0.106951  0.103696  0.102328  0.101116  0.092190
+## 6    0.041753   0.101256  0.106940  0.103698  0.102344  0.101110  0.092188
+## 7    0.052983   0.101256  0.106927  0.103701  0.102365  0.101104  0.092186
+## 8    0.067234   0.101257  0.106911  0.103704  0.102391  0.101096  0.092184
+## 9    0.085317   0.101259  0.106890  0.103709  0.102426  0.101088  0.092181
+## 10   0.108264   0.101262  0.106865  0.103716  0.102471  0.101078  0.092178
+## 11   0.137382   0.101267  0.106835  0.103725  0.102529  0.101069  0.092176
+## 12   0.174333   0.101276  0.106800  0.103739  0.102607  0.101060  0.092174
+## 13   0.221222   0.101291  0.106758  0.103758  0.102710  0.101055  0.092175
+## 14   0.280722   0.101317  0.106712  0.103786  0.102848  0.101059  0.092180
+## 15   0.356225   0.101360  0.106663  0.103828  0.103036  0.101078  0.092193
+## 16   0.452035   0.101430  0.106617  0.103890  0.103293  0.101128  0.092221
+## 17   0.573615   0.101544  0.106584  0.103984  0.103650  0.101229  0.092273
+## 18   0.727895   0.101729  0.106580  0.104128  0.104149  0.101420  0.092367
+## 19   0.923671   0.102026  0.106639  0.104348  0.104856  0.101757  0.092530
+## 20   1.172102   0.102501  0.106809  0.104690  0.105864  0.102334  0.092805
+## 21   1.487352   0.103253  0.107174  0.105220  0.107314  0.103295  0.093263
+## 22   1.887392   0.104436  0.107863  0.106045  0.109403  0.104858  0.094011
+## 23   2.395027   0.106274  0.109072  0.107328  0.112413  0.107341  0.095216
+## 24   3.039195   0.109091  0.111089  0.109319  0.116727  0.111193  0.097129
+## 25   3.856620   0.113335  0.114315  0.112385  0.122847  0.117013  0.100112
+## 26   4.893901   0.119591  0.119283  0.117056  0.131401  0.125546  0.104671
+## 27   6.210169   0.128590  0.126646  0.124055  0.143126  0.137655  0.111470
+## 28   7.880463   0.141185  0.137154  0.134319  0.158849  0.154271  0.121333
+## 29  10.000000   0.158324  0.151609  0.148984  0.179465  0.176352  0.135209
+```
+
+---
+
+
+```python
+g = sns.relplot(x="alpha", y="value", hue="variable", data=res.melt(id_vars=["alpha"]), marker="o", kind="line")
+g.set(xscale="log")
+```
+
+&lt;img src="Lec15_files/figure-html/unnamed-chunk-27-3.png" width="66%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Best alpha? (again)
+
+
+```python
+i = res.drop(
+  ["alpha"], axis=1
+).agg(
+  np.argmin
+).to_numpy()
+
+i = np.sort(np.unique(i))
+
+res.iloc[ i, : ]
+```
+
+```
+##        alpha  mean_rmse     fold1     fold2     fold3     fold4     fold5
+## 0   0.010000   0.101257  0.106979  0.103691  0.102288  0.101130  0.092195
+## 5   0.032903   0.101256  0.106951  0.103696  0.102328  0.101116  0.092190
+## 12  0.174333   0.101276  0.106800  0.103739  0.102607  0.101060  0.092174
+## 13  0.221222   0.101291  0.106758  0.103758  0.102710  0.101055  0.092175
+## 18  0.727895   0.101729  0.106580  0.104128  0.104149  0.101420  0.092367
+```
+
+---
+
+## Aside - Available metrics 
+
+For most of the cross validation functions we pass in a string instead of a scoring function from the metrics submodule - if you are interested in seeing the names of the possible metrics, these are available via the `sklearn.metrics.SCORERS` dictionary,
+
+
+```python
+np.array( sorted(
+  sklearn.metrics.SCORERS.keys()
+) )
+```
+
+```
+## array(['accuracy', 'adjusted_mutual_info_score', 'adjusted_rand_score', 'average_precision', 'balanced_accuracy', 'completeness_score', 'explained_variance', 'f1', 'f1_macro', 'f1_micro',
+##        'f1_samples', 'f1_weighted', 'fowlkes_mallows_score', 'homogeneity_score', 'jaccard', 'jaccard_macro', 'jaccard_micro', 'jaccard_samples', 'jaccard_weighted', 'max_error', 'mutual_info_score',
+##        'neg_brier_score', 'neg_log_loss', 'neg_mean_absolute_error', 'neg_mean_absolute_percentage_error', 'neg_mean_gamma_deviance', 'neg_mean_poisson_deviance', 'neg_mean_squared_error',
+##        'neg_mean_squared_log_error', 'neg_median_absolute_error', 'neg_root_mean_squared_error', 'normalized_mutual_info_score', 'precision', 'precision_macro', 'precision_micro',
+##        'precision_samples', 'precision_weighted', 'r2', 'rand_score', 'recall', 'recall_macro', 'recall_micro', 'recall_samples', 'recall_weighted', 'roc_auc', 'roc_auc_ovo', 'roc_auc_ovo_weighted',
+##        'roc_auc_ovr', 'roc_auc_ovr_weighted', 'top_k_accuracy', 'v_measure_score'], dtype='&lt;U34')
+```
+
+---
+
+## Grid Search
+
+We can further reduce the amount of code needed if there is a specific set of parameter values we would like to explore using cross validation. This is done using the `GridSearchCV` function from the `model_selection` submodule.
+
+
+```python
+from sklearn.model_selection import GridSearchCV
+
+gs = GridSearchCV(
+  Ridge(fit_intercept=False),
+  {"alpha": np.logspace(-2, 1, 30)},
+  cv = KFold(5, shuffle=True, random_state=1234),
+  scoring = "neg_root_mean_squared_error"
+).fit(
+  X, y
+)
+```
+
+
+```python
+gs.best_index_
+```
+
+```
+## 5
+```
+
+```python
+gs.best_params_
+```
+
+```
+## {'alpha': 0.03290344562312668}
+```
+
+```python
+gs.best_score_
+```
+
+```
+## -0.10125611767453653
+```
+
+---
+
+## `best_estimator_` attribute
+
+If `refit = True` (the default) with `GridSearchCV()` then the `best_estimator_` attribute will be available which gives direct access to the "best" model or pipeline object. This model is constructed by using the parameter(s) that achieved the maximum score and refitting the model to the complete data set.
+
+
+```python
+gs.best_estimator_
+```
+
+```
+## Ridge(alpha=0.03290344562312668, fit_intercept=False)
+```
+
+```python
+gs.best_estimator_.coef_
+```
+
+```
+## array([ 0.99499,  2.00747,  0.00231, -3.0007 ,  0.49316,  0.10189, -0.29408,  1.00767])
+```
+
+```python
+gs.best_estimator_.predict(X)
+```
+
+```
+## array([ -0.12179,   3.34151,   0.76055,   7.89292,   1.56523,  -5.33575,  -4.37469,   3.13003,  -0.16859,  -1.60087,  -1.89073,   1.44596,   3.99773,   4.70003,  -6.45959,   4.11085,   3.60426,
+##         -1.96548,   2.99039,   0.56796,  -5.26672,   5.4966 ,   3.47247,  -2.66117,   3.35011,   0.64221,  -1.50238,   2.41562,   3.11665,   1.11236,  -2.11839,   1.36006,  -0.53666,  -2.78112,
+##          0.76008,   5.49779,   2.6521 ,  -0.83127,   0.04167,  -1.92585,  -2.48865,   2.29127,   3.62514,  -2.01226,  -0.69725,  -1.94514,  -0.47559,  -7.36557,  -3.20766,   2.9218 ,  -0.8213 ,
+##         -2.78598, -12.55143,   2.79189,  -1.89763,  -5.1769 ,   1.87484,   2.18345,  -6.45358,   0.91006,   0.94792,   2.91799,   6.12323,  -1.87654,   3.63259,  -0.53797,  -3.23506,  -2.23885,
+##          1.04564,  -1.54843,   0.76161,  -1.65495,   0.22378,  -0.68221,   0.12976,   2.58875,   2.54421,  -3.69056,   3.73479,  -0.90278,   1.22394,  -3.22614,   7.16719,  -5.6168 ,   3.3433 ,
+##          0.36935,   0.87397,   9.22348,  -1.29078,   1.74347,  -1.55169,  -0.69398,  -1.40445,   0.23072,   1.06277,   2.84797,   2.35596,  -1.93292,   8.35129,  -2.98221,  -6.35071,  -5.15138,
+##          1.70208,   7.15821,   3.96172,   5.75363,  -4.50718,  -5.81785,  -2.47424,   1.19276,   2.57431,  -2.57053,  -0.53682,  -1.65955,   1.99839,  -6.19607,  -1.73962,  -2.11993,  -2.29362,
+##          2.65413,  -0.67486,  -3.01324,   0.34118,  -3.83856,   0.33096,  -3.59485,  -1.55578,   0.96765,   3.50934,  -0.31935,  -4.18323,   2.87843,  -1.64857,  -3.68181,   2.24423,  -1.00244,
+##         -2.65588,  -5.77111,  -1.20292,   2.66903,  -1.11387,   3.05231,   6.34596,  -1.42886,  -2.29709,  -1.4573 ,  -2.46733,   1.69685,   4.21699,   1.21569,   9.06269,  -3.62209,   1.94704,
+##          1.14603,  -3.35087,  -5.91052,  -1.23355,   2.8308 ,  -3.21438,   4.09019,  -5.95969,  -0.98044,   2.06976,   0.58541,   1.83006,   8.11251,  -0.18073,  -4.80287,   1.59881,   0.13323,
+##          2.67859,   2.45406,  -2.28901,   1.1609 ,  -1.50239,  -5.51199,   2.67089,   2.39878,   6.65249,   0.5551 ,   9.36975,   6.90333,   0.48633,  -0.51877,   1.44203,  -5.95008,   5.99042,
+##         -0.85644,   1.90162,  -1.23686,   3.22403,   5.31725,   0.31415,   0.17128,  -1.53623,   1.73354,  -1.93645,   4.68716,  -3.62658,   0.22032, -10.94667,   2.83953,  -8.13513,   4.30062,
+##         -0.67864,  -0.67348,   4.22499,   3.34704,  -1.44927,  -6.3229 ,   4.83881,  -3.71184,   6.32207,   3.69622,  -1.02501, -12.91691,   1.85435,  -0.43171,   4.77516,  -1.53529,  -1.65685,
+##          5.69233,   6.28949,   5.37201,  -0.63177,   2.88795,   4.01781,   7.03453,   1.76797,   5.86793,   1.57465,   3.03172,   0.96769,  -3.0659 ,  -1.51918,  -2.89632,  -1.28436,   2.67186,
+##         -0.92299,  -4.85603,   4.18714,  -3.60775,  -2.31532,   1.27459,   0.37238,  -1.21   ,   2.44074,  -1.52466,  -2.59175,  -1.83419,  -0.8865 ,   0.89346,   2.70453,  -3.15098,  -4.43793,
+##          0.8058 ,   0.23748,   1.13615,   0.63385,  -0.2395 ,   6.07024,   0.85521,   0.18951,   3.27772,  -0.8963 ,  -5.84285,   0.68905,  -0.30427,  -2.87087,  10.51629,  -3.96115,  -5.09138,
+##        -10.86754,  -9.25489,   7.0615 ,   0.01263,   3.93274,   3.40325,  -1.57858,  -4.94508,  -2.69779,   1.07372,  -3.95091,  -3.80321,  -1.91214,   0.14772,   3.70995,   5.04094,  -0.02024,
+##         -0.03725,  -1.15642,   8.92035,   2.63769,  -1.39664,   1.62241,  -4.87487,  -2.49769,   1.39569,  -1.39193,   4.52569,   2.29201,   1.57898,   0.69253,  -3.4654 ,   3.71004,   6.10037,
+##         -4.41299,  -4.79775,  -3.79204,  -3.61711,  -2.92489,   7.15104,  -3.24195,   3.03705,  -4.01473,  -1.99391,  -4.64601,   4.40534,  -3.12028,  -0.1754 ,   2.52698,   0.49637,  -1.0263 ,
+##         10.77554,  -1.64465,  -2.13624,  -2.16392,   1.92049,  -2.47602,  -4.34462,  -2.09427,  -0.32466,   2.56876,  -5.7397 ,  -2.94306,  -1.12118,   4.16147,   2.5303 ,   3.38768,   7.96277,
+##         -3.28827,  -5.73513,   4.76249,  -1.24714,   0.08253,  -1.71446,   1.3742 ,   1.85738,  -6.37864,  -0.0773 ,   0.73072,  -1.64713,  -3.65246,   1.57344,  -2.56019,  -1.09033,  -1.05099,
+##         -4.48298,  -0.28666,  -4.92509,   2.6523 ,  -4.59622,   3.09283,   3.50353,  -6.1787 ,  -2.08203,  -2.72838,  -8.55473,   4.14717,   0.03483,  -2.07173,  -1.22492,  -2.1331 ,  -3.24188,
+##         -3.23348,  -1.43328,   3.09365,   2.85666,   3.1452 ,  -0.60436,  -3.08445,   2.39221,   1.26373,   4.77618,  -1.78471,  -6.19369,  -3.24321,  -0.76221,  -1.56433,   1.39877,   2.28802,
+##          4.46115,  -3.25751,  -2.51097,   1.19593,   1.12214,   2.0177 ,  -2.9301 ,  -5.70471,   2.94404,  -9.62989,  -4.13055,  -0.30686,   5.41388,   3.36441,  -1.68838,   3.18239,  -1.97929,
+##          3.84279,   0.59629,   4.23805,  -8.3217 ,   4.71925,   0.32863,   2.20721,   3.46358,   3.38237,  -2.65319,   2.32341,   0.31199,   5.29292,   0.798  ,   2.17796,   5.74332,  -7.68979,
+##          0.33166,  -1.84974,   4.73811,   0.51179,  -1.18062,  -1.08818,   6.30818,  -2.88198,  -1.68064,   1.76754,  -3.80955,  -5.03755,   3.41809,  -2.62689,   4.09036,  -4.51406,   0.95089,
+##         -1.0706 ,  -1.51755,  -1.83065,  -5.33533,  -2.15694,  -5.43987,  -5.04878,  -5.62245,  -1.46875,  -0.60701,   0.20797,  -3.21649,   3.93528,   1.14442,   1.93545,  -4.11887,  -0.39968,
+##         -4.07461,   2.32534,  -0.26627,  -2.45467,  -1.08026,   2.35466,   0.92026,  -1.41122,  -1.21825, -10.48345,   3.18599,   0.08117,   4.24776,   4.47563,   6.52936,   4.06496,   0.61928,
+##         -4.96605,  -1.23884,  -3.06521,   2.4295 ,  -3.13812,  -0.51459,  -2.9222 ,   0.72806,   4.4886 ,  -1.04944, -11.67098,   1.12496,   3.81906,  -6.76879,  -3.90709,  -1.75508,   1.57104,
+##          2.2711 ,   7.69569,  -0.16729,   0.42729,  -1.31489,  -0.10855,  -1.65403])
+```
+
+
+
+---
+
+## `cv_results_` attribute
+
+Other useful details about the grid search process are stored in the dictionary `cv_results_` attribute which includes things like average test scores, fold level test scores, test ranks, test runtimes, etc.
+
+
+```python
+gs.cv_results_.keys()
+```
+
+```
+## dict_keys(['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_alpha', 'params', 'split0_test_score', 'split1_test_score', 'split2_test_score', 'split3_test_score', 'split4_test_score', 'mean_test_score', 'std_test_score', 'rank_test_score'])
+```
+
+
+```python
+gs.cv_results_["param_alpha"]
+```
+
+```
+## masked_array(data=[0.01, 0.01268961003167922, 0.01610262027560939, 0.020433597178569417, 0.02592943797404667, 0.03290344562312668, 0.041753189365604, 0.05298316906283707, 0.06723357536499334,
+##                    0.08531678524172806, 0.10826367338740546, 0.1373823795883263, 0.17433288221999882, 0.2212216291070449, 0.2807216203941177, 0.3562247890262442, 0.4520353656360243,
+##                    0.5736152510448679, 0.727895384398315, 0.9236708571873861, 1.1721022975334805, 1.4873521072935119, 1.8873918221350976, 2.395026619987486, 3.039195382313198, 3.856620421163472,
+##                    4.893900918477494, 6.2101694189156165, 7.880462815669913, 10.0],
+##              mask=[False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False,
+##                    False, False, False, False, False],
+##        fill_value='?',
+##             dtype=object)
+```
+
+```python
+gs.cv_results_["mean_test_score"]
+```
+
+```
+## array([-0.10126, -0.10126, -0.10126, -0.10126, -0.10126, -0.10126, -0.10126, -0.10126, -0.10126, -0.10126, -0.10126, -0.10127, -0.10128, -0.10129, -0.10132, -0.10136, -0.10143, -0.10154, -0.10173,
+##        -0.10203, -0.1025 , -0.10325, -0.10444, -0.10627, -0.10909, -0.11333, -0.11959, -0.12859, -0.14119, -0.15832])
+```
+
+```python
+gs.cv_results_["mean_fit_time"]
+```
+
+```
+## array([0.00086, 0.00076, 0.00075, 0.00075, 0.00072, 0.00063, 0.00062, 0.00063, 0.00063, 0.00066, 0.00065, 0.00062, 0.00062, 0.00062, 0.00062, 0.00061, 0.00061, 0.00061, 0.00061, 0.00061, 0.0006 ,
+##        0.00061, 0.00064, 0.00064, 0.00061, 0.0006 , 0.0006 , 0.00061, 0.0006 , 0.00061])
+```
+
+---
+
+.pull-left[ .small[
+
+```python
+alpha = np.array(gs.cv_results_["param_alpha"],dtype="float64")
+score = -gs.cv_results_["mean_test_score"]
+score_std = gs.cv_results_["std_test_score"]
+n_folds = gs.cv.get_n_splits()
+
+plt.figure(layout="constrained")
+
+ax = sns.lineplot(x=alpha, y=score)
+ax.set_xscale("log")
+
+plt.fill_between(
+  x = alpha,
+  y1 = score + 1.96*score_std / np.sqrt(n_folds),
+  y2 = score - 1.96*score_std / np.sqrt(n_folds),
+  alpha = 0.2
+)
+
+plt.show()
+```
+] ]
+
+.pull-right[
+&lt;img src="Lec15_files/figure-html/unnamed-chunk-35-5.png" width="672" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Ridge traceplot
+
+
+```python
+alpha = np.logspace(-2,3, 100)
+betas = []
+
+for a in alpha:
+    rg = Ridge(alpha=a).fit(X, y)
+    
+    betas.append(rg.coef_)
+
+res = pd.DataFrame(
+  data = betas, columns = rg.feature_names_in_
+).assign(
+  alpha = alpha  
+)
+
+res
+```
+
+```
+##           x1        x2        x3  ...      x5_C      x5_D        alpha
+## 0   0.995032  2.007574  0.002317  ... -0.621467  0.681007     0.010000
+## 1   0.995030  2.007568  0.002317  ... -0.621458  0.680990     0.011233
+## 2   0.995027  2.007562  0.002317  ... -0.621448  0.680971     0.012619
+## 3   0.995024  2.007555  0.002317  ... -0.621437  0.680949     0.014175
+## 4   0.995021  2.007547  0.002317  ... -0.621424  0.680925     0.015923
+## ..       ...       ...       ...  ...       ...       ...          ...
+## 95  0.464132  0.796323  0.025934  ... -0.101339  0.077138   628.029144
+## 96  0.435572  0.740631  0.025662  ... -0.092306  0.070625   705.480231
+## 97  0.407421  0.686644  0.025218  ... -0.083926  0.064556   792.482898
+## 98  0.379853  0.634638  0.024615  ... -0.076176  0.058912   890.215085
+## 99  0.353029  0.584846  0.023870  ... -0.069031  0.053676  1000.000000
+## 
+## [100 rows x 9 columns]
+```
+
+---
+
+
+```python
+g = sns.relplot(
+  data = res.melt(id_vars="alpha", value_name="coef values", var_name="feature"),
+  x = "alpha", y = "coef values", hue = "feature",
+  kind = "line", aspect=2
+)
+g.set(xscale="log")
+```
+
+&lt;img src="Lec15_files/figure-html/unnamed-chunk-37-7.png" width="66%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Exercise 1
+
+Obtain the [diabetes dataset](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_diabetes.html) from sklearn using the following code,
+
+
+```python
+from sklearn import datasets
+X, y = datasets.load_diabetes(return_X_y=True)
+```
+
+Our goal is to fit a Lasso model to these data and determine an optimal value of `alpha` using cross validation. Make sure to perform each of the following:
+
+* Verify whether scaling is necessary for these data
+
+* Even if scaling is not necessary, implement a pipeline that integrates `StandardScaler()` and `Lasso()`
+
+* Find the "optimal" value of `alpha` using `GridSearchCV()` and an appropriate metric, how robust does this result appear to be?
+
+* Time permitting, construct a traceplot of coefficients from the lasso models as a function of `alpha`
+
+---
+
+## Dataset details
+
+.small[
+
+```python
+datasets.load_diabetes()["feature_names"]
+```
+
+```
+## ['age', 'sex', 'bmi', 'bp', 's1', 's2', 's3', 's4', 's5', 's6']
+```
+
+```python
+print(datasets.load_diabetes()["DESCR"])
+```
+
+```
+## .. _diabetes_dataset:
+## 
+## Diabetes dataset
+## ----------------
+## 
+## Ten baseline variables, age, sex, body mass index, average blood
+## pressure, and six blood serum measurements were obtained for each of n =
+## 442 diabetes patients, as well as the response of interest, a
+## quantitative measure of disease progression one year after baseline.
+## 
+## **Data Set Characteristics:**
+## 
+##   :Number of Instances: 442
+## 
+##   :Number of Attributes: First 10 columns are numeric predictive values
+## 
+##   :Target: Column 11 is a quantitative measure of disease progression one year after baseline
+## 
+##   :Attribute Information:
+##       - age     age in years
+##       - sex
+##       - bmi     body mass index
+##       - bp      average blood pressure
+##       - s1      tc, total serum cholesterol
+##       - s2      ldl, low-density lipoproteins
+##       - s3      hdl, high-density lipoproteins
+##       - s4      tch, total cholesterol / HDL
+##       - s5      ltg, possibly log of serum triglycerides level
+##       - s6      glu, blood sugar level
+## 
+## Note: Each of these 10 feature variables have been mean centered and scaled by the standard deviation times `n_samples` (i.e. the sum of squares of each column totals 1).
+## 
+## Source URL:
+## https://www4.stat.ncsu.edu/~boos/var.select/diabetes.html
+## 
+## For more information see:
+## Bradley Efron, Trevor Hastie, Iain Johnstone and Robert Tibshirani (2004) "Least Angle Regression," Annals of Statistics (with discussion), 407-499.
+## (https://web.stanford.edu/~hastie/Papers/LARS/LeastAngle_2002.pdf)
+```
+]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightLines": true,
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
