@@ -1,0 +1,568 @@
+---
+title: "Lec 16 - scikit-learn<br/>classification"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightLines: true
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{python setup}
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+import sklearn
+
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.model_selection import GridSearchCV, KFold, StratifiedKFold, train_test_split
+from sklearn.metrics import classification_report
+
+plt.rcParams['figure.dpi'] = 200
+
+np.set_printoptions(
+  edgeitems=30, linewidth=200,
+  precision = 5, suppress=True
+  #formatter=dict(float=lambda x: "%.5g" % x)
+)
+
+pd.set_option("display.width", 1000)
+pd.set_option("display.max_columns", 10)
+pd.set_option("display.precision", 6)
+```
+
+```{r r_setup}
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+```
+
+```{r hooks}
+local({
+  hook_err_old <- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old <- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("<string>:1: ", "", x)
+    hook_warn_old(x, options)
+  })
+})
+```
+
+---
+
+## OpenIntro - Spam
+
+We will start by looking at a data set on spam emails from the [OpenIntro project](https://www.openintro.org/). A full data dictionary can be found [here](https://www.openintro.org/data/index.php?data=email). To keep things simple this week we will restrict our exploration to including only the following columns: `spam`, `exclaim_mess`, `format`, `num_char`,  `line_breaks`, and `number`.
+
+* `spam` - Indicator for whether the email was spam.
+* `exclaim_mess` - The number of exclamation points in the email message.
+* `format` - Indicates whether the email was written using HTML (e.g. may have included bolding or active links).
+* `num_char` - The number of characters in the email, in thousands.
+* `line_breaks` - The number of line breaks in the email (does not count text wrapping).
+* `number` - Factor variable saying whether there was no number, a small number (under 1 million), or a big number.
+
+---
+
+```{python}
+email = pd.read_csv('data/email.csv')[ ['spam', 'exclaim_mess', 'format', 'num_char', 'line_breaks', 'number'] ]
+email
+```
+
+--
+
+Given that `number` is categorical, we will take care of the necessary dummy coding via `pd.get_dummies()`,
+```{python}
+email_dc = pd.get_dummies(email)
+email_dc
+```
+
+---
+
+```{python out.width="55%", cache=TRUE}
+sns.pairplot(email, hue='spam')
+```
+
+---
+
+## Model fitting
+
+```{python}
+from sklearn.linear_model import LogisticRegression
+
+y = email_dc.spam
+X = email_dc.drop('spam', axis=1)
+
+m = LogisticRegression(fit_intercept = False).fit(X, y)
+```
+
+--
+
+```{python}
+m.feature_names_in_
+m.coef_
+```
+
+---
+
+## A quick comparison
+
+```{r include=FALSE}
+d = read.csv("data/email.csv")
+d = dplyr::select(d, spam, exclaim_mess, format, num_char, line_breaks, number)
+```
+
+.pull-left[.small[
+```{r}
+glm(spam ~ . - 1, data = d, family=binomial) 
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+m.feature_names_in_
+m.coef_
+```
+] ]
+
+<br/>
+
+.center[
+Why are these different?
+]
+
+--
+
+> `sklearn.linear_model.LogisticRegression`
+>
+> ...
+> 
+> This class implements regularized logistic regression using the ‘liblinear’ library, ‘newton-cg’, ‘sag’, ‘saga’ and ‘lbfgs’ solvers. **Note that regularization is applied by default.** It can handle both dense and sparse input. Use C-ordered arrays or CSR matrices containing 64-bit floats for optimal performance; any other input format will be converted (and copied).
+
+---
+
+## Penalty parameter
+
+🚩🚩🚩 `LogisticRegression()` has a parameter called penalty that applies a `l1` (lasso), `l2` (ridge), `elasticnet` or `none` with `l2` being the default. To make matters worse, the regularization is controled by the parameter `C` which defaults to 1 (not 0) - also `C` is the inverse regularization strength (e.g. different from `alpha` for ridge and lasso models). 🚩🚩🚩
+
+$$
+\min\_{w, c} \frac{1 - \rho}{2}w^T w + \rho \|w\|\_1 + C \sum\_{i=1}^n \log(\exp(- y\_i (X\_i^T w + c)) + 1),
+$$
+
+<br/>
+
+--
+
+```{python}
+m = LogisticRegression(fit_intercept = False, penalty="none").fit(X, y)
+m.feature_names_in_
+m.coef_
+```
+
+---
+
+## Solver parameter
+
+It is also possible specify the solver to use when fitting a logistic regression model, to complicate matters somewhat the choice of the algorithm depends on the penalty chosen: 
+
+* `newton-cg` - [`l2`, `none`]
+* `lbfgs` - [`l2`, `none`]
+* `liblinear` - [`l1`, `l2`]
+* `sag` - [`l2`, `none`]
+* `saga` - [`elasticnet`, `l1`, `l2`, `none`]
+
+Also the can be issues with feature scales for some of these solvers:
+> **Note:** ‘sag’ and ‘saga’ fast convergence is only guaranteed on features with approximately the same scale. You can preprocess the data with a scaler from sklearn.preprocessing.
+
+---
+
+## Prediction
+
+Classification models have multiple prediction methods depending on what type of output you would like,
+
+```{python}
+m.predict(X)
+```
+
+.pull-left[
+```{python}
+m.predict_proba(X)
+```
+]
+
+.pull-right[
+```{python}
+m.predict_log_proba(X)
+```
+]
+
+---
+
+## Scoring
+
+Classification models also include a `score()` method which returns the model's accuracy,
+
+```{python}
+m.score(X, y)
+```
+
+Other scoring options are available via the [metrics](https://scikit-learn.org/stable/modules/classes.html#classification-metrics) submodule
+
+```{python}
+from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, confusion_matrix
+```
+
+.pull-left[
+```{python}
+accuracy_score(y, m.predict(X))
+roc_auc_score(y, m.predict_proba(X)[:,1])
+f1_score(y, m.predict(X))
+```
+]
+
+.pull-right[
+```{python}
+confusion_matrix(y, m.predict(X), labels=m.classes_)
+```
+]
+
+---
+
+## Scoring visualizations - confusion matrix
+
+.small[
+```{python, out.width="40%"}
+from sklearn.metrics import ConfusionMatrixDisplay
+cm = confusion_matrix(y, m.predict(X), labels=m.classes_)
+
+disp = ConfusionMatrixDisplay(cm).plot()
+plt.show()
+```
+]
+
+---
+
+## Scoring visualizations - ROC curve
+
+.small[
+```{python, out.width="40%"}
+from sklearn.metrics import auc, roc_curve, RocCurveDisplay
+
+fpr, tpr, thresholds = roc_curve(y, m.predict_proba(X)[:,1])
+roc_auc = auc(fpr, tpr)
+disp = RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc,
+                       estimator_name='Logistic Regression').plot()
+plt.show()
+```
+]
+
+
+---
+
+## Scoring visualizations - Precision Recall
+
+.small[
+```{python, out.width="40%"}
+from sklearn.metrics import precision_recall_curve, PrecisionRecallDisplay
+
+precision, recall, _ = precision_recall_curve(y, m.predict_proba(X)[:,1])
+disp = PrecisionRecallDisplay(precision=precision, recall=recall).plot()
+plt.show()
+```
+]
+
+---
+
+## Another visualization
+
+```{python}
+def confusion_plot(truth, probs, threshold=0.5):
+    
+    d = pd.DataFrame(
+        data = {'spam': y, 'truth': truth, 'probs': probs}
+    )
+    
+    # Create a column called outcome that contains the labeling outcome for the given threshold
+    d['outcome'] = 'other'
+    d.loc[(d.spam == 1) & (d.probs >= threshold), 'outcome'] = 'true positive'
+    d.loc[(d.spam == 0) & (d.probs >= threshold), 'outcome'] = 'false positive'
+    d.loc[(d.spam == 1) & (d.probs <  threshold), 'outcome'] = 'false negative'
+    d.loc[(d.spam == 0) & (d.probs <  threshold), 'outcome'] = 'true negative'
+    
+    # Create plot and color according to outcome
+    plt.figure(figsize=(12,4))
+    plt.xlim((-0.05,1.05))
+    sns.stripplot(y='truth', x='probs', hue='outcome', data=d, size=3, alpha=0.5)
+    plt.axvline(x=threshold, linestyle='dashed', color='black', alpha=0.5)
+    plt.title("threshold = %.2f" % threshold)
+    plt.show()
+```
+
+---
+
+.small[
+```{python out.width='66%'}
+truth = pd.Categorical.from_codes(y, categories = ('not spam','spam'))
+probs = m.predict_proba(X)[:,1]
+confusion_plot(truth, probs, 0.5)
+confusion_plot(truth, probs, 0.25)
+```
+]
+
+---
+class: center, middle
+
+## Demo 1 - DecisionTreeClassifier
+
+---
+class: center, middle
+
+## Demo 2 - SVC
+
+---
+
+## MNIST handwritten digits
+
+```{python}
+from sklearn.datasets import load_digits
+
+digits = load_digits(as_frame=True)
+```
+
+
+.pull-left[ .small[
+```{python}
+X = digits.data
+X
+```
+] ]
+
+.pull-right[ .small[ 
+```{python}
+y = digits.target
+y
+```
+] ]
+
+
+
+---
+
+## digit description
+
+.small[
+```{python echo=FALSE}
+print(digits.DESCR)
+```
+]
+
+---
+
+## Example digits
+
+```{python echo=FALSE, out.width="85%"}
+fig, axes = plt.subplots(nrows=5, ncols=10, figsize=(10, 6), layout="constrained")
+axes2 = [ax for row in axes for ax in row]
+
+for ax, image, label in zip(axes2, digits.images, digits.target):
+    ax.set_axis_off()
+    img = ax.imshow(image, cmap=plt.cm.gray_r, interpolation="nearest")
+    txt = ax.set_title(f"{label}")
+    
+plt.show()
+```
+
+---
+
+## Doing things properly - train/test split
+
+To properly assess our modeling we will create a training and testing set of these data, only the training data will be used to learn model coefficients or hyperparameters, test data will only be used for final model scoring.
+
+```{python}
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.33, shuffle=True, random_state=1234
+)
+```
+
+---
+
+## Multiclass logistic regression
+
+Fitting a multiclass logistic regression model will involve selecting a value for the `multi_class` parameter, which can be either `multinomial` for multinomial regression or `ovr` for one-vs-rest where `k` binary models are fit.
+
+```{python}
+mc_log_cv = GridSearchCV(
+  LogisticRegression(penalty='none', max_iter = 5000),
+  param_grid = {"multi_class": ["multinomial", "ovr"]},
+  cv = KFold(10, shuffle=True, random_state=12345),
+  n_jobs = 4
+).fit(X_train, y_train)
+```
+
+--
+
+```{python}
+mc_log_cv.best_estimator_
+mc_log_cv.best_score_
+```
+
+--
+
+```{python}
+for p, s in  zip(mc_log_cv.cv_results_["params"], mc_log_cv.cv_results_["mean_test_score"]):
+  print(p,"Score:",s)
+```
+
+---
+
+## Model coefficients
+
+```{python}
+pd.DataFrame(
+  mc_log_cv.best_estimator_.coef_
+)
+
+mc_log_cv.best_estimator_.coef_.shape
+
+mc_log_cv.best_estimator_.intercept_
+```
+
+---
+
+## Confusion Matrix
+
+.pull-left[
+**Within sample**
+```{python}
+accuracy_score(
+  y_train, 
+  mc_log_cv.best_estimator_.predict(X_train)
+)
+confusion_matrix(
+  y_train, 
+  mc_log_cv.best_estimator_.predict(X_train)
+)
+```
+]
+
+.pull-right[
+**Out of sample**
+```{python}
+accuracy_score(
+  y_test, 
+  mc_log_cv.best_estimator_.predict(X_test)
+)
+confusion_matrix(
+  y_test, 
+  mc_log_cv.best_estimator_.predict(X_test),
+  labels = digits.target_names
+)
+```
+]
+
+---
+
+## Report
+
+```{python}
+print( classification_report(
+  y_test, 
+  mc_log_cv.best_estimator_.predict(X_test)
+) )
+```
+
+---
+
+## ROC & AUC?
+
+These metrics are slightly awkward to use in the case multiclass problems since they depend on the probability predictions to calculate.
+
+```{python error=TRUE}
+roc_auc_score(
+  y_test, mc_log_cv.best_estimator_.predict_proba(X_test)
+)
+```
+
+--
+
+.pull-left[
+```{python error=TRUE}
+roc_auc_score(
+  y_test, mc_log_cv.best_estimator_.predict_proba(X_test),
+  multi_class = "ovr"
+)
+
+roc_auc_score(
+  y_test, mc_log_cv.best_estimator_.predict_proba(X_test),
+  multi_class = "ovo"
+)
+```
+]
+
+.pull-right[
+```{python error=TRUE}
+roc_auc_score(
+  y_test, mc_log_cv.best_estimator_.predict_proba(X_test),
+  multi_class = "ovr", average = "weighted"
+)
+
+roc_auc_score(
+  y_test, mc_log_cv.best_estimator_.predict_proba(X_test),
+  multi_class = "ovo", average = "weighted"
+)
+```
+]
+
+---
+
+## Prediction
+
+.pull-left[ .small[
+```{python}
+mc_log_cv.best_estimator_.predict(X_test)
+```
+] ]
+
+.pull-right[ .small[
+```{python}
+mc_log_cv.best_estimator_.predict_proba(X_test),
+```
+] ]
+
+---
+
+## Exercise 1
+
+Using these data fit a `DecisionTreeClassifier` to these data, you should employ `GridSearchCV` to tune some of the parameters (`max_depth` at a minimum) - see the full list [here](https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html).
+
+Does this model perform better or worse than the multinomial regression model we just used?
+
+```{python}
+from sklearn.datasets import load_digits
+digits = load_digits(as_frame=True)
+
+
+X, y = digits.data, digits.target
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.33, shuffle=True, random_state=1234
+)
+```

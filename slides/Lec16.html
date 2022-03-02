@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 16 - scikit-learn classification</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs-2.11/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 16 - scikit-learn<br/>classification
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+```python
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+import sklearn
+
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.model_selection import GridSearchCV, KFold, StratifiedKFold, train_test_split
+from sklearn.metrics import classification_report
+
+plt.rcParams['figure.dpi'] = 200
+
+np.set_printoptions(
+  edgeitems=30, linewidth=200,
+  precision = 5, suppress=True
+  #formatter=dict(float=lambda x: "%.5g" % x)
+)
+
+pd.set_option("display.width", 1000)
+pd.set_option("display.max_columns", 10)
+pd.set_option("display.precision", 6)
+```
+
+
+```r
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+```
+
+
+```r
+local({
+  hook_err_old &lt;- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old &lt;- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("&lt;string&gt;:1: ", "", x)
+    hook_warn_old(x, options)
+  })
+})
+```
+
+---
+
+## OpenIntro - Spam
+
+We will start by looking at a data set on spam emails from the [OpenIntro project](https://www.openintro.org/). A full data dictionary can be found [here](https://www.openintro.org/data/index.php?data=email). To keep things simple this week we will restrict our exploration to including only the following columns: `spam`, `exclaim_mess`, `format`, `num_char`,  `line_breaks`, and `number`.
+
+* `spam` - Indicator for whether the email was spam.
+* `exclaim_mess` - The number of exclamation points in the email message.
+* `format` - Indicates whether the email was written using HTML (e.g. may have included bolding or active links).
+* `num_char` - The number of characters in the email, in thousands.
+* `line_breaks` - The number of line breaks in the email (does not count text wrapping).
+* `number` - Factor variable saying whether there was no number, a small number (under 1 million), or a big number.
+
+---
+
+
+```python
+email = pd.read_csv('data/email.csv')[ ['spam', 'exclaim_mess', 'format', 'num_char', 'line_breaks', 'number'] ]
+email
+```
+
+```
+##       spam  exclaim_mess  format  num_char  line_breaks number
+## 0        0             0       1    11.370          202    big
+## 1        0             1       1    10.504          202  small
+## 2        0             6       1     7.773          192  small
+## 3        0            48       1    13.256          255  small
+## 4        0             1       0     1.231           29   none
+## ...    ...           ...     ...       ...          ...    ...
+## 3916     1             0       0     0.332           12  small
+## 3917     1             0       0     0.323           15  small
+## 3918     0             5       1     8.656          208  small
+## 3919     0             0       0    10.185          132  small
+## 3920     1             1       0     2.225           65  small
+## 
+## [3921 rows x 6 columns]
+```
+
+--
+
+Given that `number` is categorical, we will take care of the necessary dummy coding via `pd.get_dummies()`,
+
+```python
+email_dc = pd.get_dummies(email)
+email_dc
+```
+
+```
+##       spam  exclaim_mess  format  num_char  line_breaks  number_big  number_none  number_small
+## 0        0             0       1    11.370          202           1            0             0
+## 1        0             1       1    10.504          202           0            0             1
+## 2        0             6       1     7.773          192           0            0             1
+## 3        0            48       1    13.256          255           0            0             1
+## 4        0             1       0     1.231           29           0            1             0
+## ...    ...           ...     ...       ...          ...         ...          ...           ...
+## 3916     1             0       0     0.332           12           0            0             1
+## 3917     1             0       0     0.323           15           0            0             1
+## 3918     0             5       1     8.656          208           0            0             1
+## 3919     0             0       0    10.185          132           0            0             1
+## 3920     1             1       0     2.225           65           0            0             1
+## 
+## [3921 rows x 8 columns]
+```
+
+---
+
+
+```python
+sns.pairplot(email, hue='spam')
+```
+
+&lt;img src="Lec16_files/figure-html/unnamed-chunk-3-1.png" width="55%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Model fitting
+
+
+```python
+from sklearn.linear_model import LogisticRegression
+
+y = email_dc.spam
+X = email_dc.drop('spam', axis=1)
+
+m = LogisticRegression(fit_intercept = False).fit(X, y)
+```
+
+--
+
+
+```python
+m.feature_names_in_
+```
+
+```
+## array(['exclaim_mess', 'format', 'num_char', 'line_breaks', 'number_big', 'number_none', 'number_small'], dtype=object)
+```
+
+```python
+m.coef_
+```
+
+```
+## array([[ 0.00982, -0.61893,  0.0545 , -0.00556, -1.21224, -0.69336, -1.92076]])
+```
+
+---
+
+## A quick comparison
+
+
+
+.pull-left[.small[
+
+```r
+glm(spam ~ . - 1, data = d, family=binomial) 
+```
+
+```
+## 
+## Call:  glm(formula = spam ~ . - 1, family = binomial, data = d)
+## 
+## Coefficients:
+## exclaim_mess        format      num_char   line_breaks     numberbig  
+##     0.009587     -0.604782      0.054765     -0.005480     -1.264827  
+##   numbernone   numbersmall  
+##    -0.706843     -1.950440  
+## 
+## Degrees of Freedom: 3921 Total (i.e. Null);  3914 Residual
+## Null Deviance:	    5436 
+## Residual Deviance: 2144 	AIC: 2158
+```
+] ]
+
+.pull-right[ .small[
+
+```python
+m.feature_names_in_
+```
+
+```
+## array(['exclaim_mess', 'format', 'num_char', 'line_breaks', 'number_big', 'number_none', 'number_small'], dtype=object)
+```
+
+```python
+m.coef_
+```
+
+```
+## array([[ 0.00982, -0.61893,  0.0545 , -0.00556, -1.21224, -0.69336, -1.92076]])
+```
+] ]
+
+&lt;br/&gt;
+
+.center[
+Why are these different?
+]
+
+--
+
+&gt; `sklearn.linear_model.LogisticRegression`
+&gt;
+&gt; ...
+&gt; 
+&gt; This class implements regularized logistic regression using the ‘liblinear’ library, ‘newton-cg’, ‘sag’, ‘saga’ and ‘lbfgs’ solvers. **Note that regularization is applied by default.** It can handle both dense and sparse input. Use C-ordered arrays or CSR matrices containing 64-bit floats for optimal performance; any other input format will be converted (and copied).
+
+---
+
+## Penalty param
+
+🚩🚩🚩 `LogisticRegression()` has a parameter called penalty that applies a `l1` (lasso), `l2` (ridge), `elasticnet` or `none` with `l2` being the default. To make matters worse, the regularization is controled by the parameter `C` which defaults to 1 (not 0) - also `C` is the inverse regularization strength (e.g. different from `alpha` for ridge and lasso models). 🚩🚩🚩
+
+$$
+\min\_{w, c} \frac{1 - \rho}{2}w^T w + \rho \|w\|\_1 + C \sum\_{i=1}^n \log(\exp(- y\_i (X\_i^T w + c)) + 1),
+$$
+
+&lt;br/&gt;
+
+
+
+```python
+m = LogisticRegression(fit_intercept = False, penalty="none").fit(X, y)
+m.feature_names_in_
+```
+
+```
+## array(['exclaim_mess', 'format', 'num_char', 'line_breaks', 'number_big', 'number_none', 'number_small'], dtype=object)
+```
+
+```python
+m.coef_
+```
+
+```
+## array([[ 0.00958, -0.60606,  0.05505, -0.00549, -1.26347, -0.70637, -1.95091]])
+```
+
+---
+
+## Solver param
+
+It is also possible specify the solver to use when fitting a logistic regression model, to complicate matters somewhat the choice of the algorithm depends on the penalty chosen: 
+
+* `newton-cg` - [`l2`, `none`]
+* `lbfgs` - [`l2`, `none`]
+* `liblinear` - [`l1`, `l2`]
+* `sag` - [`l2`, `none`]
+* `saga` - [`elasticnet`, `l1`, `l2`, `none`]
+
+Also the can be issues with feature scales for some of these solvers:
+&gt; **Note:** ‘sag’ and ‘saga’ fast convergence is only guaranteed on features with approximately the same scale. You can preprocess the data with a scaler from sklearn.preprocessing.
+
+---
+
+## Prediction
+
+Classification models have multiple prediction methods depending on what type of output you would like,
+
+
+```python
+m.predict(X)
+```
+
+```
+## array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+```
+
+.pull-left[
+
+```python
+m.predict_proba(X)
+```
+
+```
+## array([[0.91318, 0.08682],
+##        [0.956  , 0.044  ],
+##        [0.95796, 0.04204],
+##        [0.94091, 0.05909],
+##        [0.68747, 0.31253],
+##        [0.68439, 0.31561],
+##        [0.93424, 0.06576],
+##        [0.96366, 0.03634],
+##        [0.89589, 0.10411],
+##        [0.94186, 0.05814],
+##        [0.9326 , 0.0674 ],
+##        [0.89604, 0.10396],
+##        [0.91236, 0.08764],
+##        [0.97276, 0.02724],
+##        [0.92822, 0.07178],
+##        [0.98356, 0.01644],
+##        [0.96329, 0.03671],
+##        [0.95383, 0.04617],
+##        [0.88896, 0.11104],
+##        [0.80423, 0.19577],
+##        [0.89907, 0.10093],
+##        [0.95648, 0.04352],
+##        [0.99088, 0.00912],
+##        [0.88025, 0.11975],
+##        [0.80527, 0.19473],
+##        [0.88754, 0.11246],
+##        [0.89736, 0.10264],
+##        [0.88684, 0.11316],
+##        [0.68512, 0.31488],
+##        [0.93706, 0.06294],
+##        ...,
+##        [0.8822 , 0.1178 ],
+##        [0.99382, 0.00618],
+##        [0.93511, 0.06489],
+##        [0.68921, 0.31079],
+##        [0.87715, 0.12285],
+##        [0.79328, 0.20672],
+##        [0.79   , 0.21   ],
+##        [0.67245, 0.32755],
+##        [0.89349, 0.10651],
+##        [0.93284, 0.06716],
+##        [0.68921, 0.31079],
+##        [0.88452, 0.11548],
+##        [0.98189, 0.01811],
+##        [0.88955, 0.11045],
+##        [0.88363, 0.11637],
+##        [0.67266, 0.32734],
+##        [0.79052, 0.20948],
+##        [0.67985, 0.32015],
+##        [0.68707, 0.31293],
+##        [0.70604, 0.29396],
+##        [0.93324, 0.06676],
+##        [0.93067, 0.06933],
+##        [0.88962, 0.11038],
+##        [0.78861, 0.21139],
+##        [0.91821, 0.08179],
+##        [0.88064, 0.11936],
+##        [0.88242, 0.11758],
+##        [0.95988, 0.04012],
+##        [0.89238, 0.10762],
+##        [0.89806, 0.10194]])
+```
+]
+
+.pull-right[
+
+```python
+m.predict_log_proba(X)
+```
+
+```
+## array([[-0.09082, -2.44394],
+##        [-0.04499, -3.12364],
+##        [-0.04295, -3.16909],
+##        [-0.06091, -2.82873],
+##        [-0.37474, -1.16305],
+##        [-0.37922, -1.15326],
+##        [-0.06802, -2.72176],
+##        [-0.03702, -3.3147 ],
+##        [-0.10994, -2.26229],
+##        [-0.0599 , -2.84487],
+##        [-0.06978, -2.69706],
+##        [-0.10977, -2.26371],
+##        [-0.09172, -2.43457],
+##        [-0.02761, -3.60324],
+##        [-0.07449, -2.63414],
+##        [-0.01658, -4.10782],
+##        [-0.0374 , -3.30471],
+##        [-0.04727, -3.07543],
+##        [-0.1177 , -2.19788],
+##        [-0.21787, -1.63081],
+##        [-0.10639, -2.29337],
+##        [-0.04449, -3.13464],
+##        [-0.00917, -4.6968 ],
+##        [-0.12755, -2.12237],
+##        [-0.21657, -1.63616],
+##        [-0.1193 , -2.18514],
+##        [-0.10829, -2.27657],
+##        [-0.12009, -2.17899],
+##        [-0.37817, -1.15555],
+##        [-0.065  , -2.76564],
+##        ...,
+##        [-0.12534, -2.13877],
+##        [-0.0062 , -5.08704],
+##        [-0.06709, -2.73506],
+##        [-0.3722 , -1.16865],
+##        [-0.13108, -2.09676],
+##        [-0.23158, -1.5764 ],
+##        [-0.23573, -1.56063],
+##        [-0.39683, -1.11611],
+##        [-0.11262, -2.23954],
+##        [-0.06952, -2.70063],
+##        [-0.3722 , -1.16865],
+##        [-0.12271, -2.15867],
+##        [-0.01827, -4.01147],
+##        [-0.11704, -2.20315],
+##        [-0.12371, -2.151  ],
+##        [-0.39652, -1.11675],
+##        [-0.23506, -1.56315],
+##        [-0.38588, -1.13897],
+##        [-0.37532, -1.16178],
+##        [-0.34808, -1.22432],
+##        [-0.06909, -2.7067 ],
+##        [-0.07185, -2.66892],
+##        [-0.11696, -2.20386],
+##        [-0.23749, -1.55403],
+##        [-0.08533, -2.50358],
+##        [-0.1271 , -2.12564],
+##        [-0.12509, -2.1406 ],
+##        [-0.04094, -3.21594],
+##        [-0.11387, -2.22912],
+##        [-0.10752, -2.28337]])
+```
+]
+
+---
+
+## Scoring
+
+Classification models also include a `score()` method which returns the model's accuracy,
+
+
+```python
+m.score(X, y)
+```
+
+```
+## 0.90640142820709
+```
+
+Other scoring options are available via the metrics submodule
+
+
+```python
+from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, confusion_matrix
+```
+
+.pull-left[
+
+```python
+accuracy_score(y, m.predict(X))
+```
+
+```
+## 0.90640142820709
+```
+
+```python
+roc_auc_score(y, m.predict_proba(X)[:,1])
+```
+
+```
+## 0.7606622771440706
+```
+
+```python
+f1_score(y, m.predict(X))
+```
+
+```
+## 0.0
+```
+]
+
+.pull-right[
+
+```python
+confusion_matrix(y, m.predict(X), labels=m.classes_)
+```
+
+```
+## array([[3554,    0],
+##        [ 367,    0]])
+```
+]
+
+---
+
+## Scoring visualizations - confusion matrix
+
+.small[
+
+```python
+from sklearn.metrics import ConfusionMatrixDisplay
+cm = confusion_matrix(y, m.predict(X), labels=m.classes_)
+
+disp = ConfusionMatrixDisplay(cm).plot()
+plt.show()
+```
+
+&lt;img src="Lec16_files/figure-html/unnamed-chunk-17-1.png" width="40%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Scoring visualizations - ROC curve
+
+.small[
+
+```python
+from sklearn.metrics import auc, roc_curve, RocCurveDisplay
+
+fpr, tpr, thresholds = roc_curve(y, m.predict_proba(X)[:,1])
+roc_auc = auc(fpr, tpr)
+disp = RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc,
+                       estimator_name='Logistic Regression').plot()
+plt.show()
+```
+
+&lt;img src="Lec16_files/figure-html/unnamed-chunk-18-3.png" width="40%" style="display: block; margin: auto;" /&gt;
+]
+
+
+---
+
+## Scoring visualizations - Precision Recall
+
+.small[
+
+```python
+from sklearn.metrics import precision_recall_curve, PrecisionRecallDisplay
+
+precision, recall, _ = precision_recall_curve(y, m.predict_proba(X)[:,1])
+disp = PrecisionRecallDisplay(precision=precision, recall=recall).plot()
+plt.show()
+```
+
+&lt;img src="Lec16_files/figure-html/unnamed-chunk-19-5.png" width="40%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Another visualization
+
+
+```python
+def confusion_plot(truth, probs, threshold=0.5):
+    
+    d = pd.DataFrame(
+        data = {'spam': y, 'truth': truth, 'probs': probs}
+    )
+    
+    # Create a column called outcome that contains the labeling outcome for the given threshold
+    d['outcome'] = 'other'
+    d.loc[(d.spam == 1) &amp; (d.probs &gt;= threshold), 'outcome'] = 'true positive'
+    d.loc[(d.spam == 0) &amp; (d.probs &gt;= threshold), 'outcome'] = 'false positive'
+    d.loc[(d.spam == 1) &amp; (d.probs &lt;  threshold), 'outcome'] = 'false negative'
+    d.loc[(d.spam == 0) &amp; (d.probs &lt;  threshold), 'outcome'] = 'true negative'
+    
+    # Create plot and color according to outcome
+    plt.figure(figsize=(12,4))
+    plt.xlim((-0.05,1.05))
+    sns.stripplot(y='truth', x='probs', hue='outcome', data=d, size=3, alpha=0.5)
+    plt.axvline(x=threshold, linestyle='dashed', color='black', alpha=0.5)
+    plt.title("threshold = %.2f" % threshold)
+    plt.show()
+```
+
+---
+
+.small[
+
+```python
+truth = pd.Categorical.from_codes(y, categories = ('not spam','spam'))
+probs = m.predict_proba(X)[:,1]
+confusion_plot(truth, probs, 0.5)
+```
+
+&lt;img src="Lec16_files/figure-html/unnamed-chunk-21-7.png" width="66%" style="display: block; margin: auto;" /&gt;
+
+```python
+confusion_plot(truth, probs, 0.25)
+```
+
+&lt;img src="Lec16_files/figure-html/unnamed-chunk-21-8.png" width="66%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+class: center, middle
+
+## Demo 1 - DecisionTreeClassifier
+
+---
+class: center, middle
+
+## Demo 2 - SVC
+
+---
+
+## MNIST handwritten digits
+
+
+```python
+from sklearn.datasets import load_digits
+
+digits = load_digits(as_frame=True)
+```
+
+
+.pull-left[ .small[
+
+```python
+X = digits.data
+X
+```
+
+```
+##       pixel_0_0  pixel_0_1  pixel_0_2  pixel_0_3  pixel_0_4  ...  pixel_7_3  pixel_7_4  pixel_7_5  pixel_7_6  pixel_7_7
+## 0           0.0        0.0        5.0       13.0        9.0  ...       13.0       10.0        0.0        0.0        0.0
+## 1           0.0        0.0        0.0       12.0       13.0  ...       11.0       16.0       10.0        0.0        0.0
+## 2           0.0        0.0        0.0        4.0       15.0  ...        3.0       11.0       16.0        9.0        0.0
+## 3           0.0        0.0        7.0       15.0       13.0  ...       13.0       13.0        9.0        0.0        0.0
+## 4           0.0        0.0        0.0        1.0       11.0  ...        2.0       16.0        4.0        0.0        0.0
+## ...         ...        ...        ...        ...        ...  ...        ...        ...        ...        ...        ...
+## 1792        0.0        0.0        4.0       10.0       13.0  ...       14.0       15.0        9.0        0.0        0.0
+## 1793        0.0        0.0        6.0       16.0       13.0  ...       16.0       14.0        6.0        0.0        0.0
+## 1794        0.0        0.0        1.0       11.0       15.0  ...        9.0       13.0        6.0        0.0        0.0
+## 1795        0.0        0.0        2.0       10.0        7.0  ...       12.0       16.0       12.0        0.0        0.0
+## 1796        0.0        0.0       10.0       14.0        8.0  ...       12.0       14.0       12.0        1.0        0.0
+## 
+## [1797 rows x 64 columns]
+```
+] ]
+
+.pull-right[ .small[ 
+
+```python
+y = digits.target
+y
+```
+
+```
+## 0       0
+## 1       1
+## 2       2
+## 3       3
+## 4       4
+##        ..
+## 1792    9
+## 1793    0
+## 1794    8
+## 1795    9
+## 1796    8
+## Name: target, Length: 1797, dtype: int64
+```
+] ]
+
+
+
+---
+
+## digit description
+
+.small[
+
+```
+## .. _digits_dataset:
+## 
+## Optical recognition of handwritten digits dataset
+## --------------------------------------------------
+## 
+## **Data Set Characteristics:**
+## 
+##     :Number of Instances: 1797
+##     :Number of Attributes: 64
+##     :Attribute Information: 8x8 image of integer pixels in the range 0..16.
+##     :Missing Attribute Values: None
+##     :Creator: E. Alpaydin (alpaydin '@' boun.edu.tr)
+##     :Date: July; 1998
+## 
+## This is a copy of the test set of the UCI ML hand-written digits datasets
+## https://archive.ics.uci.edu/ml/datasets/Optical+Recognition+of+Handwritten+Digits
+## 
+## The data set contains images of hand-written digits: 10 classes where
+## each class refers to a digit.
+## 
+## Preprocessing programs made available by NIST were used to extract
+## normalized bitmaps of handwritten digits from a preprinted form. From a
+## total of 43 people, 30 contributed to the training set and different 13
+## to the test set. 32x32 bitmaps are divided into nonoverlapping blocks of
+## 4x4 and the number of on pixels are counted in each block. This generates
+## an input matrix of 8x8 where each element is an integer in the range
+## 0..16. This reduces dimensionality and gives invariance to small
+## distortions.
+## 
+## For info on NIST preprocessing routines, see M. D. Garris, J. L. Blue, G.
+## T. Candela, D. L. Dimmick, J. Geist, P. J. Grother, S. A. Janet, and C.
+## L. Wilson, NIST Form-Based Handprint Recognition System, NISTIR 5469,
+## 1994.
+## 
+## .. topic:: References
+## 
+##   - C. Kaynak (1995) Methods of Combining Multiple Classifiers and Their
+##     Applications to Handwritten Digit Recognition, MSc Thesis, Institute of
+##     Graduate Studies in Science and Engineering, Bogazici University.
+##   - E. Alpaydin, C. Kaynak (1998) Cascading Classifiers, Kybernetika.
+##   - Ken Tang and Ponnuthurai N. Suganthan and Xi Yao and A. Kai Qin.
+##     Linear dimensionalityreduction using relevance weighted LDA. School of
+##     Electrical and Electronic Engineering Nanyang Technological University.
+##     2005.
+##   - Claudio Gentile. A New Approximate Maximal Margin Classification
+##     Algorithm. NIPS. 2000.
+```
+]
+
+---
+
+## Example digits
+
+&lt;img src="Lec16_files/figure-html/unnamed-chunk-26-11.png" width="85%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Doing things properly - train/test split
+
+To properly assess our modeling we will create a training and testing set of these data, only the training data will be used to learn model coefficients or hyperparameters, test data will only be used for final model scoring.
+
+
+```python
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.33, shuffle=True, random_state=1234
+)
+```
+
+---
+
+## Multiclass logistic regression
+
+Fitting a multiclass logistic regression model will involve selecting a value for the `multi_class` parameter, which can be either `multinomial` for multinomial regression or `ovr` for one-vs-rest where `k` binary models are fit.
+
+
+```python
+mc_log_cv = GridSearchCV(
+  LogisticRegression(penalty='none', max_iter = 5000),
+  param_grid = {"multi_class": ["multinomial", "ovr"]},
+  cv = KFold(10, shuffle=True, random_state=12345),
+  n_jobs = 4
+).fit(X_train, y_train)
+```
+
+--
+
+
+```python
+mc_log_cv.best_estimator_
+```
+
+```
+## LogisticRegression(max_iter=5000, multi_class='multinomial', penalty='none')
+```
+
+```python
+mc_log_cv.best_score_
+```
+
+```
+## 0.943477961432507
+```
+
+--
+
+
+```python
+for p, s in  zip(mc_log_cv.cv_results_["params"], mc_log_cv.cv_results_["mean_test_score"]):
+  print(p,"Score:",s)
+```
+
+```
+## {'multi_class': 'multinomial'} Score: 0.943477961432507
+## {'multi_class': 'ovr'} Score: 0.8927617079889807
+```
+
+---
+
+## Model coefficients
+
+
+```python
+pd.DataFrame(
+  mc_log_cv.best_estimator_.coef_
+)
+```
+
+```
+##     0         1         2         3         4   ...        59        60        61        62        63
+## 0  0.0 -0.133584 -0.823611  0.904385  0.163397  ...  1.211092 -0.444343 -1.660396 -0.750159 -0.184264
+## 1  0.0 -0.184931 -1.259550  1.453983 -5.091361  ... -0.792356  0.384498  2.617778  1.265903  2.338324
+## 2  0.0  0.118104  0.569190  0.798171  0.943558  ...  0.281622  0.829968  2.602947  2.481998  0.788003
+## 3  0.0  0.239612 -0.381815  0.393986  3.886781  ...  1.231867  0.439466  1.070662  0.583209 -1.027194
+## 4  0.0 -0.109904 -1.160712 -2.175923 -2.580281  ... -0.937843 -1.710608 -0.651175 -0.656791 -0.097263
+## 5  0.0  0.701265  4.241974 -0.738130  0.057049  ...  2.045636 -0.001139 -1.412535 -2.097753 -0.210256
+## 6  0.0 -0.103487 -1.454058 -1.310946 -0.400937  ... -1.407609  0.249136  2.466801  1.005207 -0.624921
+## 7  0.0  0.088562  1.386086  1.198007  0.467463  ... -2.710461 -3.176521 -2.635078 -0.710317 -0.099948
+## 8  0.0 -0.347408 -0.306168 -1.933009  1.074249  ...  0.872821  1.722070 -2.302814 -1.602654 -0.679128
+## 9  0.0 -0.268228 -0.811336  1.409475  1.480082  ...  0.205230  1.707472 -0.096190  0.481356 -0.203353
+## 
+## [10 rows x 64 columns]
+```
+
+```python
+mc_log_cv.best_estimator_.coef_.shape
+```
+
+```
+## (10, 64)
+```
+
+```python
+mc_log_cv.best_estimator_.intercept_
+```
+
+```
+## array([ 0.01606, -0.11466, -0.00535,  0.08555,  0.10436, -0.01811, -0.00945,  0.05044, -0.01357, -0.09528])
+```
+
+---
+
+## Confusion Matrix
+
+.pull-left[
+**Within sample**
+
+```python
+accuracy_score(
+  y_train, 
+  mc_log_cv.best_estimator_.predict(X_train)
+)
+```
+
+```
+## 1.0
+```
+
+```python
+confusion_matrix(
+  y_train, 
+  mc_log_cv.best_estimator_.predict(X_train)
+)
+```
+
+```
+## array([[125,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+##        [  0, 118,   0,   0,   0,   0,   0,   0,   0,   0],
+##        [  0,   0, 119,   0,   0,   0,   0,   0,   0,   0],
+##        [  0,   0,   0, 123,   0,   0,   0,   0,   0,   0],
+##        [  0,   0,   0,   0, 110,   0,   0,   0,   0,   0],
+##        [  0,   0,   0,   0,   0, 114,   0,   0,   0,   0],
+##        [  0,   0,   0,   0,   0,   0, 124,   0,   0,   0],
+##        [  0,   0,   0,   0,   0,   0,   0, 124,   0,   0],
+##        [  0,   0,   0,   0,   0,   0,   0,   0, 119,   0],
+##        [  0,   0,   0,   0,   0,   0,   0,   0,   0, 127]])
+```
+]
+
+.pull-right[
+**Out of sample**
+
+```python
+accuracy_score(
+  y_test, 
+  mc_log_cv.best_estimator_.predict(X_test)
+)
+```
+
+```
+## 0.9579124579124579
+```
+
+```python
+confusion_matrix(
+  y_test, 
+  mc_log_cv.best_estimator_.predict(X_test),
+  labels = digits.target_names
+)
+```
+
+```
+## array([[53,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+##        [ 0, 64,  0,  0,  0,  0,  0,  0,  0,  0],
+##        [ 0,  2, 56,  0,  0,  0,  0,  0,  0,  0],
+##        [ 0,  0,  1, 58,  0,  1,  0,  0,  0,  0],
+##        [ 1,  0,  0,  0, 69,  0,  0,  0,  1,  0],
+##        [ 0,  0,  0,  1,  1, 64,  2,  0,  0,  0],
+##        [ 1,  1,  0,  0,  0,  0, 55,  0,  0,  0],
+##        [ 0,  0,  0,  0,  2,  0,  0, 53,  0,  0],
+##        [ 0,  5,  2,  0,  0,  0,  0,  0, 46,  2],
+##        [ 0,  0,  0,  0,  0,  1,  0,  0,  1, 51]])
+```
+]
+
+---
+
+## Report
+
+
+```python
+print( classification_report(
+  y_test, 
+  mc_log_cv.best_estimator_.predict(X_test)
+) )
+```
+
+```
+##               precision    recall  f1-score   support
+## 
+##            0       0.96      1.00      0.98        53
+##            1       0.89      1.00      0.94        64
+##            2       0.95      0.97      0.96        58
+##            3       0.98      0.97      0.97        60
+##            4       0.96      0.97      0.97        71
+##            5       0.97      0.94      0.96        68
+##            6       0.96      0.96      0.96        57
+##            7       1.00      0.96      0.98        55
+##            8       0.96      0.84      0.89        55
+##            9       0.96      0.96      0.96        53
+## 
+##     accuracy                           0.96       594
+##    macro avg       0.96      0.96      0.96       594
+## weighted avg       0.96      0.96      0.96       594
+```
+
+---
+
+## ROC &amp; AUC?
+
+These metrics are slightly awkward to use in the case multiclass problems since they depend on the probability predictions to calculate.
+
+
+```python
+roc_auc_score(
+  y_test, mc_log_cv.best_estimator_.predict_proba(X_test)
+)
+```
+
+```
+## ValueError: multi_class must be in ('ovo', 'ovr')
+```
+
+--
+
+.pull-left[
+
+```python
+roc_auc_score(
+  y_test, mc_log_cv.best_estimator_.predict_proba(X_test),
+  multi_class = "ovr"
+)
+```
+
+```
+## 0.9979624274858663
+```
+
+```python
+roc_auc_score(
+  y_test, mc_log_cv.best_estimator_.predict_proba(X_test),
+  multi_class = "ovo"
+)
+```
+
+```
+## 0.9979645359400721
+```
+]
+
+.pull-right[
+
+```python
+roc_auc_score(
+  y_test, mc_log_cv.best_estimator_.predict_proba(X_test),
+  multi_class = "ovr", average = "weighted"
+)
+```
+
+```
+## 0.9979869175119241
+```
+
+```python
+roc_auc_score(
+  y_test, mc_log_cv.best_estimator_.predict_proba(X_test),
+  multi_class = "ovo", average = "weighted"
+)
+```
+
+```
+## 0.9979743498851119
+```
+]
+
+---
+
+## Prediction
+
+.pull-left[ .small[
+
+```python
+mc_log_cv.best_estimator_.predict(X_test)
+```
+
+```
+## array([7, 1, 7, 6, 0, 2, 4, 3, 6, 3, 7, 8, 7, 9, 4, 3, 1, 7, 8, 4, 0, 3, 9, 1, 3, 6, 6, 0, 5, 4, 1, 2, 1, 2, 3, 2, 7, 6, 4, 8, 6, 4, 4, 0, 9, 1, 9, 5, 4, 4, 4, 1, 7, 6, 9, 2, 9, 9, 9, 0, 8, 3, 1, 8,
+##        8, 1, 3, 9, 1, 3, 9, 6, 9, 5, 2, 1, 9, 2, 1, 3, 8, 7, 3, 3, 2, 7, 7, 5, 8, 2, 6, 1, 9, 1, 6, 4, 5, 2, 2, 4, 5, 4, 4, 6, 5, 9, 2, 4, 1, 0, 7, 6, 1, 2, 9, 5, 2, 5, 0, 3, 2, 7, 6, 4, 8, 2, 1, 1,
+##        6, 4, 6, 2, 3, 4, 7, 5, 0, 9, 1, 0, 5, 6, 7, 6, 3, 8, 3, 2, 0, 4, 0, 1, 5, 4, 6, 1, 1, 1, 6, 1, 7, 9, 0, 7, 9, 5, 4, 1, 3, 8, 6, 4, 7, 1, 5, 7, 4, 7, 4, 5, 2, 2, 1, 1, 4, 4, 3, 5, 6, 9, 4, 5,
+##        5, 9, 3, 9, 3, 1, 2, 0, 8, 2, 8, 5, 2, 4, 6, 8, 3, 9, 1, 0, 8, 1, 8, 5, 6, 8, 7, 1, 8, 2, 4, 9, 7, 0, 5, 5, 6, 1, 3, 0, 5, 8, 2, 0, 9, 8, 6, 7, 8, 4, 1, 0, 5, 2, 5, 1, 6, 4, 7, 1, 2, 6, 4, 4,
+##        6, 3, 2, 3, 2, 6, 5, 2, 9, 4, 7, 0, 1, 0, 4, 3, 1, 2, 7, 9, 8, 5, 9, 5, 7, 0, 4, 8, 4, 9, 4, 0, 7, 7, 2, 5, 3, 5, 3, 9, 7, 5, 5, 2, 7, 0, 8, 9, 1, 7, 9, 8, 5, 0, 2, 0, 8, 7, 0, 9, 5, 5, 9, 6,
+##        1, 2, 3, 9, 1, 3, 2, 9, 3, 4, 3, 4, 1, 0, 1, 8, 5, 0, 9, 2, 7, 2, 3, 5, 2, 6, 3, 4, 1, 5, 0, 5, 4, 6, 3, 2, 5, 0, 4, 3, 6, 0, 8, 6, 0, 0, 2, 2, 0, 1, 4, 6, 5, 0, 9, 5, 6, 8, 4, 4, 2, 8, 2, 9,
+##        4, 7, 3, 8, 6, 3, 8, 6, 4, 7, 0, 6, 6, 8, 3, 8, 3, 8, 0, 1, 1, 5, 6, 8, 2, 2, 7, 6, 4, 0, 0, 2, 2, 9, 5, 8, 6, 7, 6, 4, 9, 6, 7, 2, 9, 2, 4, 9, 1, 3, 7, 8, 5, 3, 4, 3, 9, 1, 9, 1, 9, 2, 3, 5,
+##        8, 1, 1, 7, 1, 7, 1, 6, 4, 5, 5, 5, 3, 1, 0, 4, 4, 6, 9, 0, 4, 2, 3, 5, 7, 9, 6, 4, 7, 5, 3, 8, 0, 6, 6, 4, 4, 3, 7, 4, 0, 4, 7, 4, 0, 9, 4, 5, 8, 6, 3, 4, 0, 5, 4, 2, 3, 3, 2, 1, 7, 9, 7, 3,
+##        1, 1, 4, 3, 0, 5, 9, 5, 5, 7, 5, 0, 6, 1, 5, 7, 9, 0, 8, 3, 1, 3, 1, 5, 2, 3, 0, 1, 8, 7, 8, 0, 5, 5, 1, 8, 8, 3, 6, 0, 2, 7, 1, 6, 2, 4, 5, 1, 3, 0, 5, 5, 3, 8, 4, 0, 0, 1, 1, 4, 8, 7, 6, 1,
+##        1, 5, 2, 1, 6, 4, 2, 1, 1, 9, 4, 3, 9, 6, 5, 0, 4, 7])
+```
+] ]
+
+.pull-right[ .small[
+
+```python
+mc_log_cv.best_estimator_.predict_proba(X_test),
+```
+
+```
+## (array([[0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     ],
+##        [0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     ],
+##        [1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     ],
+##        [0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.71887, 0.     , 0.28113, 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     ],
+##        [0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     ],
+##        [1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        ...,
+##        [0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     ],
+##        [0.     , 0.0002 , 0.     , 0.     , 0.     , 0.     , 0.9998 , 0.     , 0.     , 0.     ],
+##        [0.     , 0.99893, 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.00107, 0.     ],
+##        [0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     ],
+##        [0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     ],
+##        [1.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     , 0.     , 0.     , 0.     ],
+##        [0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 0.     , 1.     , 0.     , 0.     ]]),)
+```
+] ]
+
+---
+
+## Exercise 1
+
+Using these data fit a `DecisionTreeClassifier` to these data, you should employ `GridSearchCV` to tune some of the parameters (`max_depth` at a minimum) - see the full list [here](https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html).
+
+Does this model perform better or worse than the multinomial regression model we just used?
+
+
+```python
+from sklearn.datasets import load_digits
+digits = load_digits(as_frame=True)
+
+
+X, y = digits.data, digits.target
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.33, shuffle=True, random_state=1234
+)
+```
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightLines": true,
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
