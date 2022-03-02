@@ -245,7 +245,7 @@ Why are these different?
 
 ---
 
-## Penalty param
+## Penalty parameter
 
 🚩🚩🚩 `LogisticRegression()` has a parameter called penalty that applies a `l1` (lasso), `l2` (ridge), `elasticnet` or `none` with `l2` being the default. To make matters worse, the regularization is controled by the parameter `C` which defaults to 1 (not 0) - also `C` is the inverse regularization strength (e.g. different from `alpha` for ridge and lasso models). 🚩🚩🚩
 
@@ -255,6 +255,7 @@ $$
 
 &lt;br/&gt;
 
+--
 
 
 ```python
@@ -276,7 +277,7 @@ m.coef_
 
 ---
 
-## Solver param
+## Solver parameter
 
 It is also possible specify the solver to use when fitting a logistic regression model, to complicate matters somewhat the choice of the algorithm depends on the penalty chosen: 
 
@@ -461,7 +462,7 @@ m.score(X, y)
 ## 0.90640142820709
 ```
 
-Other scoring options are available via the metrics submodule
+Other scoring options are available via the [metrics](https://scikit-learn.org/stable/modules/classes.html#classification-metrics) submodule
 
 
 ```python
@@ -1135,6 +1136,30 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.33, shuffle=True, random_state=1234
 )
 ```
+
+---
+
+## Examining the coefs
+
+
+.small[
+
+```python
+coef_img = mc_log_cv.best_estimator_.coef_.reshape(10,8,8)
+
+fig, axes = plt.subplots(nrows=2, ncols=5, figsize=(10, 5), layout="constrained")
+axes2 = [ax for row in axes for ax in row]
+
+for ax, image, label in zip(axes2, coef_img, range(10)):
+    ax.set_axis_off()
+    img = ax.imshow(image, cmap=plt.cm.gray_r, interpolation="nearest")
+    txt = ax.set_title(f"{label}")
+    
+plt.show()
+```
+
+&lt;img src="Lec16_files/figure-html/unnamed-chunk-41-13.png" width="66%" style="display: block; margin: auto;" /&gt;
+]
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
