@@ -1,5 +1,5 @@
 ---
-title: "Lec 17 - classes <br/> custom transformers"
+title: "Lec 17 - classes + <br/> custom transformers"
 subtitle: "<br/> Statistical Computing and Computation"
 author: "Sta 663 | Spring 2022"
 date: "<br/> Dr. Colin Rundel"
