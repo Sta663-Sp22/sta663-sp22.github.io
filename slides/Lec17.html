@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 17 - classes   custom transformers</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs-2.12/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 17 - classes <br/> custom transformers
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+```python
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+import sklearn
+
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.model_selection import GridSearchCV, KFold, StratifiedKFold, train_test_split
+from sklearn.metrics import classification_report
+
+plt.rcParams['figure.dpi'] = 200
+
+np.set_printoptions(
+  edgeitems=30, linewidth=200,
+  precision = 5, suppress=True
+  #formatter=dict(float=lambda x: "%.5g" % x)
+)
+
+pd.set_option("display.width", 1000)
+pd.set_option("display.max_columns", 10)
+pd.set_option("display.precision", 6)
+```
+
+
+```r
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+```
+
+
+```r
+local({
+  hook_err_old &lt;- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old &lt;- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("&lt;string&gt;:1: ", "", x)
+    hook_warn_old(x, options)
+  })
+})
+```
+
+---
+class: center, middle
+
+## Classes
+
+---
+
+## Basic syntax
+
+These are the basic component of Python's object oriented system - we've been using them regularly all over the place and will now look at how they are defined and used.
+
+
+.pull-left[
+
+```python
+class rect:
+  """An object representation of a rectangle"""
+  
+  # Attributes
+  p1 = (0,0)
+  p2 = (1,2)
+  
+  # Methods
+  def area(self):
+    return ((self.p1[0] - self.p2[0]) *
+            (self.p1[1] - self.p2[1]))
+           
+  def set_p1(self, p1):
+    self.p1 = p1
+  
+  def set_p2(self, p2):
+    self.p2 = p2
+```
+]
+
+--
+
+.pull-right[
+
+```python
+x = rect()
+x.area()
+```
+
+```
+## 2
+```
+
+```python
+x.set_p2((1,1))
+x.area()
+```
+
+```
+## 1
+```
+
+```python
+x.p1
+```
+
+```
+## (0, 0)
+```
+
+```python
+x.p2
+```
+
+```
+## (1, 1)
+```
+
+```python
+x.p2 = (0,0)
+x.area()
+```
+
+```
+## 0
+```
+]
+
+---
+
+## Instantiation (constructors)
+
+When instantiating a class object (e.g. `rect()`) we invoke the `__init__()` method if it is present in the classes' definition.
+
+.pull-left[
+
+```python
+class rect:
+  """An object representation of a rectangle"""
+  
+  # Constructor
+  def __init__(self, p1 = (0,0), p2 = (1,1)):
+    self.p1 = p1
+    self.p2 = p2
+  
+  # Methods
+  def area(self):
+    return ((self.p1[0] - self.p2[0]) *
+            (self.p1[1] - self.p2[1]))
+           
+  def set_p1(self, p1):
+    self.p1 = p1
+  
+  def set_p2(self, p2):
+    self.p2 = p2
+```
+]
+
+--
+
+.pull-right[
+
+```python
+x = rect()
+x.area()
+```
+
+```
+## 1
+```
+
+```python
+y = rect((0,0), (3,3))
+y.area()
+```
+
+```
+## 9
+```
+
+```python
+z = rect((-1,-1))
+z.p1
+```
+
+```
+## (-1, -1)
+```
+
+```python
+z.p2
+```
+
+```
+## (1, 1)
+```
+]
+
+---
+
+## Method chaining
+
+We've seen a number of objects (i.e. Pandas DataFrames) that allow for methhod chaining to construct a pipeline of operations. We can achieve the same by having our class methods return `self`.
+
+.pull-left[
+
+```python
+class rect:
+  """An object representation of a rectangle"""
+  
+  # Constructor
+  def __init__(self, p1 = (0,0), p2 = (1,1)):
+    self.p1 = p1
+    self.p2 = p2
+  
+  # Methods
+  def area(self):
+    return ((self.p1[0] - self.p2[0]) *
+            (self.p1[1] - self.p2[1]))
+           
+  def set_p1(self, p1):
+    self.p1 = p1
+    return self
+  
+  def set_p2(self, p2):
+    self.p2 = p2
+    return self
+```
+]
+
+--
+
+.pull-right[
+
+```python
+rect().area()
+```
+
+```
+## 1
+```
+
+```python
+rect().set_p1((-1,-1)).area()
+```
+
+```
+## 4
+```
+
+```python
+rect().set_p1((-1,-1)).set_p2((2,2)).area()
+```
+
+```
+## 9
+```
+]
+
+---
+
+## Class object string formating
+
+All class objects have a default print method / string conversion method, but the default behavior is not very useful,
+
+.pull-left[
+
+```python
+print(rect())
+```
+
+```
+## &lt;__main__.rect object at 0x28eec1a60&gt;
+```
+]
+
+.pull-right[
+
+```python
+str(rect())
+```
+
+```
+## '&lt;__main__.rect object at 0x28eec1ca0&gt;'
+```
+]
+
+--
+
+Both of the above are handled by the `__str__()` method which is implicitly created for our class - we can override this,
+
+
+```python
+def rect_str(self):
+  return f"Rect[{self.p1}, {self.p2}] =&gt; area={self.area()}"
+
+rect.__str__ = rect_str
+```
+
+--
+
+
+```python
+rect()
+```
+
+```
+## &lt;__main__.rect object at 0x28eeb8070&gt;
+```
+
+```python
+print(rect())
+```
+
+```
+## Rect[(0, 0), (1, 1)] =&gt; area=1
+```
+
+```python
+str(rect())
+```
+
+```
+## 'Rect[(0, 0), (1, 1)] =&gt; area=1'
+```
+
+---
+
+## Class representation
+
+There is another special method which is responsible for the printing of the object (see `rect()` above) called `__repr__()` which is responsible for printing the classes representation. If possible this is meant to be a valid Python expression capable of recreating the object.
+
+
+```python
+def rect_repr(self):
+  return f"rect({self.p1}, {self.p2})"
+
+rect.__repr__ = rect_repr
+```
+
+--
+
+
+```python
+rect()
+```
+
+```
+## rect((0, 0), (1, 1))
+```
+
+```python
+repr(rect())
+```
+
+```
+## 'rect((0, 0), (1, 1))'
+```
+
+---
+
+## Inheritance
+
+Part of the object oriented system is that classes can inherit from other classes, meaning they gain access to all of their parents attributes and methods. We will not go too in depth on this topic beyond shoping the basic functionality.
+
+
+```python
+class square(rect):
+    pass
+```
+
+
+```python
+square()
+```
+
+```
+## rect((0, 0), (1, 1))
+```
+
+```python
+square().area()
+```
+
+```
+## 1
+```
+
+```python
+square().set_p1((-1,-1)).area()
+```
+
+```
+## 4
+```
+
+---
+
+## Overriding methods
+
+.pull-left[
+
+```python
+class square(rect):
+    def __init__(self, p1=(0,0), l=1):
+      assert isinstance(l, (float, int)), \
+             "l must be a numnber"
+      
+      p2 = (p1[0]+l, p1[1]+l)
+      
+      self.l  = l
+      super().__init__(p1, p2)
+    
+    def set_p1(self, p1):
+      self.p1 = p1
+      self.p2 = (self.p1[0]+self.l, self.p1[1]+self.l)
+      return self
+    
+    def set_p2(self, p2):
+      raise RuntimeError("Squares take l not p2")
+    
+    def set_l(self, l):
+      assert isinstance(l, (float, int)), \
+             "l must be a numnber"
+      
+      self.l  = l
+      self.p2 = (self.p1[0]+l, self.p1[1]+l)
+      return self
+    
+    def __repr__(self):
+      return f"square({self.p1}, {self.l})"
+```
+]
+
+.pull-right[
+
+```python
+square()
+```
+
+```
+## square((0, 0), 1)
+```
+
+```python
+square().area()
+```
+
+```
+## 1
+```
+
+```python
+square().set_p1((-1,-1)).area()
+```
+
+```
+## 1
+```
+
+```python
+square().set_l(2).area()
+```
+
+```
+## 4
+```
+
+```python
+square((0,0), (1,1))
+```
+
+```
+## AssertionError: l must be a numnber
+```
+
+```python
+square().set_l((0,0))
+```
+
+```
+## AssertionError: l must be a numnber
+```
+
+```python
+square().set_p2((0,0))
+```
+
+```
+## RuntimeError: Squares take l not p2
+```
+]
+
+---
+
+## Making an object iterable
+
+When using an object with a for loop, python looks for the `__iter__()` method which is expected to return an iterator object (e.g. `iter()` of a list, tuple, etc.).
+
+
+.pull-left[
+
+```python
+class rect:
+  """An object representation of a rectangle"""
+  
+  # Constructor
+  def __init__(self, p1 = (0,0), p2 = (1,1)):
+    self.p1 = p1
+    self.p2 = p2
+  
+  # Methods
+  def area(self):
+    return ((self.p1[0] - self.p2[0]) *
+            (self.p1[1] - self.p2[1]))
+  
+  def __iter__(self):
+    return iter( [
+      self.p1,
+      (self.p1[0], self.p2[1]),
+      self.p2,
+      (self.p2[0], self.p1[1])
+    ] )
+```
+]
+
+.pull-right[
+
+```python
+for pt in rect():
+  print(pt)
+```
+
+```
+## (0, 0)
+## (0, 1)
+## (1, 1)
+## (1, 0)
+```
+]
+
+
+---
+
+## Fancier iteration
+
+A class itself can be made iterable by adding a `__next__()` method which is called until a `StopIteration` exception is encountered. In which case, `__iter__()` is still needed but should just `return self`.
+
+.pull-left[
+
+```python
+class rect:
+  def __init__(self, p1 = (0,0), p2 = (1,1)):
+    self.p1 = p1
+    self.p2 = p2
+    self.vertices = [self.p1, (self.p1[0], self.p2[1]),
+                     self.p2, (self.p2[0], self.p1[1]) ]
+    self.index = 0
+  
+  # Methods
+  def area(self):
+    return ((self.p1[0] - self.p2[0]) *
+            (self.p1[1] - self.p2[1]))
+  
+  def __iter__(self):
+    return self
+  
+  def __next__(self):
+    if self.index == len(self.vertices):
+      self.index = 0
+      raise StopIteration
+    
+    v = self.vertices[self.index]
+    self.index += 1
+    return v
+```
+]
+
+.pull-right[
+
+```python
+r = rect()
+for pt in r:
+  print(pt)
+  
+```
+
+```
+## (0, 0)
+## (0, 1)
+## (1, 1)
+## (1, 0)
+```
+
+```python
+for pt in r:
+  print(pt)
+```
+
+```
+## (0, 0)
+## (0, 1)
+## (1, 1)
+## (1, 0)
+```
+]
+
+---
+
+## Generators
+
+There is a lot of bookkeeping in the implementation above - we can simplify this significantly by using a generator function with `__iter__()`. A generator is a function which using `yield` instead of `return` which allows the function to preserve state between `next()` calls.
+
+.pull-left[
+
+```python
+class rect:
+  """An object representation of a rectangle"""
+  
+  # Constructor
+  def __init__(self, p1 = (0,0), p2 = (1,1)):
+    self.p1 = p1
+    self.p2 = p2
+  
+  # Methods
+  def area(self):
+    return ((self.p1[0] - self.p2[0]) *
+            (self.p1[1] - self.p2[1]))
+  
+  def __iter__(self):
+    vertices = [ self.p1, (self.p1[0], self.p2[1]),
+                 self.p2, (self.p2[0], self.p1[1]) ]
+    
+    for v in vertices:
+      yield v
+```
+]
+
+.pull-right[
+
+```python
+r = rect()
+
+for pt in r:
+  print(pt)
+  
+```
+
+```
+## (0, 0)
+## (0, 1)
+## (1, 1)
+## (1, 0)
+```
+
+```python
+for pt in r:
+  print(pt)
+```
+
+```
+## (0, 0)
+## (0, 1)
+## (1, 1)
+## (1, 0)
+```
+]
+
+---
+
+## Class attributes
+
+We can examine all of a classes' methods and attributes using `dir()`,
+
+
+```python
+dir(rect)
+```
+
+```
+## ['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__iter__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'area']
+```
+
+--
+
+.center[
+Where did `p1` and `p2` go?
+]
+
+--
+
+
+```python
+dir(rect())
+```
+
+```
+## ['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__iter__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'area', 'p1', 'p2']
+```
+
+
+---
+class: center, middle
+
+## Custom Transformers
+
+---
+
+## FunctionTransformer
+
+The simplest way to create a new transformer is to use `FunctionTransformer()` from the preprocessing submodule which allows for converting a Python function into a transformer.
+
+
+```python
+from sklearn.preprocessing import FunctionTransformer
+
+X = pd.DataFrame({"x1": range(1,6), "x2": range(5, 0, -1)})
+```
+
+.pull-left[
+
+```python
+log_transform = FunctionTransformer(np.log)
+lt = log_transform.fit(X)
+lt.transform(X)
+```
+
+```
+##          x1        x2
+## 0  0.000000  1.609438
+## 1  0.693147  1.386294
+## 2  1.098612  1.098612
+## 3  1.386294  0.693147
+## 4  1.609438  0.000000
+```
+
+```python
+lt
+```
+
+```
+## FunctionTransformer(func=&lt;ufunc 'log'&gt;)
+```
+]
+
+.pull-right[
+
+```python
+lt.get_params()
+```
+
+```
+## {'accept_sparse': False, 'check_inverse': True, 'func': &lt;ufunc 'log'&gt;, 'inv_kw_args': None, 'inverse_func': None, 'kw_args': None, 'validate': False}
+```
+
+```python
+dir(lt)
+```
+
+```
+## ['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__setstate__', '__sizeof__', '__sklearn_is_fitted__', '__str__', '__subclasshook__', '__weakref__', '_check_feature_names', '_check_input', '_check_inverse_transform', '_check_n_features', '_get_param_names', '_get_tags', '_more_tags', '_repr_html_', '_repr_html_inner', '_repr_mimebundle_', '_transform', '_validate_data', 'accept_sparse', 'check_inverse', 'fit', 'fit_transform', 'func', 'get_params', 'inv_kw_args', 'inverse_func', 'inverse_transform', 'kw_args', 'set_params', 'transform', 'validate']
+```
+]
+
+---
+
+## Input types
+
+
+```python
+def interact(X, y = None):
+  return np.c_[X, X[:,0] * X[:,1]]
+
+X = pd.DataFrame({"x1": range(1,6), "x2": range(5, 0, -1)})
+Z = np.array(X)
+```
+
+--
+
+.pull-left[
+
+```python
+FunctionTransformer(interact).fit_transform(X)
+```
+
+```
+## InvalidIndexError: (slice(None, None, None), 0)
+```
+]
+
+.pull-right[
+
+```python
+FunctionTransformer(interact).fit_transform(Z)
+```
+
+```
+## array([[1, 5, 5],
+##        [2, 4, 8],
+##        [3, 3, 9],
+##        [4, 2, 8],
+##        [5, 1, 5]])
+```
+]
+
+--
+
+&lt;div&gt;
+.pull-left[
+
+```python
+FunctionTransformer(
+  interact, validate=True
+).fit_transform(X)
+```
+
+```
+## array([[1, 5, 5],
+##        [2, 4, 8],
+##        [3, 3, 9],
+##        [4, 2, 8],
+##        [5, 1, 5]])
+```
+]
+
+.pull-right[
+
+```python
+FunctionTransformer(
+  interact, validate=True
+).fit_transform(Z)
+```
+
+```
+## array([[1, 5, 5],
+##        [2, 4, 8],
+##        [3, 3, 9],
+##        [4, 2, 8],
+##        [5, 1, 5]])
+```
+]
+&lt;/div&gt;
+
+.footnote[The `validate` argument both checks that `X` is 2d as well as converts it to a np.array]
+
+---
+
+## Build your own transformer
+
+For a more full features transformer, it is possible to construct it as a class that inherits from `BaseEstimator` and `TransformerMixin` classes from the base submodule.
+
+.pull-left[
+
+```python
+from sklearn.base import BaseEstimator, TransformerMixin
+
+class scaler(BaseEstimator, TransformerMixin):
+  def __init__(self, m = 1, b = 0):
+    self.m = m
+    self.b = b
+  
+  def fit(self, X, y=None):
+    return self
+  
+  def transform(self, X, y=None):
+    return X*self.m + self.b
+```
+]
+
+--
+
+.pull-right[
+
+```python
+X = pd.DataFrame({"x1": range(1,6), "x2": range(5, 0, -1)})
+
+double = scaler(2)
+double.fit_transform(X)
+```
+
+```
+##    x1  x2
+## 0   2  10
+## 1   4   8
+## 2   6   6
+## 3   8   4
+## 4  10   2
+```
+
+```python
+double.get_params()
+```
+
+```
+## {'b': 0, 'm': 2}
+```
+
+```python
+double.set_params(b=-3).fit_transform(X)
+```
+
+```
+##    x1  x2
+## 0  -1   7
+## 1   1   5
+## 2   3   3
+## 3   5   1
+## 4   7  -1
+```
+]
+
+---
+
+## What else do we get?
+
+
+```python
+print(
+  pd.DataFrame(np.array(dir(double)).reshape(-1,4)).to_string(index=False, header=False, col_space=20)
+)
+```
+
+```
+##            __class__          __delattr__             __dict__              __dir__
+##              __doc__               __eq__           __format__               __ge__
+##     __getattribute__         __getstate__               __gt__             __hash__
+##             __init__    __init_subclass__               __le__               __lt__
+##           __module__               __ne__              __new__           __reduce__
+##        __reduce_ex__             __repr__          __setattr__         __setstate__
+##           __sizeof__              __str__     __subclasshook__          __weakref__
+## _check_feature_names    _check_n_features     _get_param_names            _get_tags
+##           _more_tags          _repr_html_     _repr_html_inner    _repr_mimebundle_
+##       _validate_data                    b                  fit        fit_transform
+##           get_params                    m           set_params            transform
+```
+
+---
+class: center, middle
+
+## Demo - Interaction Transformer
+
+---
+
+## Useful methods
+
+We employed a couple of special methods that are worth mentioning in a little more detail.
+
+* `_validate_data()` &amp; `_check_feature_names()` are methods that are inherited from `BaseEstimator` they are responsible for setting and checking the `n_features_in_` and the `feature_names_in_` attributes respectively.
+
+* In general one or both is run during `fit()` with `reset=True` in which case the respective attribute will be set.
+
+* Later, in `tranform()` one or both will again be called with `reset=False` and the properties of `X` will be checked against the values in the attribute.
+
+* These are worth using as they promote an interface consistent with sklearn and also provient convenient error checking with useful warning and error messages.
+
+---
+
+## `check_is_fitted()`
+
+This is another useful helper function from `sklearn.utils` - it is fairly simplistic in that it checks for the existence of the specified attribute. If not attribute is given then it checks for any attributes endin in `_` that do not begin with `__`.
+
+Again this is useful for providing a consistent interface and useful error / warning messages.
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightLines": true,
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
