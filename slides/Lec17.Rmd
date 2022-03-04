@@ -169,7 +169,7 @@ z.p2
 
 ## Method chaining
 
-We've seen a number of objects (i.e. Pandas DataFrames) that allow for methhod chaining to construct a pipeline of operations. We can achieve the same by having our class methods return `self`.
+We've seen a number of objects (i.e. Pandas DataFrames) that allow for method chaining to construct a pipeline of operations. We can achieve the same by having our class methods return `self`.
 
 .pull-left[
 ```{python}
@@ -269,7 +269,7 @@ repr(rect())
 
 ## Inheritance
 
-Part of the object oriented system is that classes can inherit from other classes, meaning they gain access to all of their parents attributes and methods. We will not go too in depth on this topic beyond shoping the basic functionality.
+Part of the object oriented system is that classes can inherit from other classes, meaning they gain access to all of their parents attributes and methods. We will not go too in depth on this topic beyond showing the basic functionality.
 
 ```{python}
 class square(rect):
@@ -630,13 +630,13 @@ We employed a couple of special methods that are worth mentioning in a little mo
 
 * Later, in `tranform()` one or both will again be called with `reset=False` and the properties of `X` will be checked against the values in the attribute.
 
-* These are worth using as they promote an interface consistent with sklearn and also provient convenient error checking with useful warning and error messages.
+* These are worth using as they promote an interface consistent with sklearn and also provide convenient error checking with useful warning and error messages.
 
 ---
 
 ## `check_is_fitted()`
 
-This is another useful helper function from `sklearn.utils` - it is fairly simplistic in that it checks for the existence of the specified attribute. If not attribute is given then it checks for any attributes endin in `_` that do not begin with `__`.
+This is another useful helper function from `sklearn.utils` - it is fairly simplistic in that it checks for the existence of the specified attribute. If not attribute is given then it checks for any attributes ending in `_` that do not begin with `__`.
 
 Again this is useful for providing a consistent interface and useful error / warning messages.
 
