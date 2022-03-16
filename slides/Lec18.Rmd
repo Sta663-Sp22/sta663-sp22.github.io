@@ -1,0 +1,864 @@
+---
+title: "Lec 18 - patsy + <br/> statsmodels"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightLines: true
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{python setup}
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+import sklearn
+
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.model_selection import GridSearchCV, KFold, StratifiedKFold, train_test_split
+from sklearn.metrics import classification_report
+
+plt.rcParams['figure.dpi'] = 200
+
+np.set_printoptions(
+  edgeitems=30, linewidth=200,
+  precision = 5, suppress=True
+  #formatter=dict(float=lambda x: "%.5g" % x)
+)
+
+pd.set_option("display.width", 150)
+pd.set_option("display.max_columns", 10)
+pd.set_option("display.precision", 6)
+```
+
+```{r r_setup}
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+
+library(lme4)
+```
+
+```{r hooks}
+local({
+  hook_err_old <- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old <- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("<string>:1: ", "", x)
+    hook_warn_old(x, options)
+  })
+})
+```
+
+---
+class: center, middle
+
+## patsy
+
+---
+
+## patsy
+
+> `patsy` is a Python package for describing statistical models (especially linear models, or models that have a linear component) and building design matrices. It is closely inspired by and compatible with the formula mini-language used in R and S.
+> 
+> ...
+>
+> Patsy’s goal is to become the standard high-level interface to describing statistical models in Python, regardless of what particular model or library is being used underneath.
+
+---
+
+## Formulas
+
+```{python}
+from patsy import ModelDesc
+
+ModelDesc.from_formula("y ~ a + a:b + np.log(x)")
+ModelDesc.from_formula("y ~ a*b + np.log(x) - 1")
+```
+
+---
+
+## Model matrix
+
+```{python}
+from patsy import demo_data, dmatrix, dmatrices
+```
+
+.pull-left[
+```{python}
+data = demo_data("y", "a", "b", "x1", "x2")
+data
+pd.DataFrame(data)
+```
+]
+
+.pull-right[
+```{python}
+dmatrix("a + a:b + np.exp(x1)", data)
+```
+]
+
+.footnote[Note the `T.` in `a[T.a2]` is there to indicate treatment coding (i.e. typical dummy coding)]
+
+
+---
+
+## Model matrices
+
+```{python}
+y, x  = dmatrices("y ~ a + a:b + np.exp(x1)", data)
+```
+
+.pull-left[
+```{python}
+y
+```
+]
+
+
+.pull-right[
+```{python}
+x
+```
+]
+
+---
+
+## as DataFrames
+
+```{python}
+dmatrix("a + a:b + np.exp(x1)", data, return_type='dataframe')
+```
+
+
+---
+
+## Formula Syntax
+
+<br/>
+
+| Code     | Description                                       | Example      |
+|:--------:|:--------------------------------------------------|:-------------|
+| `+`      | unions terms on the left and right                | `a+a` ⇒ `a` |
+| `-`      | removes terms on the right from terms on the left | `a+b-a` ⇒ `b` |
+|`:`       | constructs interactions between each term on the left and right | `(a+b):c` ⇒  `a:c + b:c`|
+| `*`      | short-hand for terms and their interactions       | `a*b` ⇒ `a + b + a:b` |
+| `/`      | short-hand for left terms and their interactions with right terms | `a/b` ⇒ `a + a:b` |
+| `I()`    | used for calculating arithmetic calculations      | `I(x1 + x2)` |
+| `Q()`    | used to quote column names, e.g. columns with spaces or symbols | `Q('bad name!')` |
+| `C()`    | used for categorical data coding                  |  `C(a, Treatment('a2'))` |
+
+---
+
+## Examples
+
+.pull-left[.small[ 
+```{python}
+dmatrix("x:y", demo_data("x","y","z"))
+dmatrix("x*y", demo_data("x","y","z"))
+```
+] ]
+
+.pull-right[.small[ 
+```{python}
+dmatrix("x/y", demo_data("x","y","z"))
+dmatrix("x*(y+z)", demo_data("x","y","z"))
+```
+] ]
+
+---
+
+## Intercept Examples
+
+.pull-left[.small[ 
+```{python}
+dmatrix("x", demo_data("x","y","z"))
+dmatrix("x-1", demo_data("x","y","z"))
+dmatrix("-1 + x", demo_data("x","y","z"))
+```
+] ]
+
+.pull-right[.small[ 
+```{python}
+dmatrix("x+0", demo_data("x","y","z"))
+dmatrix("x-0", demo_data("x","y","z"))
+dmatrix("x - (-0)", demo_data("x","y","z"))
+```
+] ]
+
+---
+
+## Design Info
+
+One of the keep features of the design matrix object is that it retains all the necessary details (including stateful transforms) that are necessary to apply to new data inputs (e.g. for prediction).
+
+
+```{python}
+d = dmatrix("a + a:b + np.exp(x1)", data, return_type='dataframe')
+d.design_info
+```
+
+
+---
+
+## Stateful transforms
+
+```{python}
+data = {"x1": np.random.normal(size=10)}
+new_data = {"x1": np.random.normal(size=10)}
+```
+
+.pull-left[
+```{python}
+d = dmatrix("scale(x1)", data)
+d
+np.mean(d, axis=0)
+```
+]
+
+.pull-right[
+```{python}
+pred = dmatrix(d.design_info, new_data)
+pred
+np.mean(pred, axis=0)
+```
+]
+
+---
+
+## scikit-lego PatsyTransformer
+
+If you would like to use a Patsy formula in a scikitlearn pipeline, it is possible via the `PatsyTransformer` from the `scikit-lego` library.
+
+```{python}
+from sklego.preprocessing import PatsyTransformer
+
+df = pd.DataFrame({
+  "y": [2, 2, 4, 4, 6],
+  "x": [1, 2, 3, 4, 5],
+  "a": ["yes", "yes", "no", "no", "yes"]
+})
+
+X, y = df[["x", "a"]], df[["y"]].values
+```
+
+--
+
+
+.pull-left[
+```{python}
+pt = PatsyTransformer("x*a + np.log(x)")
+pt.fit_transform(X)
+```
+]
+
+--
+
+.pull-right[
+```{python}
+make_pipeline(
+  PatsyTransformer("x*a + np.log(x)"),
+  StandardScaler()
+).fit_transform(X)
+```
+]
+
+---
+
+## Exercise 1
+
+Using patsy fit a linear regression model to the `books` data that includes an interaction term between `cover` and `volume`.
+
+```{python}
+books = pd.read_csv("https://sta663-sp22.github.io/slides/data/daag_books.csv")
+```
+
+
+---
+
+## B-splines
+
+Patsy also has support for B-splines and other related models.
+
+.pull-left[
+```{python out.width="66%"}
+d = pd.read_csv("data/d1.csv")
+
+sns.relplot(x="x", y="y", data=d)
+```
+]
+
+.pull-right[
+```{python}
+y, X = dmatrices("y ~ bs(x, df=6)", data=d)
+X
+```
+]
+
+---
+
+## What is `bs(x)[i]`?
+
+```{python out.width="66%"}
+bs_df = ( 
+  dmatrix("bs(x, df=6)", data=d, return_type="dataframe")
+  .drop(["Intercept"], axis = 1)
+  .assign(x = d["x"])
+  .melt(id_vars="x")
+)
+
+sns.relplot(x="x", y="value", hue="variable", kind="line", data = bs_df, aspect=1.5)
+```
+
+---
+
+## Fitting a model
+
+```{python}
+from sklearn.linear_model import LinearRegression
+lm = LinearRegression(fit_intercept=False).fit(X,y)
+lm.coef_
+```
+
+--
+
+```{python out.width="33%"}
+plt.figure(layout="constrained")
+sns.lineplot(x=d["x"], y=lm.predict(X).ravel(), color="k")
+sns.scatterplot(x="x", y="y", data=d)
+plt.show()
+```
+
+---
+
+## sklearn SplineTransformer
+
+.pull-left[
+```{python}
+from sklearn.preprocessing import SplineTransformer
+
+p = make_pipeline(
+  SplineTransformer(
+    n_knots=6, 
+    degree=3, 
+    include_bias=True
+  ),
+  LinearRegression(fit_intercept=False)
+).fit(
+  d[["x"]], d["y"]
+)
+```
+]
+
+
+.pull-right[
+```{python out.width="80%"}
+plt.figure()
+sns.lineplot(x=d["x"], y=p.predict(d[["x"]]).ravel(), color="k")
+sns.scatterplot(x="x", y="y", data=d)
+plt.show()
+```
+]
+
+---
+
+## Why different?
+
+For patsy the number of splines is determined by `df` while for sklearn this is determined by `n_knots + degree - 1`.
+
+```{python out.width="33%"}
+p = p.set_params(splinetransformer__n_knots = 5).fit(d[["x"]], d["y"])
+
+plt.figure(layout="constrained")
+sns.lineplot(x=d["x"], y=p.predict(d[["x"]]).ravel(), color="k")
+sns.scatterplot(x="x", y="y", data=d)
+plt.show()
+```
+
+---
+
+but that is not the whole story, if we examine the bases we also see they differ slightly between implementations:
+
+```{python out.width="55%"}
+bs_df = pd.DataFrame(
+  SplineTransformer(n_knots=6, degree=3, include_bias=True).fit_transform(d[["x"]]),
+  columns = ["bs["+ str(i) +"]" for i in range(8)]
+).assign(
+  x = d.x
+).melt(
+  id_vars = "x"
+)
+
+sns.relplot(x="x", y="value", hue="variable", kind="line", data = bs_df, aspect=1.5)
+```
+
+
+
+---
+class: center, middle
+
+## statsmodels
+
+---
+
+## statsmodels
+
+> statsmodels is a Python module that provides classes and functions for the estimation of many different statistical models, as well as for conducting statistical tests, and statistical data exploration. An extensive list of result statistics are available for each estimator. The results are tested against existing statistical packages to ensure that they are correct.
+
+```{python}
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+import statsmodels.tsa.api as tsa
+```
+
+--
+
+`statsmodels` uses slightly different terminology for refering to `y` / dependent / response and `x` / independent / explanatory variables. Specificially it uses `endog` to refer to the `y` and `exog` to refer to the `x` variable(s).
+
+This is particularly important when using the main API, less so when using the formula API.
+
+---
+
+## OpenIntro Loans data
+
+.small[
+> This data set represents thousands of loans made through the Lending Club platform, which is a platform that allows individuals to lend to other individuals. Of course, not all loans are created equal. Someone who is a essentially a sure bet to pay back a loan will have an easier time getting a loan with a low interest rate than someone who appears to be riskier. And for people who are very risky? They may not even get a loan offer, or they may not have accepted the loan offer due to a high interest rate. It is important to keep that last part in mind, since this data set only represents loans actually made, i.e. do not mistake this data for loan applications!
+
+For the full data dictionary see [here](https://www.openintro.org/data/index.php?data=loan50). We have removed some of the columns to make the data set more reasonably sized and also droped any rows with missing values.
+
+
+
+```{python}
+loans = pd.read_csv("data/openintro_loans.csv")
+loans
+print(loans.columns)
+```
+]
+
+---
+
+```{python echo=FALSE, out.width="66%"}
+sns.pairplot(data = loans[["loan_amount","homeownership", "annual_income", "debt_to_income", "interest_rate", "public_record_bankrupt"]], hue="homeownership", corner=True)
+```
+
+
+---
+
+## OLS
+
+```{python error=TRUE}
+y = loans["loan_amount"]
+X = loans[["homeownership", "annual_income", "debt_to_income", "interest_rate", "public_record_bankrupt"]]
+
+model = sm.OLS(endog=y, exog=X)
+```
+
+<br/>
+
+.center[What do you think the issue is here?]
+
+<br/>
+
+--
+
+The error occurs because `X` contains mixed types - specifically we have categorical data columns which cannot be directly converted to a numeric dtype so we need to take care of the dummy coding for statsmodels (with this interface).
+
+```{python}
+X_dc = pd.get_dummies(X)
+model = sm.OLS(endog=y, exog=X_dc)
+```
+
+---
+
+## Fitting and summary
+
+.small[
+```{python}
+res = model.fit()
+print(res.summary())
+```
+]
+
+---
+
+## Formula interface
+
+Most of the modeling interfaces are also provided by `smf` (`statsmodels.formula.api`) in which case patsy is used to construct the model matrices.
+
+.small[
+```{python}
+model = smf.ols(
+  "loan_amount ~ homeownership + annual_income + debt_to_income + interest_rate + public_record_bankrupt",
+  data = loans  
+)
+res = model.fit()
+print(res.summary())
+```
+]
+
+---
+
+## Result values and model parameters
+
+.pull-left[
+```{python}
+res.params
+res.bse
+```
+]
+
+.pull-right[
+```{python}
+res.rsquared
+res.aic
+res.bic
+res.predict()
+```
+]
+
+---
+
+## Diagnostic plots
+
+.pull-left[
+*QQ Plot*
+```{python out.width="80%"}
+plt.figure()
+sm.graphics.qqplot(res.resid, line="s")
+plt.show()
+```
+]
+
+.pull-right[
+*Leverage plot*
+```{python out.width="80%"}
+plt.figure()
+sm.graphics.plot_leverage_resid2(res)
+plt.show()
+```
+]
+
+
+---
+
+## Alternative model
+
+.small[
+```{python}
+res = smf.ols(
+  "np.sqrt(loan_amount) ~ homeownership + annual_income + debt_to_income + interest_rate + public_record_bankrupt",
+  data = loans  
+).fit()
+print(res.summary())
+```
+]
+
+---
+
+.pull-left[
+```{python out.width="80%"}
+plt.figure()
+sm.graphics.qqplot(res.resid, line="s")
+plt.show()
+```
+]
+
+.pull-right[
+```{python out.width="80%"}
+plt.figure()
+sm.graphics.plot_leverage_resid2(res)
+plt.show()
+```
+]
+
+---
+
+## Bushtail Possums
+
+> Data representing possums in Australia and New Guinea. This is a copy of the data set by the same name in the DAAG package, however, the data set included here includes fewer variables.
+>
+> `pop` - Population, either `Vic` (Victoria) or `other` (New South Wales or Queensland).
+
+.pull-left-wide[
+```{python}
+possum = pd.read_csv("data/possum.csv")
+possum
+```
+]
+
+
+.pull-right-narrow[
+```{r echo=FALSE, out.width="75%"}
+knitr::include_graphics("imgs/possum.jpg")
+```
+]
+
+---
+
+## Logistic regression models (GLM)
+
+```{python error=TRUE}
+y = pd.get_dummies( possum["pop"] )
+X = pd.get_dummies( possum.drop(["site","pop"], axis=1) )
+
+model = sm.GLM(y, X, family = sm.families.Binomial())
+```
+
+--
+
+Behavior for dealing with missing data can be handled via `missing`, possible values are `"none"`, `"drop"`, and `"raise"`. 
+
+```{python}
+model = sm.GLM(y, X, family = sm.families.Binomial(), missing="drop")
+```
+
+---
+
+## Fit and summary
+
+.small[
+```{python}
+res = model.fit()
+print(res.summary())
+```
+]
+
+---
+
+## Success vs failure
+
+Note `endog` can be 1d or 2d for binomial models - in the case of the latter each row is interpreted as [success, failure].
+s
+.small[
+```{python error=TRUE}
+y = pd.get_dummies( possum["pop"], drop_first = True)
+X = pd.get_dummies( possum.drop(["site","pop"], axis=1) )
+
+res = sm.GLM(y, X, family = sm.families.Binomial(), missing="drop").fit()
+print(res.summary())
+```
+]
+
+---
+
+## Fit and summary
+
+```{python}
+res = model.fit()
+print(res.summary())
+```
+
+
+
+---
+
+## Formula interface
+
+```{python}
+res = smf.glm(
+  "pop ~ sex + age + head_l + skull_w + total_l + tail_l-1",
+  data = possum, 
+  family = sm.families.Binomial(), 
+  missing="drop"
+).fit()
+print(res.summary())
+```
+
+
+---
+
+## sleepstudy data
+
+> These data are from the study described in Belenky et al. (2003), for the most sleep-deprived group (3 hours time-in-bed) and for the first 10 days of the study, up to the recovery period. The original study analyzed speed (1/(reaction time)) and treated day as a categorical rather than a continuous predictor.
+>
+> The average reaction time per day (in milliseconds) for subjects in a sleep deprivation study.
+> Days 0-1 were adaptation and training (T1/T2), day 2 was baseline (B); sleep deprivation started after day 2.
+
+```{python}
+sleep = pd.read_csv("data/sleepstudy.csv")
+sleep
+```
+
+
+.footnote[These data come from the `sleepstudy` dataset in the `lme4` R package]
+
+---
+
+```{python}
+sns.relplot(x="Days", y="Reaction", col="Subject", col_wrap=6, data=sleep)
+```
+
+---
+
+## Random intercept model
+
+.pull-left[ .small[
+```{python}
+me_rand_int = smf.mixedlm(
+  "Reaction ~ Days", data=sleep, groups=sleep["Subject"], 
+  subset=sleep.Days >= 2
+)
+res_rand_int = me_rand_int.fit(method=["lbfgs"])
+print(res_rand_int.summary())
+```
+] ]
+
+--
+
+.pull-right[ .small[
+```{r}
+summary(
+  lmer(Reaction ~ Days + (1|Subject), data=sleepstudy)
+)
+```
+] ]
+
+---
+
+## Predictions
+
+```{python echo=FALSE, out.width="90%"}
+pred = sleep.assign(pred = res_rand_int.predict())
+g = sns.FacetGrid(pred, col="Subject", col_wrap=6)
+g = g.map(sns.scatterplot, "Days", "Reaction")
+g = g.map(sns.lineplot, "Days", "pred")
+plt.show()
+```
+--
+
+.footnote[The prediction is only taking into account the fixed effects here, not the group random effects.]
+
+---
+
+## Recovering random effects for prediction
+
+```{python}
+# Dictionary of random effects estimates
+re = res_rand_int.random_effects
+
+# Multiply each RE by the random effects design matrix for each group
+rex = [np.dot(me_rand_int.exog_re_li[j], re[k]) for (j, k) in enumerate(me_rand_int.group_labels)]
+
+# Add the fixed and random terms to get the overall prediction
+rex = np.concatenate(rex)
+y_hat = res_rand_int.predict() + rex
+```
+
+.footnote[Based on code provide on [stack overflow](https://stats.stackexchange.com/questions/467543/including-random-effects-in-prediction-with-linear-mixed-model).]
+
+---
+
+```{python echo=FALSE, out.width="90%"}
+pred = sleep.assign(pred = y_hat)
+g = sns.FacetGrid(pred, col="Subject", col_wrap=6)
+g = g.map(sns.scatterplot, "Days", "Reaction")
+g = g.map(sns.lineplot, "Days", "pred")
+plt.show()
+```
+
+---
+
+## Random intercept and slope model
+
+.pull-left[ .small[
+```{python}
+me_rand_sl= smf.mixedlm(
+  "Reaction ~ Days", data=sleep, groups=sleep["Subject"], 
+  subset=sleep.Days >= 2,
+  re_formula="~Days" 
+)
+res_rand_sl = me_rand_sl.fit(method=["lbfgs"])
+print(res_rand_sl.summary())
+```
+] ]
+
+--
+
+.pull-right[ .small[
+```{r}
+summary(
+  lmer(Reaction ~ Days + (Days|Subject), data=sleepstudy)
+)
+```
+] ]
+
+
+---
+
+## Prediction
+
+```{python echo=FALSE, out.width="90%"}
+# Dictionary of random effects estimates
+re = res_rand_sl.random_effects
+
+# Multiply each RE by the random effects design matrix for each group
+rex = [me_rand_sl.exog_re_li[j] @ re[k] for (j, k) in enumerate(me_rand_sl.group_labels)]
+
+# Add the fixed and random terms to get the overall prediction
+rex = np.concatenate(rex)
+y_hat = res_rand_sl.predict() + rex
+
+pred = sleep.assign(pred = y_hat)
+g = sns.FacetGrid(pred, col="Subject", col_wrap=6)
+g = g.map(sns.scatterplot, "Days", "Reaction")
+g = g.map(sns.lineplot, "Days", "pred")
+plt.show()
+```
+
+.footnote[We are using the same approach described previously to obtain the RE estimates and use them in the predictions.]
+
+
+---
+
+## t-test and z-test for equality of means
+
+.small[
+```{python}
+cm = sm.stats.CompareMeans(
+  sm.stats.DescrStatsW( books.weight[books.cover == "hb"] ),
+  sm.stats.DescrStatsW( books.weight[books.cover == "pb"] )
+)
+
+print(cm.summary())
+print(cm.summary(use_t=False))
+print(cm.summary(usevar="unequal"))
+```
+]
+
+---
+
+## Contigency tables
+
+Below are data from the GSS and a survery of Duke students in a intro stats class - the question asked about how concerned the respondent was about the effect of global warming on polar ice cap melt.
+
+```{python}
+gss = pd.DataFrame({"US": [454, 226], "Duke": [56,32]}, index=["A great deal", "Not a great deal"])
+gss
+```
+
+
+```{python}
+tbl = sm.stats.Table2x2(gss.to_numpy())
+print(tbl.summary())
+print(tbl.test_nominal_association())
+```

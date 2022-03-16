@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 18 - patsy +   statsmodels</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs-2.13/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 18 - patsy + <br/> statsmodels
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+```python
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+import sklearn
+
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.model_selection import GridSearchCV, KFold, StratifiedKFold, train_test_split
+from sklearn.metrics import classification_report
+
+plt.rcParams['figure.dpi'] = 200
+
+np.set_printoptions(
+  edgeitems=30, linewidth=200,
+  precision = 5, suppress=True
+  #formatter=dict(float=lambda x: "%.5g" % x)
+)
+
+pd.set_option("display.width", 150)
+pd.set_option("display.max_columns", 10)
+pd.set_option("display.precision", 6)
+```
+
+
+```r
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+
+library(lme4)
+```
+
+```
+## Loading required package: Matrix
+```
+
+
+```r
+local({
+  hook_err_old &lt;- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old &lt;- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("&lt;string&gt;:1: ", "", x)
+    hook_warn_old(x, options)
+  })
+})
+```
+
+---
+class: center, middle
+
+## patsy
+
+---
+
+## patsy
+
+&gt; `patsy` is a Python package for describing statistical models (especially linear models, or models that have a linear component) and building design matrices. It is closely inspired by and compatible with the formula mini-language used in R and S.
+&gt; 
+&gt; ...
+&gt;
+&gt; Patsy’s goal is to become the standard high-level interface to describing statistical models in Python, regardless of what particular model or library is being used underneath.
+
+---
+
+## Formulas
+
+
+```python
+from patsy import ModelDesc
+
+ModelDesc.from_formula("y ~ a + a:b + np.log(x)")
+```
+
+```
+## ModelDesc(lhs_termlist=[Term([EvalFactor('y')])],
+##           rhs_termlist=[Term([]),
+##                         Term([EvalFactor('a')]),
+##                         Term([EvalFactor('a'), EvalFactor('b')]),
+##                         Term([EvalFactor('np.log(x)')])])
+```
+
+```python
+ModelDesc.from_formula("y ~ a*b + np.log(x) - 1")
+```
+
+```
+## ModelDesc(lhs_termlist=[Term([EvalFactor('y')])],
+##           rhs_termlist=[Term([EvalFactor('a')]),
+##                         Term([EvalFactor('b')]),
+##                         Term([EvalFactor('a'), EvalFactor('b')]),
+##                         Term([EvalFactor('np.log(x)')])])
+```
+
+---
+
+## Model matrix
+
+
+```python
+from patsy import demo_data, dmatrix, dmatrices
+```
+
+.pull-left[
+
+```python
+data = demo_data("y", "a", "b", "x1", "x2")
+data
+```
+
+```
+## {'a': ['a1', 'a1', 'a2', 'a2', 'a1', 'a1', 'a2', 'a2'], 'b': ['b1', 'b2', 'b1', 'b2', 'b1', 'b2', 'b1', 'b2'], 'x1': array([ 1.76405,  0.40016,  0.97874,  2.24089,  1.86756, -0.97728,  0.95009, -0.15136]), 'x2': array([-0.10322,  0.4106 ,  0.14404,  1.45427,  0.76104,  0.12168,  0.44386,  0.33367]), 'y': array([ 1.49408, -0.20516,  0.31307, -0.8541 , -2.55299,  0.65362,  0.86444, -0.74217])}
+```
+
+```python
+pd.DataFrame(data)
+```
+
+```
+##     a   b        x1        x2         y
+## 0  a1  b1  1.764052 -0.103219  1.494079
+## 1  a1  b2  0.400157  0.410599 -0.205158
+## 2  a2  b1  0.978738  0.144044  0.313068
+## 3  a2  b2  2.240893  1.454274 -0.854096
+## 4  a1  b1  1.867558  0.761038 -2.552990
+## 5  a1  b2 -0.977278  0.121675  0.653619
+## 6  a2  b1  0.950088  0.443863  0.864436
+## 7  a2  b2 -0.151357  0.333674 -0.742165
+```
+]
+
+.pull-right[
+
+```python
+dmatrix("a + a:b + np.exp(x1)", data)
+```
+
+```
+## DesignMatrix with shape (8, 5)
+##   Intercept  a[T.a2]  a[a1]:b[T.b2]  a[a2]:b[T.b2]  np.exp(x1)
+##           1        0              0              0     5.83604
+##           1        0              1              0     1.49206
+##           1        1              0              0     2.66110
+##           1        1              0              1     9.40173
+##           1        0              0              0     6.47247
+##           1        0              1              0     0.37633
+##           1        1              0              0     2.58594
+##           1        1              0              1     0.85954
+##   Terms:
+##     'Intercept' (column 0)
+##     'a' (column 1)
+##     'a:b' (columns 2:4)
+##     'np.exp(x1)' (column 4)
+```
+]
+
+.footnote[Note the `T.` in `a[T.a2]` is there to indicate treatment coding (i.e. typical dummy coding)]
+
+
+---
+
+## Model matrices
+
+
+```python
+y, x  = dmatrices("y ~ a + a:b + np.exp(x1)", data)
+```
+
+.pull-left[
+
+```python
+y
+```
+
+```
+## DesignMatrix with shape (8, 1)
+##          y
+##    1.49408
+##   -0.20516
+##    0.31307
+##   -0.85410
+##   -2.55299
+##    0.65362
+##    0.86444
+##   -0.74217
+##   Terms:
+##     'y' (column 0)
+```
+]
+
+
+.pull-right[
+
+```python
+x
+```
+
+```
+## DesignMatrix with shape (8, 5)
+##   Intercept  a[T.a2]  a[a1]:b[T.b2]  a[a2]:b[T.b2]  np.exp(x1)
+##           1        0              0              0     5.83604
+##           1        0              1              0     1.49206
+##           1        1              0              0     2.66110
+##           1        1              0              1     9.40173
+##           1        0              0              0     6.47247
+##           1        0              1              0     0.37633
+##           1        1              0              0     2.58594
+##           1        1              0              1     0.85954
+##   Terms:
+##     'Intercept' (column 0)
+##     'a' (column 1)
+##     'a:b' (columns 2:4)
+##     'np.exp(x1)' (column 4)
+```
+]
+
+---
+
+## as DataFrames
+
+
+```python
+dmatrix("a + a:b + np.exp(x1)", data, return_type='dataframe')
+```
+
+```
+##    Intercept  a[T.a2]  a[a1]:b[T.b2]  a[a2]:b[T.b2]  np.exp(x1)
+## 0        1.0      0.0            0.0            0.0    5.836039
+## 1        1.0      0.0            1.0            0.0    1.492059
+## 2        1.0      1.0            0.0            0.0    2.661096
+## 3        1.0      1.0            0.0            1.0    9.401725
+## 4        1.0      0.0            0.0            0.0    6.472471
+## 5        1.0      0.0            1.0            0.0    0.376334
+## 6        1.0      1.0            0.0            0.0    2.585938
+## 7        1.0      1.0            0.0            1.0    0.859541
+```
+
+
+---
+
+## Formula Syntax
+
+&lt;br/&gt;
+
+| Code     | Description                                       | Example      |
+|:--------:|:--------------------------------------------------|:-------------|
+| `+`      | unions terms on the left and right                | `a+a` ⇒ `a` |
+| `-`      | removes terms on the right from terms on the left | `a+b-a` ⇒ `b` |
+|`:`       | constructs interactions between each term on the left and right | `(a+b):c` ⇒  `a:c + b:c`|
+| `*`      | short-hand for terms and their interactions       | `a*b` ⇒ `a + b + a:b` |
+| `/`      | short-hand for left terms and their interactions with right terms | `a/b` ⇒ `a + a:b` |
+| `I()`    | used for calculating arithmetic calculations      | `I(x1 + x2)` |
+| `Q()`    | used to quote column names, e.g. columns with spaces or symbols | `Q('bad name!')` |
+| `C()`    | used for categorical data coding                  |  `C(a, Treatment('a2'))` |
+
+---
+
+## Examples
+
+.pull-left[.small[ 
+
+```python
+dmatrix("x:y", demo_data("x","y","z"))
+```
+
+```
+## DesignMatrix with shape (5, 2)
+##   Intercept       x:y
+##           1  -1.72397
+##           1   0.38018
+##           1  -0.14814
+##           1  -0.23130
+##           1   0.76682
+##   Terms:
+##     'Intercept' (column 0)
+##     'x:y' (column 1)
+```
+
+```python
+dmatrix("x*y", demo_data("x","y","z"))
+```
+
+```
+## DesignMatrix with shape (5, 4)
+##   Intercept        x         y       x:y
+##           1  1.76405  -0.97728  -1.72397
+##           1  0.40016   0.95009   0.38018
+##           1  0.97874  -0.15136  -0.14814
+##           1  2.24089  -0.10322  -0.23130
+##           1  1.86756   0.41060   0.76682
+##   Terms:
+##     'Intercept' (column 0)
+##     'x' (column 1)
+##     'y' (column 2)
+##     'x:y' (column 3)
+```
+] ]
+
+.pull-right[.small[ 
+
+```python
+dmatrix("x/y", demo_data("x","y","z"))
+```
+
+```
+## DesignMatrix with shape (5, 3)
+##   Intercept        x       x:y
+##           1  1.76405  -1.72397
+##           1  0.40016   0.38018
+##           1  0.97874  -0.14814
+##           1  2.24089  -0.23130
+##           1  1.86756   0.76682
+##   Terms:
+##     'Intercept' (column 0)
+##     'x' (column 1)
+##     'x:y' (column 2)
+```
+
+```python
+dmatrix("x*(y+z)", demo_data("x","y","z"))
+```
+
+```
+## DesignMatrix with shape (5, 6)
+##   Intercept        x         y        z       x:y      x:z
+##           1  1.76405  -0.97728  0.14404  -1.72397  0.25410
+##           1  0.40016   0.95009  1.45427   0.38018  0.58194
+##           1  0.97874  -0.15136  0.76104  -0.14814  0.74486
+##           1  2.24089  -0.10322  0.12168  -0.23130  0.27266
+##           1  1.86756   0.41060  0.44386   0.76682  0.82894
+##   Terms:
+##     'Intercept' (column 0)
+##     'x' (column 1)
+##     'y' (column 2)
+##     'z' (column 3)
+##     'x:y' (column 4)
+##     'x:z' (column 5)
+```
+] ]
+
+---
+
+## Intercept Examples
+
+.pull-left[.small[ 
+
+```python
+dmatrix("x", demo_data("x","y","z"))
+```
+
+```
+## DesignMatrix with shape (5, 2)
+##   Intercept        x
+##           1  1.76405
+##           1  0.40016
+##           1  0.97874
+##           1  2.24089
+##           1  1.86756
+##   Terms:
+##     'Intercept' (column 0)
+##     'x' (column 1)
+```
+
+```python
+dmatrix("x-1", demo_data("x","y","z"))
+```
+
+```
+## DesignMatrix with shape (5, 1)
+##         x
+##   1.76405
+##   0.40016
+##   0.97874
+##   2.24089
+##   1.86756
+##   Terms:
+##     'x' (column 0)
+```
+
+```python
+dmatrix("-1 + x", demo_data("x","y","z"))
+```
+
+```
+## DesignMatrix with shape (5, 1)
+##         x
+##   1.76405
+##   0.40016
+##   0.97874
+##   2.24089
+##   1.86756
+##   Terms:
+##     'x' (column 0)
+```
+] ]
+
+.pull-right[.small[ 
+
+```python
+dmatrix("x+0", demo_data("x","y","z"))
+```
+
+```
+## DesignMatrix with shape (5, 1)
+##         x
+##   1.76405
+##   0.40016
+##   0.97874
+##   2.24089
+##   1.86756
+##   Terms:
+##     'x' (column 0)
+```
+
+```python
+dmatrix("x-0", demo_data("x","y","z"))
+```
+
+```
+## DesignMatrix with shape (5, 2)
+##   Intercept        x
+##           1  1.76405
+##           1  0.40016
+##           1  0.97874
+##           1  2.24089
+##           1  1.86756
+##   Terms:
+##     'Intercept' (column 0)
+##     'x' (column 1)
+```
+
+```python
+dmatrix("x - (-0)", demo_data("x","y","z"))
+```
+
+```
+## DesignMatrix with shape (5, 1)
+##         x
+##   1.76405
+##   0.40016
+##   0.97874
+##   2.24089
+##   1.86756
+##   Terms:
+##     'x' (column 0)
+```
+] ]
+
+---
+
+## Design Info
+
+One of the keep features of the design matrix object is that it retains all the necessary details (including stateful transforms) that are necessary to apply to new data inputs (e.g. for prediction).
+
+
+
+```python
+d = dmatrix("a + a:b + np.exp(x1)", data, return_type='dataframe')
+d.design_info
+```
+
+```
+## DesignInfo(['Intercept',
+##             'a[T.a2]',
+##             'a[a1]:b[T.b2]',
+##             'a[a2]:b[T.b2]',
+##             'np.exp(x1)'],
+##            factor_infos={EvalFactor('a'): FactorInfo(factor=EvalFactor('a'),
+##                                     type='categorical',
+##                                     state=&lt;factor state&gt;,
+##                                     categories=('a1', 'a2')),
+##                          EvalFactor('b'): FactorInfo(factor=EvalFactor('b'),
+##                                     type='categorical',
+##                                     state=&lt;factor state&gt;,
+##                                     categories=('b1', 'b2')),
+##                          EvalFactor('np.exp(x1)'): FactorInfo(factor=EvalFactor('np.exp(x1)'),
+##                                     type='numerical',
+##                                     state=&lt;factor state&gt;,
+##                                     num_columns=1)},
+##            term_codings=OrderedDict([(Term([]),
+##                                       [SubtermInfo(factors=(),
+##                                                    contrast_matrices={},
+##                                                    num_columns=1)]),
+##                                      (Term([EvalFactor('a')]),
+##                                       [SubtermInfo(factors=(EvalFactor('a'),),
+##                                                    contrast_matrices={EvalFactor('a'): ContrastMatrix(array([[0.],
+##                                                                                             [1.]]),
+##                                                                                      ['[T.a2]'])},
+##                                                    num_columns=1)]),
+##                                      (Term([EvalFactor('a'), EvalFactor('b')]),
+##                                       [SubtermInfo(factors=(EvalFactor('a'),
+##                                                             EvalFactor('b')),
+##                                                    contrast_matrices={EvalFactor('a'): ContrastMatrix(array([[1., 0.],
+##                                                                                             [0., 1.]]),
+##                                                                                      ['[a1]',
+##                                                                                       '[a2]']),
+##                                                                       EvalFactor('b'): ContrastMatrix(array([[0.],
+##                                                                                             [1.]]),
+##                                                                                      ['[T.b2]'])},
+##                                                    num_columns=2)]),
+##                                      (Term([EvalFactor('np.exp(x1)')]),
+##                                       [SubtermInfo(factors=(EvalFactor('np.exp(x1)'),),
+##                                                    contrast_matrices={},
+##                                                    num_columns=1)])]))
+```
+
+
+---
+
+## Stateful transforms
+
+
+```python
+data = {"x1": np.random.normal(size=10)}
+new_data = {"x1": np.random.normal(size=10)}
+```
+
+.pull-left[
+
+```python
+d = dmatrix("scale(x1)", data)
+d
+```
+
+```
+## DesignMatrix with shape (10, 2)
+##   Intercept  scale(x1)
+##           1    1.43733
+##           1    0.11752
+##           1   -0.14621
+##           1   -0.54310
+##           1   -0.87302
+##           1   -0.51076
+##           1   -1.82120
+##           1    1.51808
+##           1    0.96847
+##           1   -0.14710
+##   Terms:
+##     'Intercept' (column 0)
+##     'scale(x1)' (column 1)
+```
+
+```python
+np.mean(d, axis=0)
+```
+
+```
+## array([1., 0.])
+```
+]
+
+.pull-right[
+
+```python
+pred = dmatrix(d.design_info, new_data)
+pred
+```
+
+```
+## DesignMatrix with shape (10, 2)
+##   Intercept  scale(x1)
+##           1   -0.80805
+##           1   -0.26419
+##           1    0.33883
+##           1    0.12756
+##           1   -0.32758
+##           1   -0.02809
+##           1    0.44237
+##           1   -1.11384
+##           1   -1.17760
+##           1    0.24601
+##   Terms:
+##     'Intercept' (column 0)
+##     'scale(x1)' (column 1)
+```
+
+```python
+np.mean(pred, axis=0)
+```
+
+```
+## array([ 1.     , -0.25646])
+```
+]
+
+---
+
+## scikit-lego PatsyTransformer
+
+If you would like to use a Patsy formula in a scikitlearn pipeline, it is possible via the `PatsyTransformer` from the `scikit-lego` library.
+
+
+```python
+from sklego.preprocessing import PatsyTransformer
+
+df = pd.DataFrame({
+  "y": [2, 2, 4, 4, 6],
+  "x": [1, 2, 3, 4, 5],
+  "a": ["yes", "yes", "no", "no", "yes"]
+})
+
+X, y = df[["x", "a"]], df[["y"]].values
+```
+
+--
+
+
+.pull-left[
+
+```python
+pt = PatsyTransformer("x*a + np.log(x)")
+pt.fit_transform(X)
+```
+
+```
+## DesignMatrix with shape (5, 5)
+##   Intercept  a[T.yes]  x  x:a[T.yes]  np.log(x)
+##           1         1  1           1    0.00000
+##           1         1  2           2    0.69315
+##           1         0  3           0    1.09861
+##           1         0  4           0    1.38629
+##           1         1  5           5    1.60944
+##   Terms:
+##     'Intercept' (column 0)
+##     'a' (column 1)
+##     'x' (column 2)
+##     'x:a' (column 3)
+##     'np.log(x)' (column 4)
+```
+]
+
+--
+
+.pull-right[
+
+```python
+make_pipeline(
+  PatsyTransformer("x*a + np.log(x)"),
+  StandardScaler()
+).fit_transform(X)
+```
+
+```
+## array([[ 0.     ,  0.8165 , -1.41421, -0.3235 , -1.6845 ],
+##        [ 0.     ,  0.8165 , -0.70711,  0.21567, -0.46507],
+##        [ 0.     , -1.22474,  0.     , -0.86266,  0.24826],
+##        [ 0.     , -1.22474,  0.70711, -0.86266,  0.75437],
+##        [ 0.     ,  0.8165 ,  1.41421,  1.83316,  1.14694]])
+```
+]
+
+---
+
+## Exercise 1
+
+Using patsy fit a linear regression model to the `books` data that includes an interaction term between `cover` and `volume`.
+
+
+```python
+books = pd.read_csv("https://sta663-sp22.github.io/slides/data/daag_books.csv")
+```
+
+
+---
+
+## B-splines
+
+Patsy also has support for B-splines and other related models.
+
+.pull-left[
+
+```python
+d = pd.read_csv("data/d1.csv")
+
+sns.relplot(x="x", y="y", data=d)
+```
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-21-1.png" width="66%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+y, X = dmatrices("y ~ bs(x, df=6)", data=d)
+X
+```
+
+```
+## DesignMatrix with shape (75, 7)
+##   Columns:
+##     ['Intercept',
+##      'bs(x, df=6)[0]',
+##      'bs(x, df=6)[1]',
+##      'bs(x, df=6)[2]',
+##      'bs(x, df=6)[3]',
+##      'bs(x, df=6)[4]',
+##      'bs(x, df=6)[5]']
+##   Terms:
+##     'Intercept' (column 0), 'bs(x, df=6)' (columns 1:7)
+##   (to view full data, use np.asarray(this_obj))
+```
+]
+
+---
+
+## What is `bs(x)[i]`?
+
+
+```python
+bs_df = ( 
+  dmatrix("bs(x, df=6)", data=d, return_type="dataframe")
+  .drop(["Intercept"], axis = 1)
+  .assign(x = d["x"])
+  .melt(id_vars="x")
+)
+
+sns.relplot(x="x", y="value", hue="variable", kind="line", data = bs_df, aspect=1.5)
+```
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-23-3.png" width="66%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Fitting a model
+
+
+```python
+from sklearn.linear_model import LinearRegression
+lm = LinearRegression(fit_intercept=False).fit(X,y)
+lm.coef_
+```
+
+```
+## array([[ 1.28955, -1.69132,  3.17914, -5.3865 , -1.18284, -3.8488 , -2.42867]])
+```
+
+--
+
+
+```python
+plt.figure(layout="constrained")
+sns.lineplot(x=d["x"], y=lm.predict(X).ravel(), color="k")
+sns.scatterplot(x="x", y="y", data=d)
+plt.show()
+```
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-25-5.png" width="33%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## sklearn SplineTransformer
+
+.pull-left[
+
+```python
+from sklearn.preprocessing import SplineTransformer
+
+p = make_pipeline(
+  SplineTransformer(
+    n_knots=6, 
+    degree=3, 
+    include_bias=True
+  ),
+  LinearRegression(fit_intercept=False)
+).fit(
+  d[["x"]], d["y"]
+)
+```
+]
+
+
+.pull-right[
+
+```python
+plt.figure()
+sns.lineplot(x=d["x"], y=p.predict(d[["x"]]).ravel(), color="k")
+sns.scatterplot(x="x", y="y", data=d)
+plt.show()
+```
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-27-7.png" width="80%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Why different?
+
+For patsy the number of splines is determined by `df` while for sklearn this is determined by `n_knots + degree - 1`.
+
+
+```python
+p = p.set_params(splinetransformer__n_knots = 5).fit(d[["x"]], d["y"])
+
+plt.figure(layout="constrained")
+sns.lineplot(x=d["x"], y=p.predict(d[["x"]]).ravel(), color="k")
+sns.scatterplot(x="x", y="y", data=d)
+plt.show()
+```
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-28-9.png" width="33%" style="display: block; margin: auto;" /&gt;
+
+---
+
+but that is not the whole story, if we examine the bases we also see they differ slightly between implementations:
+
+
+```python
+bs_df = pd.DataFrame(
+  SplineTransformer(n_knots=6, degree=3, include_bias=True).fit_transform(d[["x"]]),
+  columns = ["bs["+ str(i) +"]" for i in range(8)]
+).assign(
+  x = d.x
+).melt(
+  id_vars = "x"
+)
+
+sns.relplot(x="x", y="value", hue="variable", kind="line", data = bs_df, aspect=1.5)
+```
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-29-11.png" width="55%" style="display: block; margin: auto;" /&gt;
+
+
+
+---
+class: center, middle
+
+## statsmodels
+
+---
+
+## statsmodels
+
+&gt; statsmodels is a Python module that provides classes and functions for the estimation of many different statistical models, as well as for conducting statistical tests, and statistical data exploration. An extensive list of result statistics are available for each estimator. The results are tested against existing statistical packages to ensure that they are correct.
+
+
+```python
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+import statsmodels.tsa.api as tsa
+```
+
+--
+
+`statsmodels` uses slightly different terminology for refering to `y` / dependent / response and `x` / independent / explanatory variables. Specificially it uses `endog` to refer to the `y` and `exog` to refer to the `x` variable(s).
+
+This is particularly important when using the main API, less so when using the formula API.
+
+---
+
+## OpenIntro Loans data
+
+.small[
+&gt; This data set represents thousands of loans made through the Lending Club platform, which is a platform that allows individuals to lend to other individuals. Of course, not all loans are created equal. Someone who is a essentially a sure bet to pay back a loan will have an easier time getting a loan with a low interest rate than someone who appears to be riskier. And for people who are very risky? They may not even get a loan offer, or they may not have accepted the loan offer due to a high interest rate. It is important to keep that last part in mind, since this data set only represents loans actually made, i.e. do not mistake this data for loan applications!
+
+For the full data dictionary see [here](https://www.openintro.org/data/index.php?data=loan50). We have removed some of the columns to make the data set more reasonably sized and also droped any rows with missing values.
+
+
+
+
+```python
+loans = pd.read_csv("data/openintro_loans.csv")
+loans
+```
+
+```
+##      state  emp_length  term homeownership  annual_income  ... loan_amount  grade  interest_rate  public_record_bankrupt  loan_status
+## 0       NJ           3    60      MORTGAGE        90000.0  ...       28000      C          14.07                       0      Current
+## 1       HI          10    36          RENT        40000.0  ...        5000      C          12.61                       1      Current
+## 2       WI           3    36          RENT        40000.0  ...        2000      D          17.09                       0      Current
+## 3       PA           1    36          RENT        30000.0  ...       21600      A           6.72                       0      Current
+## 4       CA          10    36          RENT        35000.0  ...       23000      C          14.07                       0      Current
+## ...    ...         ...   ...           ...            ...  ...         ...    ...            ...                     ...          ...
+## 9177    TX          10    36          RENT       108000.0  ...       24000      A           7.35                       1      Current
+## 9178    PA           8    36      MORTGAGE       121000.0  ...       10000      D          19.03                       0      Current
+## 9179    CT          10    36      MORTGAGE        67000.0  ...       30000      E          23.88                       0      Current
+## 9180    WI           1    36      MORTGAGE        80000.0  ...       24000      A           5.32                       0      Current
+## 9181    CT           3    36          RENT        66000.0  ...       12800      B          10.91                       0      Current
+## 
+## [9182 rows x 16 columns]
+```
+
+```python
+print(loans.columns)
+```
+
+```
+## Index(['state', 'emp_length', 'term', 'homeownership', 'annual_income', 'verified_income', 'debt_to_income', 'total_credit_limit',
+##        'total_credit_utilized', 'num_cc_carrying_balance', 'loan_purpose', 'loan_amount', 'grade', 'interest_rate', 'public_record_bankrupt',
+##        'loan_status'],
+##       dtype='object')
+```
+]
+
+---
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-32-13.png" width="66%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+## OLS
+
+
+```python
+y = loans["loan_amount"]
+X = loans[["homeownership", "annual_income", "debt_to_income", "interest_rate", "public_record_bankrupt"]]
+
+model = sm.OLS(endog=y, exog=X)
+```
+
+```
+## ValueError: Pandas data cast to numpy dtype of object. Check input data with np.asarray(data).
+```
+
+&lt;br/&gt;
+
+.center[What do you think the issue is here?]
+
+&lt;br/&gt;
+
+--
+
+The error occurs because `X` contains mixed types - specifically we have categorical data columns which cannot be directly converted to a numeric dtype so we need to take care of the dummy coding for statsmodels (with this interface).
+
+
+```python
+X_dc = pd.get_dummies(X)
+model = sm.OLS(endog=y, exog=X_dc)
+```
+
+---
+
+## Fitting and summary
+
+.small[
+
+```python
+res = model.fit()
+print(res.summary())
+```
+
+```
+##                             OLS Regression Results                            
+## ==============================================================================
+## Dep. Variable:            loan_amount   R-squared:                       0.135
+## Model:                            OLS   Adj. R-squared:                  0.135
+## Method:                 Least Squares   F-statistic:                     239.5
+## Date:                Tue, 15 Mar 2022   Prob (F-statistic):          2.33e-285
+## Time:                        20:58:03   Log-Likelihood:                -97245.
+## No. Observations:                9182   AIC:                         1.945e+05
+## Df Residuals:                    9175   BIC:                         1.946e+05
+## Df Model:                           6                                         
+## Covariance Type:            nonrobust                                         
+## ==========================================================================================
+##                              coef    std err          t      P&gt;|t|      [0.025      0.975]
+## ------------------------------------------------------------------------------------------
+## annual_income              0.0505      0.002     31.952      0.000       0.047       0.054
+## debt_to_income            65.6641      7.310      8.982      0.000      51.334      79.994
+## interest_rate            204.2480     20.448      9.989      0.000     164.166     244.330
+## public_record_bankrupt -1362.3253    306.019     -4.452      0.000   -1962.191    -762.460
+## homeownership_MORTGAGE  1.002e+04    357.245     28.048      0.000    9319.724    1.07e+04
+## homeownership_OWN       8880.4144    422.296     21.029      0.000    8052.620    9708.209
+## homeownership_RENT      7446.5385    351.641     21.177      0.000    6757.243    8135.834
+## ==============================================================================
+## Omnibus:                      481.833   Durbin-Watson:                   2.002
+## Prob(Omnibus):                  0.000   Jarque-Bera (JB):              916.542
+## Skew:                           0.391   Prob(JB):                    9.45e-200
+## Kurtosis:                       4.336   Cond. No.                     6.17e+05
+## ==============================================================================
+## 
+## Notes:
+## [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+## [2] The condition number is large, 6.17e+05. This might indicate that there are
+## strong multicollinearity or other numerical problems.
+```
+]
+
+---
+
+## Formula interface
+
+Most of the modeling interfaces are also provided by `smf` (`statsmodels.formula.api`) in which case patsy is used to construct the model matrices.
+
+.small[
+
+```python
+model = smf.ols(
+  "loan_amount ~ homeownership + annual_income + debt_to_income + interest_rate + public_record_bankrupt",
+  data = loans  
+)
+res = model.fit()
+print(res.summary())
+```
+
+```
+##                             OLS Regression Results                            
+## ==============================================================================
+## Dep. Variable:            loan_amount   R-squared:                       0.135
+## Model:                            OLS   Adj. R-squared:                  0.135
+## Method:                 Least Squares   F-statistic:                     239.5
+## Date:                Tue, 15 Mar 2022   Prob (F-statistic):          2.33e-285
+## Time:                        20:58:04   Log-Likelihood:                -97245.
+## No. Observations:                9182   AIC:                         1.945e+05
+## Df Residuals:                    9175   BIC:                         1.946e+05
+## Df Model:                           6                                         
+## Covariance Type:            nonrobust                                         
+## ==========================================================================================
+##                              coef    std err          t      P&gt;|t|      [0.025      0.975]
+## ------------------------------------------------------------------------------------------
+## Intercept               1.002e+04    357.245     28.048      0.000    9319.724    1.07e+04
+## homeownership[T.OWN]   -1139.5893    322.361     -3.535      0.000   -1771.489    -507.690
+## homeownership[T.RENT]  -2573.4652    221.101    -11.639      0.000   -3006.873   -2140.057
+## annual_income              0.0505      0.002     31.952      0.000       0.047       0.054
+## debt_to_income            65.6641      7.310      8.982      0.000      51.334      79.994
+## interest_rate            204.2480     20.448      9.989      0.000     164.166     244.330
+## public_record_bankrupt -1362.3253    306.019     -4.452      0.000   -1962.191    -762.460
+## ==============================================================================
+## Omnibus:                      481.833   Durbin-Watson:                   2.002
+## Prob(Omnibus):                  0.000   Jarque-Bera (JB):              916.542
+## Skew:                           0.391   Prob(JB):                    9.45e-200
+## Kurtosis:                       4.336   Cond. No.                     4.16e+05
+## ==============================================================================
+## 
+## Notes:
+## [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+## [2] The condition number is large, 4.16e+05. This might indicate that there are
+## strong multicollinearity or other numerical problems.
+```
+]
+
+---
+
+## Result values and model parameters
+
+.pull-left[
+
+```python
+res.params
+```
+
+```
+## Intercept                 10020.003630
+## homeownership[T.OWN]      -1139.589268
+## homeownership[T.RENT]     -2573.465175
+## annual_income                 0.050505
+## debt_to_income               65.664103
+## interest_rate               204.247993
+## public_record_bankrupt    -1362.325291
+## dtype: float64
+```
+
+```python
+res.bse
+```
+
+```
+## Intercept                 357.244896
+## homeownership[T.OWN]      322.361151
+## homeownership[T.RENT]     221.101300
+## annual_income               0.001581
+## debt_to_income              7.310428
+## interest_rate              20.447644
+## public_record_bankrupt    306.019080
+## dtype: float64
+```
+]
+
+.pull-right[
+
+```python
+res.rsquared
+```
+
+```
+## 0.13542611095847512
+```
+
+```python
+res.aic
+```
+
+```
+## 194503.99751598848
+```
+
+```python
+res.bic
+```
+
+```
+## 194553.87251826216
+```
+
+```python
+res.predict()
+```
+
+```
+## array([18621.86199, 11010.94015, 14346.14516, 11001.39179, 15893.88527, 16117.03267, 19087.62385, 18474.006  , 11573.91022, 16203.65687, 16807.09109, 19749.29171, 16631.51743, 19462.60342,
+##        18283.87492, 26719.61804, 18496.72337, 14811.45733, 15327.04395, 19588.33429, 14350.43416, 16320.23967, 13569.50682, 11884.96453, 12285.76198, 13873.15682, 19674.8597 , 25956.9437 ,
+##        18845.26463, 20083.33976, ..., 19576.16932, 18304.67966, 15552.05728, 11754.55558, 13786.01399, 18643.31101, 17631.70931, 21224.38188, 15264.59577, 20530.64212, 14479.78392, 17676.60967,
+##        17161.96037, 18764.48833, 19252.9242 , 18336.473  , 19246.64389, 16180.94114, 13397.06249, 15582.81361, 15698.7436 , 18124.97964, 14015.41069, 14183.34361, 12385.5385 , 14503.00645,
+##        22144.19006, 21253.25932, 15934.34097, 14375.36166])
+```
+]
+
+---
+
+## Diagnostic plots
+
+.pull-left[
+*QQ Plot*
+
+```python
+plt.figure()
+sm.graphics.qqplot(res.resid, line="s")
+plt.show()
+```
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-39-15.png" width="80%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+*Leverage plot*
+
+```python
+plt.figure()
+sm.graphics.plot_leverage_resid2(res)
+plt.show()
+```
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-40-17.png" width="80%" style="display: block; margin: auto;" /&gt;
+]
+
+
+---
+
+## Alternative model
+
+.small[
+
+```python
+res = smf.ols(
+  "np.sqrt(loan_amount) ~ homeownership + annual_income + debt_to_income + interest_rate + public_record_bankrupt",
+  data = loans  
+).fit()
+print(res.summary())
+```
+
+```
+##                              OLS Regression Results                             
+## ================================================================================
+## Dep. Variable:     np.sqrt(loan_amount)   R-squared:                       0.132
+## Model:                              OLS   Adj. R-squared:                  0.132
+## Method:                   Least Squares   F-statistic:                     232.7
+## Date:                  Tue, 15 Mar 2022   Prob (F-statistic):          1.16e-277
+## Time:                          20:58:07   Log-Likelihood:                -46429.
+## No. Observations:                  9182   AIC:                         9.287e+04
+## Df Residuals:                      9175   BIC:                         9.292e+04
+## Df Model:                             6                                         
+## Covariance Type:              nonrobust                                         
+## ==========================================================================================
+##                              coef    std err          t      P&gt;|t|      [0.025      0.975]
+## ------------------------------------------------------------------------------------------
+## Intercept                 95.4915      1.411     67.687      0.000      92.726      98.257
+## homeownership[T.OWN]      -4.4495      1.273     -3.495      0.000      -6.945      -1.954
+## homeownership[T.RENT]    -10.4225      0.873    -11.937      0.000     -12.134      -8.711
+## annual_income              0.0002   6.24e-06     30.916      0.000       0.000       0.000
+## debt_to_income             0.2720      0.029      9.421      0.000       0.215       0.329
+## interest_rate              0.8911      0.081     11.035      0.000       0.733       1.049
+## public_record_bankrupt    -4.6899      1.208     -3.881      0.000      -7.059      -2.321
+## ==============================================================================
+## Omnibus:                      178.498   Durbin-Watson:                   2.011
+## Prob(Omnibus):                  0.000   Jarque-Bera (JB):              333.598
+## Skew:                          -0.127   Prob(JB):                     3.63e-73
+## Kurtosis:                       3.899   Cond. No.                     4.16e+05
+## ==============================================================================
+## 
+## Notes:
+## [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+## [2] The condition number is large, 4.16e+05. This might indicate that there are
+## strong multicollinearity or other numerical problems.
+```
+]
+
+---
+
+.pull-left[
+
+```python
+plt.figure()
+sm.graphics.qqplot(res.resid, line="s")
+plt.show()
+```
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-42-19.png" width="80%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+
+```python
+plt.figure()
+sm.graphics.plot_leverage_resid2(res)
+plt.show()
+```
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-43-21.png" width="80%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Bushtail Possums
+
+&gt; Data representing possums in Australia and New Guinea. This is a copy of the data set by the same name in the DAAG package, however, the data set included here includes fewer variables.
+&gt;
+&gt; `pop` - Population, either `Vic` (Victoria) or `other` (New South Wales or Queensland).
+
+.pull-left-wide[
+
+```python
+possum = pd.read_csv("data/possum.csv")
+possum
+```
+
+```
+##      site    pop sex  age  head_l  skull_w  total_l  tail_l
+## 0       1    Vic   m  8.0    94.1     60.4     89.0    36.0
+## 1       1    Vic   f  6.0    92.5     57.6     91.5    36.5
+## 2       1    Vic   f  6.0    94.0     60.0     95.5    39.0
+## 3       1    Vic   f  6.0    93.2     57.1     92.0    38.0
+## 4       1    Vic   f  2.0    91.5     56.3     85.5    36.0
+## ..    ...    ...  ..  ...     ...      ...      ...     ...
+## 99      7  other   m  1.0    89.5     56.0     81.5    36.5
+## 100     7  other   m  1.0    88.6     54.7     82.5    39.0
+## 101     7  other   f  6.0    92.4     55.0     89.0    38.0
+## 102     7  other   m  4.0    91.5     55.2     82.5    36.5
+## 103     7  other   f  3.0    93.6     59.9     89.0    40.0
+## 
+## [104 rows x 8 columns]
+```
+]
+
+
+.pull-right-narrow[
+&lt;img src="imgs/possum.jpg" width="75%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Logistic regression models (GLM)
+
+
+```python
+y = pd.get_dummies( possum["pop"] )
+X = pd.get_dummies( possum.drop(["site","pop"], axis=1) )
+
+model = sm.GLM(y, X, family = sm.families.Binomial())
+```
+
+```
+## MissingDataError: exog contains inf or nans
+```
+
+--
+
+Behavior for dealing with missing data can be handled via `missing`, possible values are `"none"`, `"drop"`, and `"raise"`. 
+
+
+```python
+model = sm.GLM(y, X, family = sm.families.Binomial(), missing="drop")
+```
+
+---
+
+## Fit and summary
+
+.small[
+
+```python
+res = model.fit()
+print(res.summary())
+```
+
+```
+##                  Generalized Linear Model Regression Results                  
+## ==============================================================================
+## Dep. Variable:       ['Vic', 'other']   No. Observations:                  102
+## Model:                            GLM   Df Residuals:                       95
+## Model Family:                Binomial   Df Model:                            6
+## Link Function:                  Logit   Scale:                          1.0000
+## Method:                          IRLS   Log-Likelihood:                -31.942
+## Date:                Tue, 15 Mar 2022   Deviance:                       63.885
+## Time:                        20:58:10   Pearson chi2:                     154.
+## No. Iterations:                     7   Pseudo R-squ. (CS):             0.5234
+## Covariance Type:            nonrobust                                         
+## ==============================================================================
+##                  coef    std err          z      P&gt;|z|      [0.025      0.975]
+## ------------------------------------------------------------------------------
+## age            0.1373      0.183      0.751      0.453      -0.221       0.495
+## head_l        -0.1972      0.158     -1.247      0.212      -0.507       0.113
+## skull_w       -0.2001      0.139     -1.443      0.149      -0.472       0.072
+## total_l        0.7569      0.176      4.290      0.000       0.411       1.103
+## tail_l        -2.0698      0.429     -4.820      0.000      -2.912      -1.228
+## sex_f         40.0148     13.077      3.060      0.002      14.385      65.645
+## sex_m         38.5395     12.941      2.978      0.003      13.175      63.904
+## ==============================================================================
+```
+]
+
+---
+
+## Success vs failure
+
+Note `endog` can be 1d or 2d for binomial models - in the case of the latter each row is interpreted as [success, failure].
+s
+.small[
+
+```python
+y = pd.get_dummies( possum["pop"], drop_first = True)
+X = pd.get_dummies( possum.drop(["site","pop"], axis=1) )
+
+res = sm.GLM(y, X, family = sm.families.Binomial(), missing="drop").fit()
+print(res.summary())
+```
+
+```
+##                  Generalized Linear Model Regression Results                  
+## ==============================================================================
+## Dep. Variable:                  other   No. Observations:                  102
+## Model:                            GLM   Df Residuals:                       95
+## Model Family:                Binomial   Df Model:                            6
+## Link Function:                  Logit   Scale:                          1.0000
+## Method:                          IRLS   Log-Likelihood:                -31.942
+## Date:                Tue, 15 Mar 2022   Deviance:                       63.885
+## Time:                        20:58:10   Pearson chi2:                     154.
+## No. Iterations:                     7   Pseudo R-squ. (CS):             0.5234
+## Covariance Type:            nonrobust                                         
+## ==============================================================================
+##                  coef    std err          z      P&gt;|z|      [0.025      0.975]
+## ------------------------------------------------------------------------------
+## age           -0.1373      0.183     -0.751      0.453      -0.495       0.221
+## head_l         0.1972      0.158      1.247      0.212      -0.113       0.507
+## skull_w        0.2001      0.139      1.443      0.149      -0.072       0.472
+## total_l       -0.7569      0.176     -4.290      0.000      -1.103      -0.411
+## tail_l         2.0698      0.429      4.820      0.000       1.228       2.912
+## sex_f        -40.0148     13.077     -3.060      0.002     -65.645     -14.385
+## sex_m        -38.5395     12.941     -2.978      0.003     -63.904     -13.175
+## ==============================================================================
+```
+]
+
+---
+
+## Fit and summary
+
+
+```python
+res = model.fit()
+print(res.summary())
+```
+
+```
+##                  Generalized Linear Model Regression Results                  
+## ==============================================================================
+## Dep. Variable:       ['Vic', 'other']   No. Observations:                  102
+## Model:                            GLM   Df Residuals:                       95
+## Model Family:                Binomial   Df Model:                            6
+## Link Function:                  Logit   Scale:                          1.0000
+## Method:                          IRLS   Log-Likelihood:                -31.942
+## Date:                Tue, 15 Mar 2022   Deviance:                       63.885
+## Time:                        20:58:11   Pearson chi2:                     154.
+## No. Iterations:                     7   Pseudo R-squ. (CS):             0.5234
+## Covariance Type:            nonrobust                                         
+## ==============================================================================
+##                  coef    std err          z      P&gt;|z|      [0.025      0.975]
+## ------------------------------------------------------------------------------
+## age            0.1373      0.183      0.751      0.453      -0.221       0.495
+## head_l        -0.1972      0.158     -1.247      0.212      -0.507       0.113
+## skull_w       -0.2001      0.139     -1.443      0.149      -0.472       0.072
+## total_l        0.7569      0.176      4.290      0.000       0.411       1.103
+## tail_l        -2.0698      0.429     -4.820      0.000      -2.912      -1.228
+## sex_f         40.0148     13.077      3.060      0.002      14.385      65.645
+## sex_m         38.5395     12.941      2.978      0.003      13.175      63.904
+## ==============================================================================
+```
+
+
+
+---
+
+## Formula interface
+
+
+```python
+res = smf.glm(
+  "pop ~ sex + age + head_l + skull_w + total_l + tail_l-1",
+  data = possum, 
+  family = sm.families.Binomial(), 
+  missing="drop"
+).fit()
+print(res.summary())
+```
+
+```
+##                      Generalized Linear Model Regression Results                      
+## ======================================================================================
+## Dep. Variable:     ['pop[Vic]', 'pop[other]']   No. Observations:                  102
+## Model:                                    GLM   Df Residuals:                       95
+## Model Family:                        Binomial   Df Model:                            6
+## Link Function:                          Logit   Scale:                          1.0000
+## Method:                                  IRLS   Log-Likelihood:                -31.942
+## Date:                        Tue, 15 Mar 2022   Deviance:                       63.885
+## Time:                                20:58:12   Pearson chi2:                     154.
+## No. Iterations:                             7   Pseudo R-squ. (CS):             0.5234
+## Covariance Type:                    nonrobust                                         
+## ==============================================================================
+##                  coef    std err          z      P&gt;|z|      [0.025      0.975]
+## ------------------------------------------------------------------------------
+## sex[f]        40.0148     13.077      3.060      0.002      14.385      65.645
+## sex[m]        38.5395     12.941      2.978      0.003      13.175      63.904
+## age            0.1373      0.183      0.751      0.453      -0.221       0.495
+## head_l        -0.1972      0.158     -1.247      0.212      -0.507       0.113
+## skull_w       -0.2001      0.139     -1.443      0.149      -0.472       0.072
+## total_l        0.7569      0.176      4.290      0.000       0.411       1.103
+## tail_l        -2.0698      0.429     -4.820      0.000      -2.912      -1.228
+## ==============================================================================
+```
+
+
+---
+
+## sleepstudy data
+
+&gt; These data are from the study described in Belenky et al. (2003), for the most sleep-deprived group (3 hours time-in-bed) and for the first 10 days of the study, up to the recovery period. The original study analyzed speed (1/(reaction time)) and treated day as a categorical rather than a continuous predictor.
+&gt;
+&gt; The average reaction time per day (in milliseconds) for subjects in a sleep deprivation study.
+&gt; Days 0-1 were adaptation and training (T1/T2), day 2 was baseline (B); sleep deprivation started after day 2.
+
+
+```python
+sleep = pd.read_csv("data/sleepstudy.csv")
+sleep
+```
+
+```
+##      Reaction  Days  Subject
+## 0    249.5600     0      308
+## 1    258.7047     1      308
+## 2    250.8006     2      308
+## 3    321.4398     3      308
+## 4    356.8519     4      308
+## ..        ...   ...      ...
+## 175  329.6076     5      372
+## 176  334.4818     6      372
+## 177  343.2199     7      372
+## 178  369.1417     8      372
+## 179  364.1236     9      372
+## 
+## [180 rows x 3 columns]
+```
+
+
+.footnote[These data come from the `sleepstudy` dataset in the `lme4` R package]
+
+---
+
+
+```python
+sns.relplot(x="Days", y="Reaction", col="Subject", col_wrap=6, data=sleep)
+```
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-53-1.png" width="7975" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Random intercept model
+
+.pull-left[ .small[
+
+```python
+me_rand_int = smf.mixedlm(
+  "Reaction ~ Days", data=sleep, groups=sleep["Subject"], 
+  subset=sleep.Days &gt;= 2
+)
+res_rand_int = me_rand_int.fit(method=["lbfgs"])
+print(res_rand_int.summary())
+```
+
+```
+##          Mixed Linear Model Regression Results
+## ========================================================
+## Model:             MixedLM Dependent Variable: Reaction 
+## No. Observations:  180     Method:             REML     
+## No. Groups:        18      Scale:              960.4529 
+## Min. group size:   10      Log-Likelihood:     -893.2325
+## Max. group size:   10      Converged:          Yes      
+## Mean group size:   10.0                                 
+## --------------------------------------------------------
+##            Coef.   Std.Err.   z    P&gt;|z|  [0.025  0.975]
+## --------------------------------------------------------
+## Intercept  251.405    9.747 25.793 0.000 232.302 270.509
+## Days        10.467    0.804 13.015 0.000   8.891  12.044
+## Group Var 1378.232   17.157                             
+## ========================================================
+```
+] ]
+
+--
+
+.pull-right[ .small[
+
+```r
+summary(
+  lmer(Reaction ~ Days + (1|Subject), data=sleepstudy)
+)
+```
+
+```
+## Linear mixed model fit by REML ['lmerMod']
+## Formula: Reaction ~ Days + (1 | Subject)
+##    Data: sleepstudy
+## 
+## REML criterion at convergence: 1786.5
+## 
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -3.2257 -0.5529  0.0109  0.5188  4.2506 
+## 
+## Random effects:
+##  Groups   Name        Variance Std.Dev.
+##  Subject  (Intercept) 1378.2   37.12   
+##  Residual              960.5   30.99   
+## Number of obs: 180, groups:  Subject, 18
+## 
+## Fixed effects:
+##             Estimate Std. Error t value
+## (Intercept) 251.4051     9.7467   25.79
+## Days         10.4673     0.8042   13.02
+## 
+## Correlation of Fixed Effects:
+##      (Intr)
+## Days -0.371
+```
+] ]
+
+---
+
+## Predictions
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-56-1.png" width="90%" style="display: block; margin: auto;" /&gt;
+--
+
+.footnote[The prediction is only taking into account the fixed effects here, not the group random effects.]
+
+---
+
+## Recovering random effects for prediction
+
+
+```python
+# Dictionary of random effects estimates
+re = res_rand_int.random_effects
+
+# Multiply each RE by the random effects design matrix for each group
+rex = [np.dot(me_rand_int.exog_re_li[j], re[k]) for (j, k) in enumerate(me_rand_int.group_labels)]
+
+# Add the fixed and random terms to get the overall prediction
+rex = np.concatenate(rex)
+y_hat = res_rand_int.predict() + rex
+```
+
+.footnote[Based on code provide on [stack overflow](https://stats.stackexchange.com/questions/467543/including-random-effects-in-prediction-with-linear-mixed-model).]
+
+---
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-58-3.png" width="90%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Random intercept and slope model
+
+.pull-left[ .small[
+
+```python
+me_rand_sl= smf.mixedlm(
+  "Reaction ~ Days", data=sleep, groups=sleep["Subject"], 
+  subset=sleep.Days &gt;= 2,
+  re_formula="~Days" 
+)
+res_rand_sl = me_rand_sl.fit(method=["lbfgs"])
+print(res_rand_sl.summary())
+```
+
+```
+##             Mixed Linear Model Regression Results
+## ==============================================================
+## Model:               MixedLM   Dependent Variable:   Reaction 
+## No. Observations:    180       Method:               REML     
+## No. Groups:          18        Scale:                654.9412 
+## Min. group size:     10        Log-Likelihood:       -871.8141
+## Max. group size:     10        Converged:            Yes      
+## Mean group size:     10.0                                     
+## --------------------------------------------------------------
+##                   Coef.  Std.Err.   z    P&gt;|z|  [0.025  0.975]
+## --------------------------------------------------------------
+## Intercept        251.405    6.825 36.838 0.000 238.029 264.781
+## Days              10.467    1.546  6.771 0.000   7.438  13.497
+## Group Var        612.089   11.881                             
+## Group x Days Cov   9.605    1.820                             
+## Days Var          35.072    0.610                             
+## ==============================================================
+```
+] ]
+
+--
+
+.pull-right[ .small[
+
+```r
+summary(
+  lmer(Reaction ~ Days + (Days|Subject), data=sleepstudy)
+)
+```
+
+```
+## Linear mixed model fit by REML ['lmerMod']
+## Formula: Reaction ~ Days + (Days | Subject)
+##    Data: sleepstudy
+## 
+## REML criterion at convergence: 1743.6
+## 
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -3.9536 -0.4634  0.0231  0.4634  5.1793 
+## 
+## Random effects:
+##  Groups   Name        Variance Std.Dev. Corr
+##  Subject  (Intercept) 612.10   24.741       
+##           Days         35.07    5.922   0.07
+##  Residual             654.94   25.592       
+## Number of obs: 180, groups:  Subject, 18
+## 
+## Fixed effects:
+##             Estimate Std. Error t value
+## (Intercept)  251.405      6.825  36.838
+## Days          10.467      1.546   6.771
+## 
+## Correlation of Fixed Effects:
+##      (Intr)
+## Days -0.138
+```
+] ]
+
+
+---
+
+## Prediction
+
+&lt;img src="Lec18_files/figure-html/unnamed-chunk-61-1.png" width="90%" style="display: block; margin: auto;" /&gt;
+
+.footnote[We are using the same approach described previously to obtain the RE estimates and use them in the predictions.]
+
+
+---
+
+## t-test and z-test for equality of means
+
+.small[
+
+```python
+cm = sm.stats.CompareMeans(
+  sm.stats.DescrStatsW( books.weight[books.cover == "hb"] ),
+  sm.stats.DescrStatsW( books.weight[books.cover == "pb"] )
+)
+
+print(cm.summary())
+```
+
+```
+##                           Test for equality of means                          
+## ==============================================================================
+##                  coef    std err          t      P&gt;|t|      [0.025      0.975]
+## ------------------------------------------------------------------------------
+## subset #1    168.3036    136.636      1.232      0.240    -126.880     463.487
+## ==============================================================================
+```
+
+```python
+print(cm.summary(use_t=False))
+```
+
+```
+##                           Test for equality of means                          
+## ==============================================================================
+##                  coef    std err          z      P&gt;|z|      [0.025      0.975]
+## ------------------------------------------------------------------------------
+## subset #1    168.3036    136.636      1.232      0.218     -99.497     436.104
+## ==============================================================================
+```
+
+```python
+print(cm.summary(usevar="unequal"))
+```
+
+```
+##                           Test for equality of means                          
+## ==============================================================================
+##                  coef    std err          t      P&gt;|t|      [0.025      0.975]
+## ------------------------------------------------------------------------------
+## subset #1    168.3036    136.360      1.234      0.239    -126.686     463.293
+## ==============================================================================
+```
+]
+
+---
+
+## Contigency tables
+
+Below are data from the GSS and a survery of Duke students in a intro stats class - the question asked about how concerned the respondent was about the effect of global warming on polar ice cap melt.
+
+
+```python
+gss = pd.DataFrame({"US": [454, 226], "Duke": [56,32]}, index=["A great deal", "Not a great deal"])
+gss
+```
+
+```
+##                    US  Duke
+## A great deal      454    56
+## Not a great deal  226    32
+```
+
+
+
+```python
+tbl = sm.stats.Table2x2(gss.to_numpy())
+print(tbl.summary())
+```
+
+```
+##                Estimate   SE   LCB    UCB  p-value
+## --------------------------------------------------
+## Odds ratio        1.148        0.723 1.823   0.559
+## Log odds ratio    0.138 0.236 -0.325 0.601   0.559
+## Risk ratio        1.016        0.962 1.074   0.567
+## Log risk ratio    0.016 0.028 -0.039 0.071   0.567
+## --------------------------------------------------
+```
+
+```python
+print(tbl.test_nominal_association())
+```
+
+```
+## df          1
+## pvalue      0.5587832913935942
+## statistic   0.3418152556383827
+```
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightLines": true,
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
