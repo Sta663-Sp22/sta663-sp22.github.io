@@ -284,7 +284,8 @@ trace.posterior.to_dataframe()
 ```{python}
 trace.posterior["p"][0,:].to_dataframe()
 ```
-`
+]
+
 ---
 
 ## MultiTrace results
