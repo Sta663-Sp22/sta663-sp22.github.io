@@ -561,16 +561,16 @@ d
 ```
 ## DesignMatrix with shape (10, 2)
 ##   Intercept  scale(x1)
-##           1    1.43733
-##           1    0.11752
-##           1   -0.14621
-##           1   -0.54310
-##           1   -0.87302
-##           1   -0.51076
-##           1   -1.82120
-##           1    1.51808
-##           1    0.96847
-##           1   -0.14710
+##           1   -1.66439
+##           1    1.31641
+##           1    1.51247
+##           1   -0.85749
+##           1    0.40329
+##           1   -1.27297
+##           1   -0.50679
+##           1    0.37778
+##           1    0.18438
+##           1    0.50732
 ##   Terms:
 ##     'Intercept' (column 0)
 ##     'scale(x1)' (column 1)
@@ -595,16 +595,16 @@ pred
 ```
 ## DesignMatrix with shape (10, 2)
 ##   Intercept  scale(x1)
-##           1   -0.80805
-##           1   -0.26419
-##           1    0.33883
-##           1    0.12756
-##           1   -0.32758
-##           1   -0.02809
-##           1    0.44237
-##           1   -1.11384
-##           1   -1.17760
-##           1    0.24601
+##           1   -0.01379
+##           1    0.64039
+##           1    1.73684
+##           1   -0.76110
+##           1   -0.39034
+##           1    0.90875
+##           1    0.64408
+##           1   -0.06190
+##           1    0.08917
+##           1   -0.06990
 ##   Terms:
 ##     'Intercept' (column 0)
 ##     'scale(x1)' (column 1)
@@ -615,7 +615,7 @@ np.mean(pred, axis=0)
 ```
 
 ```
-## array([ 1.     , -0.25646])
+## array([1.     , 0.27222])
 ```
 ]
 
@@ -981,8 +981,8 @@ print(res.summary())
 ## Dep. Variable:            loan_amount   R-squared:                       0.135
 ## Model:                            OLS   Adj. R-squared:                  0.135
 ## Method:                 Least Squares   F-statistic:                     239.5
-## Date:                Tue, 15 Mar 2022   Prob (F-statistic):          2.33e-285
-## Time:                        20:58:03   Log-Likelihood:                -97245.
+## Date:                Fri, 18 Mar 2022   Prob (F-statistic):          2.33e-285
+## Time:                        09:18:54   Log-Likelihood:                -97245.
 ## No. Observations:                9182   AIC:                         1.945e+05
 ## Df Residuals:                    9175   BIC:                         1.946e+05
 ## Df Model:                           6                                         
@@ -1034,8 +1034,8 @@ print(res.summary())
 ## Dep. Variable:            loan_amount   R-squared:                       0.135
 ## Model:                            OLS   Adj. R-squared:                  0.135
 ## Method:                 Least Squares   F-statistic:                     239.5
-## Date:                Tue, 15 Mar 2022   Prob (F-statistic):          2.33e-285
-## Time:                        20:58:04   Log-Likelihood:                -97245.
+## Date:                Fri, 18 Mar 2022   Prob (F-statistic):          2.33e-285
+## Time:                        09:18:55   Log-Likelihood:                -97245.
 ## No. Observations:                9182   AIC:                         1.945e+05
 ## Df Residuals:                    9175   BIC:                         1.946e+05
 ## Df Model:                           6                                         
@@ -1189,8 +1189,8 @@ print(res.summary())
 ## Dep. Variable:     np.sqrt(loan_amount)   R-squared:                       0.132
 ## Model:                              OLS   Adj. R-squared:                  0.132
 ## Method:                   Least Squares   F-statistic:                     232.7
-## Date:                  Tue, 15 Mar 2022   Prob (F-statistic):          1.16e-277
-## Time:                          20:58:07   Log-Likelihood:                -46429.
+## Date:                  Fri, 18 Mar 2022   Prob (F-statistic):          1.16e-277
+## Time:                          09:18:58   Log-Likelihood:                -46429.
 ## No. Observations:                  9182   AIC:                         9.287e+04
 ## Df Residuals:                      9175   BIC:                         9.292e+04
 ## Df Model:                             6                                         
@@ -1325,8 +1325,8 @@ print(res.summary())
 ## Model Family:                Binomial   Df Model:                            6
 ## Link Function:                  Logit   Scale:                          1.0000
 ## Method:                          IRLS   Log-Likelihood:                -31.942
-## Date:                Tue, 15 Mar 2022   Deviance:                       63.885
-## Time:                        20:58:10   Pearson chi2:                     154.
+## Date:                Fri, 18 Mar 2022   Deviance:                       63.885
+## Time:                        09:19:01   Pearson chi2:                     154.
 ## No. Iterations:                     7   Pseudo R-squ. (CS):             0.5234
 ## Covariance Type:            nonrobust                                         
 ## ==============================================================================
@@ -1367,8 +1367,8 @@ print(res.summary())
 ## Model Family:                Binomial   Df Model:                            6
 ## Link Function:                  Logit   Scale:                          1.0000
 ## Method:                          IRLS   Log-Likelihood:                -31.942
-## Date:                Tue, 15 Mar 2022   Deviance:                       63.885
-## Time:                        20:58:10   Pearson chi2:                     154.
+## Date:                Fri, 18 Mar 2022   Deviance:                       63.885
+## Time:                        09:19:02   Pearson chi2:                     154.
 ## No. Iterations:                     7   Pseudo R-squ. (CS):             0.5234
 ## Covariance Type:            nonrobust                                         
 ## ==============================================================================
@@ -1403,8 +1403,8 @@ print(res.summary())
 ## Model Family:                Binomial   Df Model:                            6
 ## Link Function:                  Logit   Scale:                          1.0000
 ## Method:                          IRLS   Log-Likelihood:                -31.942
-## Date:                Tue, 15 Mar 2022   Deviance:                       63.885
-## Time:                        20:58:11   Pearson chi2:                     154.
+## Date:                Fri, 18 Mar 2022   Deviance:                       63.885
+## Time:                        09:19:03   Pearson chi2:                     154.
 ## No. Iterations:                     7   Pseudo R-squ. (CS):             0.5234
 ## Covariance Type:            nonrobust                                         
 ## ==============================================================================
@@ -1445,8 +1445,8 @@ print(res.summary())
 ## Model Family:                        Binomial   Df Model:                            6
 ## Link Function:                          Logit   Scale:                          1.0000
 ## Method:                                  IRLS   Log-Likelihood:                -31.942
-## Date:                        Tue, 15 Mar 2022   Deviance:                       63.885
-## Time:                                20:58:12   Pearson chi2:                     154.
+## Date:                        Fri, 18 Mar 2022   Deviance:                       63.885
+## Time:                                09:19:03   Pearson chi2:                     154.
 ## No. Iterations:                             7   Pseudo R-squ. (CS):             0.5234
 ## Covariance Type:                    nonrobust                                         
 ## ==============================================================================
