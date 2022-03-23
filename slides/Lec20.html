@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 20 - More PyMC3</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs-2.13/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 20 - More PyMC3
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+```python
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+import scipy
+
+import pymc3 as pm
+import arviz as az
+
+plt.rcParams['figure.dpi'] = 200
+
+np.set_printoptions(
+  edgeitems=30, linewidth=200,
+  precision = 5, suppress=True
+  #formatter=dict(float=lambda x: "%.5g" % x)
+)
+
+pd.set_option("display.width", 150)
+pd.set_option("display.max_columns", 10)
+pd.set_option("display.precision", 6)
+```
+
+
+```r
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+
+library(lme4)
+```
+
+```
+## Loading required package: Matrix
+```
+
+
+```r
+local({
+  hook_err_old &lt;- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    #x = stringr::str_wrap(x, width = 100)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old &lt;- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("&lt;string&gt;:1: ", "", x)
+    #x = stringr::str_wrap(x, width = 100)
+    hook_warn_old(x, options)
+  })
+  
+  hook_msg_old &lt;- knitr::knit_hooks$get("output")  # save the old hook
+  knitr::knit_hooks$set(output = function(x, options) {
+    x = stringr::str_replace(x, "(## ).* ([A-Za-z]+Warning:)", "\\1\\2")
+    x = stringr::str_split(x, "\n")[[1]]
+    #x = stringr::str_wrap(x, width = 120, exdent = 3)
+    x = stringr::str_remove_all(x, "\r")
+    x = stringi::stri_wrap(x, width=120, exdent = 3, normalize=FALSE)
+    x = paste(x, collapse="\n")
+    
+    #x = stringr::str_wrap(x, width = 100)
+    hook_msg_old(x, options)
+  })
+})
+```
+
+---
+
+## Demo 1 - Bayesian Lasso
+
+
+```python
+n = 50
+k = 100
+
+np.random.seed(1234)
+X = np.random.normal(size=(n, k))
+
+beta = np.zeros(shape=k)
+beta[[10,30,50,70]] =  10
+beta[[20,40,60,80]] = -10
+
+y = X @ beta + np.random.normal(size=n)
+```
+
+.footnote[Based on [Bayesian Sparse Regression](https://betanalpha.github.io/assets/case_studies/bayes_sparse_regression.html) and [Lasso regression with block updating](https://docs.pymc.io/en/v3/pymc-examples/examples/pymc3_howto/lasso_block_update.html)]
+
+---
+
+## Naive Model
+
+
+```python
+with pm.Model() as bayes_lasso:
+  b = pm.Laplace("beta", 0, 1, shape=k)#lam*tau, shape=k)
+  y_est = X @ b
+  s = pm.HalfNormal('sigma', sd=1)
+  
+  likelihood = pm.Normal("y", mu=y_est, sigma=s, observed=y)
+  
+  trace = pm.sample(return_inferencedata=True, random_seed=1234)
+```
+
+```
+## █
+## Auto-assigning NUTS sampler...
+## Initializing NUTS using jitter+adapt_diag...
+## Multiprocess sampling (4 chains in 4 jobs)
+## NUTS: [sigma, beta]
+## Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 19 seconds.
+## There were 2 divergences after tuning. Increase `target_accept` or reparameterize.
+## The acceptance probability does not match the target. It is 0.878942077718847, but should be close to 0.8. Try to
+   increase the number of tuning steps.
+## The estimated number of effective samples is smaller than 200 for some parameters.
+```
+
+---
+
+
+```python
+az.summary(trace)
+```
+
+```
+##            mean     sd  hdi_3%  hdi_97%  mcse_mean  mcse_sd  ess_bulk  ess_tail  r_hat
+## beta[0]   0.067  0.861  -1.650    1.681      0.015    0.015    3234.0    1938.0   1.00
+## beta[1]   0.215  0.729  -1.133    1.693      0.012    0.013    3632.0    2284.0   1.00
+## beta[2]  -0.080  0.852  -1.789    1.501      0.014    0.015    3866.0    2652.0   1.00
+## beta[3]  -0.290  0.814  -1.926    1.193      0.016    0.015    2870.0    1729.0   1.00
+## beta[4]   0.079  0.809  -1.479    1.691      0.014    0.014    3577.0    2158.0   1.00
+## ...         ...    ...     ...      ...        ...      ...       ...       ...    ...
+## beta[96]  0.106  0.726  -1.271    1.542      0.013    0.013    3471.0    2487.0   1.00
+## beta[97] -0.156  0.716  -1.591    1.160      0.013    0.013    3188.0    1798.0   1.00
+## beta[98]  0.289  0.763  -1.076    1.827      0.014    0.015    3107.0    2408.0   1.00
+## beta[99] -0.278  0.768  -1.747    1.205      0.013    0.013    3575.0    2568.0   1.00
+## sigma     0.980  0.478   0.275    1.859      0.046    0.032     102.0     211.0   1.05
+##
+## [101 rows x 9 columns]
+```
+
+--
+
+
+```python
+az.summary(trace).iloc[[0,10,20,30,40,50,60,70,80,100]]
+```
+
+```
+##            mean     sd  hdi_3%  hdi_97%  mcse_mean  mcse_sd  ess_bulk  ess_tail  r_hat
+## beta[0]   0.067  0.861  -1.650    1.681      0.015    0.015    3234.0    1938.0   1.00
+## beta[10]  8.327  1.242   5.945   10.622      0.027    0.019    2075.0    2710.0   1.00
+## beta[20] -8.288  1.335 -10.697   -5.733      0.030    0.021    2003.0    1746.0   1.00
+## beta[30]  8.610  1.023   6.678   10.447      0.023    0.017    2011.0    1702.0   1.00
+## beta[40] -8.765  1.507 -11.485   -5.929      0.030    0.022    2461.0    2531.0   1.00
+## beta[50]  8.966  1.016   6.995   10.860      0.023    0.016    2035.0    1842.0   1.00
+## beta[60] -9.248  1.121 -11.381   -7.162      0.022    0.015    2708.0    2371.0   1.00
+## beta[70]  8.521  1.210   6.220   10.788      0.026    0.018    2238.0    2575.0   1.00
+## beta[80] -9.923  0.899 -11.634   -8.253      0.018    0.013    2436.0    2003.0   1.00
+## sigma     0.980  0.478   0.275    1.859      0.046    0.032     102.0     211.0   1.05
+```
+
+---
+
+
+```python
+ax = az.plot_forest(trace)
+plt.tight_layout()
+plt.show()
+```
+
+&lt;img src="Lec20_files/figure-html/unnamed-chunk-5-1.png" width="40%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Plot helper
+
+
+
+```python
+def plot_slope(trace, prior="beta", chain=0):
+  post = (trace.posterior[prior]
+          .to_dataframe()
+          .reset_index()
+          .query("chain == 0")
+         )
+  
+  sns.catplot(x="beta_dim_0", y="beta", data=post, kind="boxen", linewidth=0, color='blue', aspect=2, showfliers=False)
+  plt.tight_layout()
+  plt.show()
+  
+```
+
+---
+
+
+```python
+plot_slope(trace)
+```
+
+&lt;img src="Lec20_files/figure-html/unnamed-chunk-7-3.png" width="960" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+## Weakly Informative Prior
+
+
+```python
+with pm.Model() as bayes_weak:
+  b = pm.Normal("beta", 0, 10, shape=k)
+  y_est = X @ b
+  
+  s = pm.HalfNormal('sigma', sd=2)
+  
+  likelihood = pm.Normal("y", mu=y_est, sigma=s, observed=y)
+  
+  trace = pm.sample(return_inferencedata=True, random_seed=12345)
+```
+
+```
+## █
+## Auto-assigning NUTS sampler...
+## Initializing NUTS using jitter+adapt_diag...
+## Multiprocess sampling (4 chains in 4 jobs)
+## NUTS: [sigma, beta]
+## Sampling 4 chains for 1_000 tune and 1_000 draw iterations (4_000 + 4_000 draws total) took 57 seconds.
+## The acceptance probability does not match the target. It is 0.9760397075294559, but should be close to 0.8. Try to
+   increase the number of tuning steps.
+## The chain reached the maximum tree depth. Increase max_treedepth, increase target_accept or reparameterize.
+## There was 1 divergence after tuning. Increase `target_accept` or reparameterize.
+## There were 15 divergences after tuning. Increase `target_accept` or reparameterize.
+## The acceptance probability does not match the target. It is 0.7066410867916934, but should be close to 0.8. Try to
+   increase the number of tuning steps.
+## There was 1 divergence after tuning. Increase `target_accept` or reparameterize.
+## The acceptance probability does not match the target. It is 0.9310317960474614, but should be close to 0.8. Try to
+   increase the number of tuning steps.
+## The chain reached the maximum tree depth. Increase max_treedepth, increase target_accept or reparameterize.
+## The rhat statistic is larger than 1.05 for some parameters. This indicates slight problems during sampling.
+## The estimated number of effective samples is smaller than 200 for some parameters.
+```
+
+---
+
+
+```python
+ax = az.plot_forest(trace)
+plt.tight_layout()
+plt.show()
+```
+
+&lt;img src="Lec20_files/figure-html/unnamed-chunk-9-5.png" width="40%" style="display: block; margin: auto;" /&gt;
+
+---
+
+
+```python
+plot_slope(trace)
+```
+
+&lt;img src="Lec20_files/figure-html/unnamed-chunk-10-7.png" width="960" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Demo 2 - Gaussian Process
+
+
+```python
+np.random.seed(12345)
+
+n = 50
+x = np.linspace(0, 1, n)
+X = x.reshape(-1,1)
+
+nugget = 0.75
+sigma2_true = 4.0
+l_true = 10
+
+cov_func = sigma2_true * pm.gp.cov.ExpQuad(1, 1/l_true)
+mean_func = pm.gp.mean.Zero()
+
+y_true = np.random.multivariate_normal(
+    mean_func(X).eval(), cov_func(X).eval(), 1
+).flatten()
+
+y = y_true + nugget * np.random.randn(n)
+```
+
+---
+
+.small[
+
+```python
+fig = plt.figure(figsize=(12, 5))
+plt.plot(X, y_true, "-b", lw=3)
+plt.plot(X, y, "ok", ".")
+plt.show()
+```
+
+&lt;img src="Lec20_files/figure-html/unnamed-chunk-12-9.png" width="1152" style="display: block; margin: auto;" /&gt;
+]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightLines": true,
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

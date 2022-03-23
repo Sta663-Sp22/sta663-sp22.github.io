@@ -1,0 +1,232 @@
+---
+title: "Lec 20 - More PyMC3"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightLines: true
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{python setup}
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+import scipy
+
+import pymc3 as pm
+import arviz as az
+
+plt.rcParams['figure.dpi'] = 200
+
+np.set_printoptions(
+  edgeitems=30, linewidth=200,
+  precision = 5, suppress=True
+  #formatter=dict(float=lambda x: "%.5g" % x)
+)
+
+pd.set_option("display.width", 150)
+pd.set_option("display.max_columns", 10)
+pd.set_option("display.precision", 6)
+```
+
+```{r r_setup}
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+
+library(lme4)
+```
+
+```{r hooks}
+local({
+  hook_err_old <- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    #x = stringr::str_wrap(x, width = 100)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old <- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("<string>:1: ", "", x)
+    #x = stringr::str_wrap(x, width = 100)
+    hook_warn_old(x, options)
+  })
+  
+  hook_msg_old <- knitr::knit_hooks$get("output")  # save the old hook
+  knitr::knit_hooks$set(output = function(x, options) {
+    x = stringr::str_replace(x, "(## ).* ([A-Za-z]+Warning:)", "\\1\\2")
+    x = stringr::str_split(x, "\n")[[1]]
+    #x = stringr::str_wrap(x, width = 120, exdent = 3)
+    x = stringr::str_remove_all(x, "\r")
+    x = stringi::stri_wrap(x, width=120, exdent = 3, normalize=FALSE)
+    x = paste(x, collapse="\n")
+    
+    #x = stringr::str_wrap(x, width = 100)
+    hook_msg_old(x, options)
+  })
+})
+```
+
+---
+
+## Demo 1 - Bayesian Lasso
+
+```{python}
+n = 50
+k = 100
+
+np.random.seed(1234)
+X = np.random.normal(size=(n, k))
+
+beta = np.zeros(shape=k)
+beta[[10,30,50,70]] =  10
+beta[[20,40,60,80]] = -10
+
+y = X @ beta + np.random.normal(size=n)
+```
+
+.footnote[Based on [Bayesian Sparse Regression](https://betanalpha.github.io/assets/case_studies/bayes_sparse_regression.html) and [Lasso regression with block updating](https://docs.pymc.io/en/v3/pymc-examples/examples/pymc3_howto/lasso_block_update.html)]
+
+---
+
+## Naive Model
+
+```{python}
+with pm.Model() as bayes_lasso:
+  b = pm.Laplace("beta", 0, 1, shape=k)#lam*tau, shape=k)
+  y_est = X @ b
+  s = pm.HalfNormal('sigma', sd=1)
+  
+  likelihood = pm.Normal("y", mu=y_est, sigma=s, observed=y)
+  
+  trace = pm.sample(return_inferencedata=True, random_seed=1234)
+
+```
+
+---
+
+```{python}
+az.summary(trace)
+```
+
+--
+
+```{python}
+az.summary(trace).iloc[[0,10,20,30,40,50,60,70,80,100]]
+```
+
+---
+
+```{python out.width="40%"}
+ax = az.plot_forest(trace)
+plt.tight_layout()
+plt.show()
+```
+
+---
+
+## Plot helper
+
+
+```{python}
+def plot_slope(trace, prior="beta", chain=0):
+  post = (trace.posterior[prior]
+          .to_dataframe()
+          .reset_index()
+          .query("chain == 0")
+         )
+  
+  sns.catplot(x="beta_dim_0", y="beta", data=post, kind="boxen", linewidth=0, color='blue', aspect=2, showfliers=False)
+  plt.tight_layout()
+  plt.show()
+  
+```
+
+---
+
+```{python}
+plot_slope(trace)
+```
+
+
+---
+
+## Weakly Informative Prior
+
+```{python}
+with pm.Model() as bayes_weak:
+  b = pm.Normal("beta", 0, 10, shape=k)
+  y_est = X @ b
+  
+  s = pm.HalfNormal('sigma', sd=2)
+  
+  likelihood = pm.Normal("y", mu=y_est, sigma=s, observed=y)
+  
+  trace = pm.sample(return_inferencedata=True, random_seed=12345)
+
+```
+
+---
+
+```{python out.width="40%"}
+ax = az.plot_forest(trace)
+plt.tight_layout()
+plt.show()
+```
+
+---
+
+```{python}
+plot_slope(trace)
+```
+
+---
+
+## Demo 2 - Gaussian Process
+
+```{python}
+np.random.seed(12345)
+
+n = 50
+x = np.linspace(0, 1, n)
+X = x.reshape(-1,1)
+
+nugget = 0.75
+sigma2_true = 4.0
+l_true = 10
+
+cov_func = sigma2_true * pm.gp.cov.ExpQuad(1, 1/l_true)
+mean_func = pm.gp.mean.Zero()
+
+y_true = np.random.multivariate_normal(
+    mean_func(X).eval(), cov_func(X).eval(), 1
+).flatten()
+
+y = y_true + nugget * np.random.randn(n)
+```
+
+---
+
+.small[
+```{python}
+fig = plt.figure(figsize=(12, 5))
+plt.plot(X, y_true, "-b", lw=3)
+plt.plot(X, y, "ok", ".")
+plt.show()
+```
+]
