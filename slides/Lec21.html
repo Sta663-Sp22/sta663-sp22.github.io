@@ -1,0 +1,1723 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 21 - Apache Arrow</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs-2.13/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 21 - Apache Arrow
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+```python
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+import scipy
+
+import pymc3 as pm
+import arviz as az
+
+import os
+
+plt.rcParams['figure.dpi'] = 200
+
+np.set_printoptions(
+  edgeitems=30, linewidth=200,
+  precision = 5, suppress=True
+  #formatter=dict(float=lambda x: "%.5g" % x)
+)
+
+pd.set_option("display.width", 130)
+pd.set_option("display.max_columns", 10)
+pd.set_option("display.precision", 6)
+```
+
+
+```r
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+
+library(lme4)
+```
+
+```
+## Loading required package: Matrix
+```
+
+
+```r
+local({
+  hook_err_old &lt;- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    #x = stringr::str_wrap(x, width = 100)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old &lt;- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("&lt;string&gt;:1: ", "", x)
+    #x = stringr::str_wrap(x, width = 100)
+    hook_warn_old(x, options)
+  })
+  
+  hook_msg_old &lt;- knitr::knit_hooks$get("output")  # save the old hook
+  knitr::knit_hooks$set(output = function(x, options) {
+    x = stringr::str_replace(x, "(## ).* ([A-Za-z]+Warning:)", "\\1\\2")
+    x = stringr::str_split(x, "\n")[[1]]
+    #x = stringr::str_wrap(x, width = 120, exdent = 3)
+    x = stringr::str_remove_all(x, "\r")
+    x = stringi::stri_wrap(x, width=120, exdent = 3, normalize=FALSE)
+    x = paste(x, collapse="\n")
+    
+    #x = stringr::str_wrap(x, width = 100)
+    hook_msg_old(x, options)
+  })
+})
+```
+
+---
+
+## Apache Arrow
+
+&gt; Apache Arrow is a software development platform for building high performance applications that process and transport large data sets. It is designed to both improve the performance of analytical algorithms and the efficiency of moving data from one system or programming language to another.
+&gt;
+&gt; A critical component of Apache Arrow is its in-memory columnar format, a standardized, language-agnostic specification for representing structured, table-like datasets in-memory. This data format has a rich data type system (included nested and user-defined data types) designed to support the needs of analytic database systems, data frame libraries, and more.
+
+&lt;img src="imgs/arrow_cols.png" width="40%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Language support
+
+.pull-left-narrow[
+Core implementations in:
+
+* C
+* C++
+* C#
+* go
+* Java
+* JavaScript
+* Julia
+* Rust
+* MATLAB
+* Python
+* R
+* Ruby
+]
+
+.pull-right-wide[
+&lt;img src="imgs/arrow_memory.png" width="80%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## pyarrow
+
+
+```python
+import pyarrow as pa
+```
+
+--
+
+The basic building blocks of Arrow are `array` and `table`&lt;sup&gt;*&lt;/sup&gt; objects, arrays are collections of data of a uniform type.
+
+.pull-left[
+
+```python
+num  = pa.array([1, 2, 3, 2], type=pa.int8())
+num
+```
+
+```
+## &lt;pyarrow.lib.Int8Array object at 0x294c02fa0&gt;
+## [
+##   1,
+##   2,
+##   3,
+##   2
+## ]
+```
+
+```python
+year = pa.array([2019,2020,2021,2022])
+year
+```
+
+```
+## &lt;pyarrow.lib.Int64Array object at 0x294c151c0&gt;
+## [
+##   2019,
+##   2020,
+##   2021,
+##   2022
+## ]
+```
+]
+
+--
+
+.pull-right[
+
+```python
+name = pa.array(
+  ["Alice", "Bob", "Carol", "Dave"],
+  type=pa.string()
+)
+name
+```
+
+```
+## &lt;pyarrow.lib.StringArray object at 0x294c15220&gt;
+## [
+##   "Alice",
+##   "Bob",
+##   "Carol",
+##   "Dave"
+## ]
+```
+]
+
+---
+
+## Tables
+
+A table is created by combining multiple arrays together to form the columns while also attaching names for each column.
+
+
+```python
+t = pa.table(
+  [num, year, name],
+  names = ["num", "year", "name"]
+)
+
+t
+```
+
+```
+## pyarrow.Table
+## num: int8
+## year: int64
+## name: string
+## ----
+## num: [[1,2,3,2]]
+## year: [[2019,2020,2021,2022]]
+## name: [["Alice","Bob","Carol","Dave"]]
+```
+
+
+.footnote[`table` is part of pyarrow but not part of the arrow standard, more on this in a bit]
+
+---
+
+## Array indexing
+
+Elements of an array can be selected using `[]` with an integer index or a slice, the former returns a typed scalar the latter an array.
+
+.pull-left[
+
+```python
+name[0]
+```
+
+```
+## &lt;pyarrow.StringScalar: 'Alice'&gt;
+```
+
+```python
+name[0:3]
+```
+
+```
+## &lt;pyarrow.lib.StringArray object at 0x294c15340&gt;
+## [
+##   "Alice",
+##   "Bob",
+##   "Carol"
+## ]
+```
+
+```python
+name[:]
+```
+
+```
+## &lt;pyarrow.lib.StringArray object at 0x294c152e0&gt;
+## [
+##   "Alice",
+##   "Bob",
+##   "Carol",
+##   "Dave"
+## ]
+```
+]
+
+--
+
+.pull-right[
+
+```python
+name[-1]
+```
+
+```
+## &lt;pyarrow.StringScalar: 'Dave'&gt;
+```
+
+```python
+name[::-1]
+```
+
+```
+## &lt;pyarrow.lib.StringArray object at 0x294c15400&gt;
+## [
+##   "Dave",
+##   "Carol",
+##   "Bob",
+##   "Alice"
+## ]
+```
+
+```python
+name[4]
+```
+
+```
+## IndexError: index out of bounds
+```
+
+```python
+name[0] = "Patty"
+```
+
+```
+## TypeError: 'pyarrow.lib.StringArray' object does not support item assignment
+```
+]
+
+.footnote[Arrow arrays are immutable and as such do allow for element assignment.]
+
+---
+
+## Data Types
+
+The following types are language agnostic for the purpose of portability, however because of thise some differ slightly from what is available from Numpy and Pandas,
+
+* **Fixed-length primitive types**: numbers, booleans, date and times, fixed size binary, decimals, and other values that fit into a given number
+  * Examples: `bool_()`, `uint64()`, `timestamp()`, `date64()`, and many more
+
+* **Variable-length primitive types**: binary, string
+
+* **Nested types**: list, map, struct, and union
+
+* **Dictionary type**: An encoded categorical type
+
+
+.footnote[See [here](https://arrow.apache.org/docs/python/api/datatypes.html#api-types) for the full list of types.]
+
+---
+
+## Schemas
+
+A data structure that contains information on the names and types of columns for a table (or record batch),
+
+.pull-left[
+
+```python
+t.schema
+```
+
+```
+## num: int8
+## year: int64
+## name: string
+```
+]
+
+.pull-right[
+
+```python
+pa.schema([
+  ('num', num.type),
+  ('year', year.type),
+  ('name', name.type)
+])
+```
+
+```
+## num: int8
+## year: int64
+## name: string
+```
+]
+
+---
+
+## Schema metadata
+
+Schemas can also store additional metadata about the columns (e.g. codebook like textual descriptions)
+
+
+```python
+new_schema = t.schema.with_metadata({
+  'num': "Favorite number",
+  'year': "Year expected to graduate",
+  'name': "First name"
+})
+new_schema
+```
+
+```
+## num: int8
+## year: int64
+## name: string
+## -- schema metadata --
+## num: 'Favorite number'
+## year: 'Year expected to graduate'
+## name: 'First name'
+```
+
+```python
+t.cast(new_schema).schema
+```
+
+```
+## num: int8
+## year: int64
+## name: string
+## -- schema metadata --
+## num: 'Favorite number'
+## year: 'Year expected to graduate'
+## name: 'First name'
+```
+
+---
+
+## Missing values / None / NANs
+
+.pull-left[
+
+```python
+pa.array([1,2,None,3])
+```
+
+```
+## &lt;pyarrow.lib.Int64Array object at 0x294c15400&gt;
+## [
+##   1,
+##   2,
+##   null,
+##   3
+## ]
+```
+
+```python
+pa.array([1.,2.,None,3.])
+```
+
+```
+## &lt;pyarrow.lib.DoubleArray object at 0x294c152e0&gt;
+## [
+##   1,
+##   2,
+##   null,
+##   3
+## ]
+```
+]
+
+.pull-right[
+
+```python
+pa.array(["alice","bob",None,"dave"])
+```
+
+```
+## &lt;pyarrow.lib.StringArray object at 0x294c15400&gt;
+## [
+##   "alice",
+##   "bob",
+##   null,
+##   "dave"
+## ]
+```
+
+```python
+pa.array([1,2,np.nan,3])
+```
+
+```
+## &lt;pyarrow.lib.DoubleArray object at 0x294c15280&gt;
+## [
+##   1,
+##   2,
+##   nan,
+##   3
+## ]
+```
+]
+
+--
+
+&lt;div&gt;
+
+.pull-left[
+
+```python
+pa.array([1,2,None,3])[2]
+```
+
+```
+## &lt;pyarrow.Int64Scalar: None&gt;
+```
+
+```python
+pa.array([1.,2.,None,3.])[2]
+```
+
+```
+## &lt;pyarrow.DoubleScalar: None&gt;
+```
+]
+
+.pull-right[
+
+```python
+pa.array(["alice","bob",None,"dave"])[2]
+```
+
+```
+## &lt;pyarrow.StringScalar: None&gt;
+```
+
+```python
+pa.array([1,2,np.nan,3])[2]
+```
+
+```
+## &lt;pyarrow.DoubleScalar: nan&gt;
+```
+]
+
+&lt;/div&gt;
+
+---
+
+## Nest type arrays
+
+.pull-left[
+list type:
+
+```python
+pa.array([[1,2], [3,4], None, [5,None]])
+```
+
+```
+## &lt;pyarrow.lib.ListArray object at 0x294c152e0&gt;
+## [
+##   [
+##     1,
+##     2
+##   ],
+##   [
+##     3,
+##     4
+##   ],
+##   null,
+##   [
+##     5,
+##     null
+##   ]
+## ]
+```
+]
+
+.pull-right[
+struct type:
+
+```python
+pa.array([
+  {'x': 1, 'y': True, 'z': "Alice"},
+  {'x': 2,            'z': "Bob"  },
+  {'x': 3, 'y': False             }
+])
+```
+
+```
+## &lt;pyarrow.lib.StructArray object at 0x294c15400&gt;
+## -- is_valid: all not null
+## -- child 0 type: int64
+##   [
+##     1,
+##     2,
+##     3
+##   ]
+## -- child 1 type: bool
+##   [
+##     true,
+##     null,
+##     false
+##   ]
+## -- child 2 type: string
+##   [
+##     "Alice",
+##     "Bob",
+##     null
+##   ]
+```
+]
+
+.footnote[See also [map](https://arrow.apache.org/docs/python/data.html#map-arrays) and [union](https://arrow.apache.org/docs/python/data.html#union-arrays) arrays.]
+
+---
+
+## Dictionary array
+
+A dictionary array is the equivalent to a factor in R or pd.Categorical in Pandas,
+
+.pull-left[
+
+```python
+levels = pa.array(['sun', 'rain', 'clouds', 'snow'])
+values = pa.array([0,0,2,1,3,None])
+dict_array = pa.DictionaryArray.from_arrays(values, levels)
+dict_array
+```
+
+```
+## &lt;pyarrow.lib.DictionaryArray object at 0x294a22f20&gt;
+##
+## -- dictionary:
+##   [
+##     "sun",
+##     "rain",
+##     "clouds",
+##     "snow"
+##   ]
+## -- indices:
+##   [
+##     0,
+##     0,
+##     2,
+##     1,
+##     3,
+##     null
+##   ]
+```
+
+```python
+dict_array.type
+```
+
+```
+## DictionaryType(dictionary&lt;values=string, indices=int64, ordered=0&gt;)
+```
+]
+
+.pull-right[
+
+```python
+dict_array.dictionary_decode()
+```
+
+```
+## &lt;pyarrow.lib.StringArray object at 0x294c15520&gt;
+## [
+##   "sun",
+##   "sun",
+##   "clouds",
+##   "rain",
+##   "snow",
+##   null
+## ]
+```
+
+```python
+levels.dictionary_encode()
+```
+
+```
+## &lt;pyarrow.lib.DictionaryArray object at 0x294a22d60&gt;
+##
+## -- dictionary:
+##   [
+##     "sun",
+##     "rain",
+##     "clouds",
+##     "snow"
+##   ]
+## -- indices:
+##   [
+##     0,
+##     1,
+##     2,
+##     3
+##   ]
+```
+]
+
+---
+
+## Record Batches
+
+In between a table and an array Arrow has the concept of a Record Batch - which represents a chunk of the larger table. They are composed of a named collection of eequal-length arrays.
+
+
+```python
+batch = pa.RecordBatch.from_arrays(
+  [num, year, name],
+  ["num", "year", "name"]
+)
+
+batch
+```
+
+```
+## pyarrow.RecordBatch
+## num: int8
+## year: int64
+## name: string
+```
+
+.pull-left[
+
+```python
+batch.num_columns
+```
+
+```
+## 3
+```
+
+```python
+batch.num_rows
+```
+
+```
+## 4
+```
+]
+
+.pull-right[
+
+```python
+batch.nbytes
+```
+
+```
+## 69
+```
+
+```python
+batch.schema
+```
+
+```
+## num: int8
+## year: int64
+## name: string
+```
+]
+
+---
+
+## Batch indexing
+
+`[]` can be used with a Record Batch to select columns (by name or index) or rows (by slice), additionally the `slice()` method can be used to select rows.
+
+.pull-left[
+
+```python
+batch[0]
+```
+
+```
+## &lt;pyarrow.lib.Int8Array object at 0x294c155e0&gt;
+## [
+##   1,
+##   2,
+##   3,
+##   2
+## ]
+```
+
+```python
+batch["name"]
+```
+
+```
+## &lt;pyarrow.lib.StringArray object at 0x294c15580&gt;
+## [
+##   "Alice",
+##   "Bob",
+##   "Carol",
+##   "Dave"
+## ]
+```
+]
+
+--
+
+.pull-right[
+
+```python
+batch[0:2].to_pandas()
+```
+
+```
+##    num  year   name
+## 0    1  2019  Alice
+## 1    2  2020    Bob
+```
+
+```python
+batch.slice(0,2).to_pandas()
+```
+
+```
+##    num  year   name
+## 0    1  2019  Alice
+## 1    2  2020    Bob
+```
+]
+
+---
+
+## Tables vs Record Batches
+
+As mentioned previously in a footnote, `table` objects are not part of the Arrow specification - rather they are a convenience tool provided to help with the wrangling of multiple Record Batches.
+
+
+```python
+table = pa.Table.from_batches([batch] * 3)
+table
+```
+
+```
+## pyarrow.Table
+## num: int8
+## year: int64
+## name: string
+## ----
+## num: [[1,2,3,2],[1,2,3,2],[1,2,3,2]]
+## year: [[2019,2020,2021,2022],[2019,2020,2021,2022],[2019,2020,2021,2022]]
+## name: [["Alice","Bob","Carol","Dave"],["Alice","Bob","Carol","Dave"],["Alice","Bob","Carol","Dave"]]
+```
+
+--
+
+.pull-left[
+
+```python
+table.num_columns
+```
+
+```
+## 3
+```
+
+```python
+table.num_rows
+```
+
+```
+## 12
+```
+]
+
+.pull-right[
+
+```python
+table.to_pandas()
+```
+
+```
+##     num  year   name
+## 0     1  2019  Alice
+## 1     2  2020    Bob
+## 2     3  2021  Carol
+## 3     2  2022   Dave
+## 4     1  2019  Alice
+## 5     2  2020    Bob
+## 6     3  2021  Carol
+## 7     2  2022   Dave
+## 8     1  2019  Alice
+## 9     2  2020    Bob
+## 10    3  2021  Carol
+## 11    2  2022   Dave
+```
+]
+
+---
+
+## Chunked Array
+
+The columns of `table` are therefore composed of the columns of each of the batches, these are stored as ChuckedArrays instead of Arrays to reflect this.
+
+.pull-left[
+
+```python
+table["name"]
+```
+
+```
+## &lt;pyarrow.lib.ChunkedArray object at 0x294c55400&gt;
+## [
+##   [
+##     "Alice",
+##     "Bob",
+##     "Carol",
+##     "Dave"
+##   ],
+##   [
+##     "Alice",
+##     "Bob",
+##     "Carol",
+##     "Dave"
+##   ],
+##   [
+##     "Alice",
+##     "Bob",
+##     "Carol",
+##     "Dave"
+##   ]
+## ]
+```
+]
+
+.pull-right[
+
+```python
+table[1]
+```
+
+```
+## &lt;pyarrow.lib.ChunkedArray object at 0x294c554f0&gt;
+## [
+##   [
+##     2019,
+##     2020,
+##     2021,
+##     2022
+##   ],
+##   [
+##     2019,
+##     2020,
+##     2021,
+##     2022
+##   ],
+##   [
+##     2019,
+##     2020,
+##     2021,
+##     2022
+##   ]
+## ]
+```
+]
+
+---
+
+## Arrow + NumPy
+
+Conversion between NumPy arrays and Arrow arrays is straight forward,
+
+
+```python
+np.linspace(0,1,11)
+```
+
+```
+## array([0. , 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. ])
+```
+
+```python
+pa.array( np.linspace(0,1,11) )
+```
+
+```
+## &lt;pyarrow.lib.DoubleArray object at 0x294c15f40&gt;
+## [
+##   0,
+##   0.1,
+##   0.2,
+##   0.30000000000000004,
+##   0.4,
+##   0.5,
+##   0.6000000000000001,
+##   0.7000000000000001,
+##   0.8,
+##   0.9,
+##   1
+## ]
+```
+
+```python
+pa.array(range(10)).to_numpy()
+```
+
+```
+## array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+```
+
+---
+
+## NumPy &amp; data copies
+
+
+```python
+pa.array(["hello", "world"]).to_numpy()
+```
+
+```
+## ArrowInvalid: Needed to copy 1 chunks with 0 nulls, but zero_copy_only was True
+```
+
+```python
+pa.array(["hello", "world"]).to_numpy(zero_copy_only=False)
+```
+
+```
+## array(['hello', 'world'], dtype=object)
+```
+
+--
+
+&amp;nbsp;
+
+
+```python
+pa.array([1,2,None,4]).to_numpy()
+```
+
+```
+## ArrowInvalid: Needed to copy 1 chunks with 1 nulls, but zero_copy_only was True
+```
+
+```python
+pa.array([1,2,None,4]).to_numpy(zero_copy_only=False)
+```
+
+```
+## array([ 1.,  2., nan,  4.])
+```
+
+--
+
+&amp;nbsp;
+
+
+```python
+pa.array([[1,2], [3,4], [5,6]]).to_numpy()
+```
+
+```
+## ArrowInvalid: Needed to copy 1 chunks with 0 nulls, but zero_copy_only was True
+```
+
+```python
+pa.array([[1,2], [3,4], [5,6]]).to_numpy(zero_copy_only=False)
+```
+
+```
+## array([array([1, 2]), array([3, 4]), array([5, 6])], dtype=object)
+```
+
+---
+
+## Arrow + Pandas
+
+We've already seen some basic conversion of Arrow table objects to Pandas, the conversions here are a bit more complex than with NumPy due in large part to how Pandas handles missing data.
+
+.pull-left[ .small[
+| Source (Pandas)       | Destination (Arrow)   |
+|-----------------------|-----------------------|
+| `bool`                | `BOOL`                |
+| `(u)int{8,16,32,64}`  | `(U)INT{8,16,32,64}`  |
+| `float32`             | `FLOAT`               |
+| `float64`             | `DOUBLE`              |
+| `str / unicode`       | `STRING`              |
+| `pd.Categorical`      | `DICTIONARY`          |
+| `pd.Timestamp`        | `TIMESTAMP(unit=ns)`  |
+| `datetime.date`       | `DATE`                |
+| `datetime.time`       | `TIME64`              |
+] ]
+
+.pull-right[ .small[
+| Source (Arrow)                  | Destination (Pandas)                           |
+|---------------------------------|------------------------------------------------|
+| `BOOL`                          | `bool`                                         |
+| `BOOL` with nulls	              | `object` (with values `True`, `False`,`None`)  |
+| `(U)INT{8,16,32,64}`            | `(u)int{8,16,32,64}`                           |
+| `(U)INT{8,16,32,64}` with nulls	| `float64`                                      |
+| `FLOAT`	                        | `float32`                                      |
+| `DOUBLE`	                      | `float64`                                      |
+| `STRING`	                      | `str`                                          |
+| `DICTIONARY`	                  | `pd.Categorical`                               |
+| `TIMESTAMP(unit=*)`             | `pd.Timestamp` (`np.datetime64[ns]`)           |
+| `DATE`	                        | `object` (with `datetime.date` objects)        |
+| `TIME64`	                      | `object` (with `datetime.time` objects)        |
+] ]
+
+
+
+.footnote[From [Type differences](https://arrow.apache.org/docs/python/pandas.html#type-differences) documentation]
+
+---
+
+## Series &amp; data copies
+
+Due to these discrepancies it is much more likely that converting from Arrow array to a Panda series will require a type to be changed in which case the data will need to be copied. Like `to_numpy()` the `to_pandas()` method also accepts the `zero_copy_only` argument, however it defaults to `False`.
+
+.pull-left[
+
+```python
+pa.array([1,2,3,4]).to_pandas()
+```
+
+```
+## 0    1
+## 1    2
+## 2    3
+## 3    4
+## dtype: int64
+```
+
+```python
+pa.array(["hello", "world"]).to_pandas()
+```
+
+```
+## 0    hello
+## 1    world
+## dtype: object
+```
+
+```python
+pa.array(["hello", "world"]).dictionary_encode().to_pandas()
+```
+
+```
+## 0    hello
+## 1    world
+## dtype: category
+## Categories (2, object): ['hello', 'world']
+```
+]
+
+.pull-right[
+
+```python
+pa.array([1,2,3,4]).to_pandas(zero_copy_only=True)
+```
+
+```
+## 0    1
+## 1    2
+## 2    3
+## 3    4
+## dtype: int64
+```
+
+```python
+pa.array(["hello", "world"]).to_pandas(zero_copy_only=True)
+```
+
+```
+## ArrowInvalid: Needed to copy 1 chunks with 0 nulls, but zero_copy_only was True
+```
+
+```python
+pa.array(["hello", "world"]).dictionary_encode().to_pandas(zero_copy_only=True)
+```
+
+```
+## ArrowInvalid: Needed to copy 1 chunks with 0 nulls, but zero_copy_only was True
+```
+]
+
+.footnote[Note that Arrow arrays are converted to Series while tables &amp; batches are converted to DataFrames]
+
+
+---
+
+## Zero Copy Series Conversions
+
+&gt; Zero copy conversions from `Array` or `ChunkedArray` to NumPy arrays or pandas Series are possible in certain narrow cases:
+&gt;
+&gt; * The Arrow data is stored in an integer (signed or unsigned `int8` through `int64`) or floating point type (`float16` through `float64`). This includes many numeric types as well as timestamps.
+&gt;
+&gt; * The Arrow data has no null values (since these are represented using bitmaps which are not supported by pandas).
+&gt; 
+&gt; * For `ChunkedArray`, the data consists of a single chunk, i.e. `arr.num_chunks == 1`. Multiple chunks will always require a copy because of pandas’s contiguousness requirement.
+&gt;
+&gt; In these scenarios, `to_pandas` or `to_numpy` will be zero copy. In all other scenarios, a copy will be required.
+
+---
+
+## DataFrame &amp; data copies
+
+
+```python
+table.to_pandas()
+```
+
+```
+##     num  year   name
+## 0     1  2019  Alice
+## 1     2  2020    Bob
+## 2     3  2021  Carol
+## 3     2  2022   Dave
+## 4     1  2019  Alice
+## 5     2  2020    Bob
+## 6     3  2021  Carol
+## 7     2  2022   Dave
+## 8     1  2019  Alice
+## 9     2  2020    Bob
+## 10    3  2021  Carol
+## 11    2  2022   Dave
+```
+
+```python
+table.to_pandas(zero_copy_only=True)
+```
+
+```
+## ArrowInvalid: Cannot do zero copy conversion into multi-column DataFrame block
+```
+
+```python
+table.drop(['name']).to_pandas(zero_copy_only=True)
+```
+
+```
+## ArrowInvalid: Cannot do zero copy conversion into multi-column DataFrame block
+```
+
+```python
+pa.table([num,year], names=["num","year"]).to_pandas(zero_copy_only=True)
+```
+
+```
+## ArrowInvalid: Cannot do zero copy conversion into multi-column DataFrame block
+```
+
+.footnote[[Source](https://arrow.apache.org/docs/python/pandas.html#zero-copy-series-conversions)]
+
+---
+
+## Pandas -&gt; Arrow
+
+To convert from a Pandas DataFrame to an Arrow Table we can use the `from_pandas()` method (schemas can also be inferred from DataFrames)
+
+
+```python
+df = pd.DataFrame({
+  'x': np.random.normal(size=5),
+  'y': ["A","A","B","C","C"],
+  'z': [1,2,3,4,5]
+})
+
+pa.Table.from_pandas(df)
+```
+
+```
+## pyarrow.Table
+## x: double
+## y: string
+## z: int64
+## ----
+## x: [[-0.06485733164818355,-1.162152671617057,0.24439260563508308,0.9930845082160399,0.4866059430117967]]
+## y: [["A","A","B","C","C"]]
+## z: [[1,2,3,4,5]]
+```
+
+```python
+pa.Schema.from_pandas(df)
+```
+
+```
+## x: double
+## y: string
+## z: int64
+## -- schema metadata --
+## pandas: '{"index_columns": [{"kind": "range", "name": null, "start": 0, "' + 562
+```
+
+.footnote[The import of Pandas indexes is governed by the `preserve_index` argument]
+
+---
+class: center, middle
+
+## An aside on tabular file formats
+
+---
+
+## Comma Separated Values
+
+This and other text + delimiter based file formats are the most common and generally considered the most portable, however they have a number of significant draw backs
+
+* no explicit scheme or other metadata
+
+* column types must be infered from the data
+
+* numerical values stored as text (efficiency and precision issues)
+
+* limited compression options
+
+---
+
+## (Apache) Parquet
+
+&gt; ... provides a standardized open-source columnar storage format for use in data analysis systems. It was created originally for use in Apache Hadoop with systems like Apache Drill, Apache Hive, Apache Impala, and Apache Spark adopting it as a shared standard for high performance data IO.
+
+
+Core features:
+&gt; The values in each column are physically stored in contiguous memory locations and this columnar storage provides the following benefits:
+&gt;
+&gt; * Column-wise compression is efficient and saves storage space
+&gt; * Compression techniques specific to a type can be applied as the column values tend to be of the same type
+&gt; * Queries that fetch specific column values need not read the entire row data thus improving performance
+&gt; * Different encoding techniques can be applied to different columns
+
+
+---
+
+## Feather
+
+&gt; ... is a portable file format for storing Arrow tables or data frames (from languages like Python or R) that utilizes the Arrow IPC format internally. Feather was created early in the Arrow project as a proof of concept for fast, language-agnostic data frame storage for Python (pandas) and R.
+
+Core features:
+* Direct columnar serialization of Arrow tables
+
+* Supports all Arrow data types and compression
+
+* Language agnostic
+
+* Metadata makes it possible to read only the necessary columns for an operation
+
+---
+class: middle
+
+.center[
+## Example - File Format Performance
+]
+
+.footnote[ Based on [Apache Arrow: Read DataFrame With Zero Memory](https://towardsdatascience.com/apache-arrow-read-dataframe-with-zero-memory-69634092b1a) ]
+---
+
+## Building a large dataset
+
+
+```python
+np.random.seed(1234)
+
+df = (
+    pd.read_csv("https://sta663-sp22.github.io/slides/data/penguins.csv")
+      .sample(1000000, replace=True)
+      .reset_index(drop=True)
+)
+
+num_cols = ["bill_length_mm", "bill_depth_mm", "flipper_length_mm",	"body_mass_g"]
+df[num_cols] = df[num_cols] + np.random.normal(size=(df.shape[0],len(num_cols)))
+
+df
+```
+
+```
+##           species     island  bill_length_mm  bill_depth_mm  flipper_length_mm  body_mass_g     sex  year
+## 0       Chinstrap      Dream       48.519017      17.136138         200.642256  3800.527739    male  2008
+## 1          Gentoo     Biscoe       49.819091      15.317831         223.507723  5550.240852    male  2008
+## 2       Chinstrap      Dream       45.174882      17.558060         188.966751  3449.851303  female  2007
+## 3          Adelie     Biscoe       43.043647      18.630037         201.280925  4048.906267    male  2008
+## 4          Gentoo     Biscoe       44.926619      13.633214         209.714220  4400.958077  female  2008
+## ...           ...        ...             ...            ...                ...          ...     ...   ...
+## 999995  Chinstrap      Dream       48.692352      18.184983         200.579977  3799.702510    male  2009
+## 999996     Adelie     Biscoe       43.046500      20.182105         197.283516  4776.263332    male  2009
+## 999997     Adelie  Torgersen       43.192871      17.278273         196.408173  4251.476411    male  2008
+## 999998     Gentoo     Biscoe       53.208097      16.119915         230.537089  5498.259372    male  2009
+## 999999     Gentoo     Biscoe       47.719684      13.876822         214.583392  4399.060693  female  2007
+##
+## [1000000 rows x 8 columns]
+```
+
+---
+
+## Create output files
+
+
+```python
+import os
+os.makedirs("scratch/", exist_ok=True)
+
+df.to_csv("scratch/penguins-large.csv")
+df.to_parquet("scratch/penguins-large.parquet")
+
+import pyarrow.feather
+
+pyarrow.feather.write_feather(
+    pa.Table.from_pandas(df), 
+    "scratch/penguins-large.feather"
+)
+
+pyarrow.feather.write_feather(
+    pa.Table.from_pandas(df.dropna()), 
+    "scratch/penguins-large_nona.feather"
+)
+```
+
+---
+
+## File Sizes
+
+
+```python
+def file_size(f):
+    x = os.path.getsize(f)
+    print(f, "\t\t", round(x / (1024 * 1024),2), "MB")
+```
+
+
+```python
+file_size( "scratch/penguins-large.csv" )
+```
+
+```
+## scratch/penguins-large.csv 		 100.91 MB
+```
+
+```python
+file_size( "scratch/penguins-large.parquet" )
+```
+
+```
+## scratch/penguins-large.parquet 		 32.44 MB
+```
+
+```python
+file_size( "scratch/penguins-large.feather" )
+```
+
+```
+## scratch/penguins-large.feather 		 48.93 MB
+```
+
+```python
+file_size( "scratch/penguins-large_nona.feather" )
+```
+
+```
+## scratch/penguins-large_nona.feather 		 50.93 MB
+```
+
+---
+
+## Read Performance
+
+```python
+%timeit pd.read_csv("scratch/penguins-large.csv")
+```
+```
+## 566 ms ± 11.9 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+```
+
+```python
+%timeit pd.read_parquet("scratch/penguins-large.parquet")
+```
+```
+## 116 ms ± 3.43 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+```
+
+--
+
+&amp;nbsp;
+
+```python
+%timeit pyarrow.csv.read_csv("scratch/penguins-large.csv")
+```
+```
+## 34.2 ms ± 99 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+```
+
+```python
+%timeit pyarrow.parquet.read_table("scratch/penguins-large.parquet")
+```
+```
+## 55.8 ms ± 104 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+```
+
+--
+
+&amp;nbsp;
+
+```python
+%timeit pyarrow.feather.read_table("scratch/penguins-large.feather")
+```
+```
+## 7.12 ms ± 30.1 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+```
+
+```python
+%timeit pyarrow.feather.read_table("scratch/penguins-large_nona.feather")
+```
+```
+## 7.4 ms ± 263 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+```
+
+---
+
+## Read Performance (Arrow -&gt; Pandas)
+
+```python
+%timeit pyarrow.csv.read_csv("scratch/penguins-large.csv").to_pandas()
+```
+```
+## 88.9 ms ± 1.45 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+```
+
+--
+
+&amp;nbsp;
+
+```python
+%timeit pyarrow.parquet.read_table("scratch/penguins-large.parquet").to_pandas()
+```
+```
+## 109 ms ± 153 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+```
+
+--
+
+&amp;nbsp;
+
+```python
+%timeit pyarrow.feather.read_feather("scratch/penguins-large.feather")
+```
+```
+## 61.5 ms ± 333 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+```
+
+```python
+%timeit pyarrow.feather.read_feather("scratch/penguins-large_nona.feather")
+```
+```
+## 60.6 ms ± 70.6 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+```
+
+---
+
+## Column subset calculations - CSV &amp; Parquet
+
+```python
+%timeit pd.read_csv("scratch/penguins-large.csv")["flipper_length_mm"].mean()
+```
+```
+## 568 ms ± 9.43 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+```
+
+```python
+%timeit pd.read_parquet("scratch/penguins-large.parquet",  columns=["flipper_length_mm"]).mean()
+```
+```
+## 9.74 ms ± 53.9 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+```
+
+--
+
+&amp;nbsp;
+
+```python
+%timeit pyarrow.parquet.read_table("scratch/penguins-large.parquet", columns=["flipper_length_mm"]).to_pandas().mean()
+```
+```
+## 8.46 ms ± 183 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+```
+
+```python
+%timeit pyarrow.parquet.read_table("scratch/penguins-large.parquet")["flipper_length_mm"].to_pandas().mean()
+```
+```
+## 60.7 ms ± 1.04 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+```
+
+---
+
+## Column subset calculations - Feather
+
+```python
+%timeit pyarrow.feather.read_table("scratch/penguins-large.feather", columns=["flipper_length_mm"]).to_pandas().mean()
+```
+```
+## 8.1 ms ± 53.1 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+```
+
+```python
+%timeit pyarrow.feather.read_table("scratch/penguins-large.feather")["flipper_length_mm"].to_pandas().mean()
+```
+```
+## 14.4 ms ± 403 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+```
+
+--
+
+&amp;nbsp;
+
+```python
+%timeit pyarrow.feather.read_table("scratch/penguins-large_nona.feather", columns=["flipper_length_mm"]).to_pandas().mean()
+```
+```
+## 4.5 ms ± 76.9 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+```
+
+```python
+%timeit pyarrow.feather.read_table("scratch/penguins-large_nona.feather")["flipper_length_mm"].to_pandas().mean()
+```
+```
+## 10 ms ± 21.9 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+```
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightLines": true,
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
