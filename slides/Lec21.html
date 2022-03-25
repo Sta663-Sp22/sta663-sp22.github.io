@@ -142,7 +142,7 @@ import pyarrow as pa
 
 --
 
-The basic building blocks of Arrow are `array` and `table`&lt;sup&gt;*&lt;/sup&gt; objects, arrays are collections of data of a uniform type.
+The basic building blocks of Arrow are `array` and `table` objects, arrays are collections of data of a uniform type.
 
 .pull-left[
 
@@ -152,7 +152,7 @@ num
 ```
 
 ```
-## &lt;pyarrow.lib.Int8Array object at 0x294c02fa0&gt;
+## &lt;pyarrow.lib.Int8Array object at 0x2ab6a9fa0&gt;
 ## [
 ##   1,
 ##   2,
@@ -167,7 +167,7 @@ year
 ```
 
 ```
-## &lt;pyarrow.lib.Int64Array object at 0x294c151c0&gt;
+## &lt;pyarrow.lib.Int64Array object at 0x2ab6bc1c0&gt;
 ## [
 ##   2019,
 ##   2020,
@@ -190,7 +190,7 @@ name
 ```
 
 ```
-## &lt;pyarrow.lib.StringArray object at 0x294c15220&gt;
+## &lt;pyarrow.lib.StringArray object at 0x2ab6bc220&gt;
 ## [
 ##   "Alice",
 ##   "Bob",
@@ -251,7 +251,7 @@ name[0:3]
 ```
 
 ```
-## &lt;pyarrow.lib.StringArray object at 0x294c15340&gt;
+## &lt;pyarrow.lib.StringArray object at 0x2ab6bc340&gt;
 ## [
 ##   "Alice",
 ##   "Bob",
@@ -264,7 +264,7 @@ name[:]
 ```
 
 ```
-## &lt;pyarrow.lib.StringArray object at 0x294c152e0&gt;
+## &lt;pyarrow.lib.StringArray object at 0x2ab6bc2e0&gt;
 ## [
 ##   "Alice",
 ##   "Bob",
@@ -291,7 +291,7 @@ name[::-1]
 ```
 
 ```
-## &lt;pyarrow.lib.StringArray object at 0x294c15400&gt;
+## &lt;pyarrow.lib.StringArray object at 0x2ab6bc400&gt;
 ## [
 ##   "Dave",
 ##   "Carol",
@@ -323,7 +323,7 @@ name[0] = "Patty"
 
 ## Data Types
 
-The following types are language agnostic for the purpose of portability, however because of thise some differ slightly from what is available from Numpy and Pandas,
+The following types are language agnostic for the purpose of portability, however some differ slightly from what is available from Numpy and Pandas (or R),
 
 * **Fixed-length primitive types**: numbers, booleans, date and times, fixed size binary, decimals, and other values that fit into a given number
   * Examples: `bool_()`, `uint64()`, `timestamp()`, `date64()`, and many more
@@ -377,7 +377,7 @@ pa.schema([
 
 ## Schema metadata
 
-Schemas can also store additional metadata about the columns (e.g. codebook like textual descriptions)
+Schemas can also store additional metadata (e.g. codebook like textual descriptions) in the form a string:string dictionary,
 
 
 ```python
@@ -424,7 +424,7 @@ pa.array([1,2,None,3])
 ```
 
 ```
-## &lt;pyarrow.lib.Int64Array object at 0x294c15400&gt;
+## &lt;pyarrow.lib.Int64Array object at 0x2ab6bc400&gt;
 ## [
 ##   1,
 ##   2,
@@ -438,7 +438,7 @@ pa.array([1.,2.,None,3.])
 ```
 
 ```
-## &lt;pyarrow.lib.DoubleArray object at 0x294c152e0&gt;
+## &lt;pyarrow.lib.DoubleArray object at 0x2ab6bc2e0&gt;
 ## [
 ##   1,
 ##   2,
@@ -455,7 +455,7 @@ pa.array(["alice","bob",None,"dave"])
 ```
 
 ```
-## &lt;pyarrow.lib.StringArray object at 0x294c15400&gt;
+## &lt;pyarrow.lib.StringArray object at 0x2ab6bc400&gt;
 ## [
 ##   "alice",
 ##   "bob",
@@ -469,7 +469,7 @@ pa.array([1,2,np.nan,3])
 ```
 
 ```
-## &lt;pyarrow.lib.DoubleArray object at 0x294c15280&gt;
+## &lt;pyarrow.lib.DoubleArray object at 0x2ab6bc280&gt;
 ## [
 ##   1,
 ##   2,
@@ -535,7 +535,7 @@ pa.array([[1,2], [3,4], None, [5,None]])
 ```
 
 ```
-## &lt;pyarrow.lib.ListArray object at 0x294c152e0&gt;
+## &lt;pyarrow.lib.ListArray object at 0x2ab6bc2e0&gt;
 ## [
 ##   [
 ##     1,
@@ -554,6 +554,8 @@ pa.array([[1,2], [3,4], None, [5,None]])
 ```
 ]
 
+--
+
 .pull-right[
 struct type:
 
@@ -566,7 +568,7 @@ pa.array([
 ```
 
 ```
-## &lt;pyarrow.lib.StructArray object at 0x294c15400&gt;
+## &lt;pyarrow.lib.StructArray object at 0x2ab6bc400&gt;
 ## -- is_valid: all not null
 ## -- child 0 type: int64
 ##   [
@@ -597,7 +599,7 @@ pa.array([
 
 A dictionary array is the equivalent to a factor in R or pd.Categorical in Pandas,
 
-.pull-left[
+.pull-left[ .small[
 
 ```python
 levels = pa.array(['sun', 'rain', 'clouds', 'snow'])
@@ -607,7 +609,7 @@ dict_array
 ```
 
 ```
-## &lt;pyarrow.lib.DictionaryArray object at 0x294a22f20&gt;
+## &lt;pyarrow.lib.DictionaryArray object at 0x2ab5e2f20&gt;
 ##
 ## -- dictionary:
 ##   [
@@ -634,16 +636,18 @@ dict_array.type
 ```
 ## DictionaryType(dictionary&lt;values=string, indices=int64, ordered=0&gt;)
 ```
-]
+] ]
 
-.pull-right[
+--
+
+.pull-right[ .small[
 
 ```python
 dict_array.dictionary_decode()
 ```
 
 ```
-## &lt;pyarrow.lib.StringArray object at 0x294c15520&gt;
+## &lt;pyarrow.lib.StringArray object at 0x2ab6bc400&gt;
 ## [
 ##   "sun",
 ##   "sun",
@@ -659,7 +663,7 @@ levels.dictionary_encode()
 ```
 
 ```
-## &lt;pyarrow.lib.DictionaryArray object at 0x294a22d60&gt;
+## &lt;pyarrow.lib.DictionaryArray object at 0x2ab5e2d60&gt;
 ##
 ## -- dictionary:
 ##   [
@@ -676,13 +680,13 @@ levels.dictionary_encode()
 ##     3
 ##   ]
 ```
-]
+] ]
 
 ---
 
 ## Record Batches
 
-In between a table and an array Arrow has the concept of a Record Batch - which represents a chunk of the larger table. They are composed of a named collection of eequal-length arrays.
+In between a table and an array Arrow has the concept of a Record Batch - which represents a chunk of the larger table. They are composed of a named collection of equal-length arrays.
 
 
 ```python
@@ -754,7 +758,7 @@ batch[0]
 ```
 
 ```
-## &lt;pyarrow.lib.Int8Array object at 0x294c155e0&gt;
+## &lt;pyarrow.lib.Int8Array object at 0x2ab6bc580&gt;
 ## [
 ##   1,
 ##   2,
@@ -768,7 +772,7 @@ batch["name"]
 ```
 
 ```
-## &lt;pyarrow.lib.StringArray object at 0x294c15580&gt;
+## &lt;pyarrow.lib.StringArray object at 0x2ab6bc460&gt;
 ## [
 ##   "Alice",
 ##   "Bob",
@@ -807,7 +811,7 @@ batch.slice(0,2).to_pandas()
 
 ## Tables vs Record Batches
 
-As mentioned previously in a footnote, `table` objects are not part of the Arrow specification - rather they are a convenience tool provided to help with the wrangling of multiple Record Batches.
+As mentioned previously, `table` objects are not part of the Arrow specification - rather they are a convenience tool provided to help with the wrangling of multiple Record Batches.
 
 
 ```python
@@ -883,7 +887,7 @@ table["name"]
 ```
 
 ```
-## &lt;pyarrow.lib.ChunkedArray object at 0x294c55400&gt;
+## &lt;pyarrow.lib.ChunkedArray object at 0x2ab6ff4f0&gt;
 ## [
 ##   [
 ##     "Alice",
@@ -914,7 +918,7 @@ table[1]
 ```
 
 ```
-## &lt;pyarrow.lib.ChunkedArray object at 0x294c554f0&gt;
+## &lt;pyarrow.lib.ChunkedArray object at 0x2ab6ff540&gt;
 ## [
 ##   [
 ##     2019,
@@ -954,22 +958,17 @@ np.linspace(0,1,11)
 ```
 
 ```python
-pa.array( np.linspace(0,1,11) )
+pa.array( np.linspace(0,1,6) )
 ```
 
 ```
-## &lt;pyarrow.lib.DoubleArray object at 0x294c15f40&gt;
+## &lt;pyarrow.lib.DoubleArray object at 0x2ab6bcfa0&gt;
 ## [
 ##   0,
-##   0.1,
 ##   0.2,
-##   0.30000000000000004,
 ##   0.4,
-##   0.5,
 ##   0.6000000000000001,
-##   0.7000000000000001,
 ##   0.8,
-##   0.9,
 ##   1
 ## ]
 ```
@@ -1249,7 +1248,7 @@ pa.Table.from_pandas(df)
 ## y: string
 ## z: int64
 ## ----
-## x: [[-0.06485733164818355,-1.162152671617057,0.24439260563508308,0.9930845082160399,0.4866059430117967]]
+## x: [[2.162287020685431,-0.15333869233915953,-0.5066520482523756,1.6405363001055555,1.8972603527511311]]
 ## y: [["A","A","B","C","C"]]
 ## z: [[1,2,3,4,5]]
 ```
@@ -1277,11 +1276,11 @@ class: center, middle
 
 ## Comma Separated Values
 
-This and other text + delimiter based file formats are the most common and generally considered the most portable, however they have a number of significant draw backs
+This and other text &amp; delimiter based file formats are the most common and generally considered the most portable, however they have a number of significant draw backs
 
-* no explicit scheme or other metadata
+* no explicit schema or other metadata
 
-* column types must be infered from the data
+* column types must be inferred from the data
 
 * numerical values stored as text (efficiency and precision issues)
 
@@ -1597,6 +1596,13 @@ file_size( "scratch/penguins-large_nona.feather" )
 ```
 ## 10 ms ± 21.9 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
 ```
+
+---
+class: middle
+
+.center[
+## Demo 1 - Remote Files + Datasets
+]
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>

@@ -133,7 +133,7 @@ import pyarrow as pa
 
 --
 
-The basic building blocks of Arrow are `array` and `table`<sup>*</sup> objects, arrays are collections of data of a uniform type.
+The basic building blocks of Arrow are `array` and `table` objects, arrays are collections of data of a uniform type.
 
 .pull-left[
 ```{python}
@@ -206,7 +206,7 @@ name[0] = "Patty"
 
 ## Data Types
 
-The following types are language agnostic for the purpose of portability, however because of thise some differ slightly from what is available from Numpy and Pandas,
+The following types are language agnostic for the purpose of portability, however some differ slightly from what is available from Numpy and Pandas (or R),
 
 * **Fixed-length primitive types**: numbers, booleans, date and times, fixed size binary, decimals, and other values that fit into a given number
   * Examples: `bool_()`, `uint64()`, `timestamp()`, `date64()`, and many more
@@ -246,7 +246,7 @@ pa.schema([
 
 ## Schema metadata
 
-Schemas can also store additional metadata about the columns (e.g. codebook like textual descriptions)
+Schemas can also store additional metadata (e.g. codebook like textual descriptions) in the form a string:string dictionary,
 
 ```{python}
 new_schema = t.schema.with_metadata({
@@ -308,6 +308,8 @@ pa.array([[1,2], [3,4], None, [5,None]])
 ```
 ]
 
+--
+
 .pull-right[
 struct type:
 ```{python}
@@ -327,7 +329,7 @@ pa.array([
 
 A dictionary array is the equivalent to a factor in R or pd.Categorical in Pandas,
 
-.pull-left[
+.pull-left[ .small[
 ```{python}
 levels = pa.array(['sun', 'rain', 'clouds', 'snow'])
 values = pa.array([0,0,2,1,3,None])
@@ -335,20 +337,22 @@ dict_array = pa.DictionaryArray.from_arrays(values, levels)
 dict_array
 dict_array.type
 ```
-]
+] ]
 
-.pull-right[
+--
+
+.pull-right[ .small[
 ```{python}
 dict_array.dictionary_decode()
 levels.dictionary_encode()
 ```
-]
+] ]
 
 ---
 
 ## Record Batches
 
-In between a table and an array Arrow has the concept of a Record Batch - which represents a chunk of the larger table. They are composed of a named collection of eequal-length arrays.
+In between a table and an array Arrow has the concept of a Record Batch - which represents a chunk of the larger table. They are composed of a named collection of equal-length arrays.
 
 ```{python}
 batch = pa.RecordBatch.from_arrays(
@@ -399,7 +403,7 @@ batch.slice(0,2).to_pandas()
 
 ## Tables vs Record Batches
 
-As mentioned previously in a footnote, `table` objects are not part of the Arrow specification - rather they are a convenience tool provided to help with the wrangling of multiple Record Batches.
+As mentioned previously, `table` objects are not part of the Arrow specification - rather they are a convenience tool provided to help with the wrangling of multiple Record Batches.
 
 ```{python}
 table = pa.Table.from_batches([batch] * 3)
@@ -447,7 +451,7 @@ Conversion between NumPy arrays and Arrow arrays is straight forward,
 
 ```{python}
 np.linspace(0,1,11)
-pa.array( np.linspace(0,1,11) )
+pa.array( np.linspace(0,1,6) )
 
 pa.array(range(10)).to_numpy()
 ```
@@ -599,11 +603,11 @@ class: center, middle
 
 ## Comma Separated Values
 
-This and other text + delimiter based file formats are the most common and generally considered the most portable, however they have a number of significant draw backs
+This and other text & delimiter based file formats are the most common and generally considered the most portable, however they have a number of significant draw backs
 
-* no explicit scheme or other metadata
+* no explicit schema or other metadata
 
-* column types must be infered from the data
+* column types must be inferred from the data
 
 * numerical values stored as text (efficiency and precision issues)
 

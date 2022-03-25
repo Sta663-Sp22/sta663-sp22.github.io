@@ -1,0 +1,57 @@
+
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import pymc3 as pm
+import arviz as az
+import matplotlib.pyplot as plt
+import pyarrow as pa
+
+import os
+---
+
+## Taxi Data
+
+
+import pyarrow.fs
+import pyarrow.dataset as ds
+#pyarrow.parquet.read_table("s3://ursa-labs-taxi-data/2019/06/data.parquet")
+
+#s3, path = pyarrow.fs.S3FileSystem().from_uri("s3://ursa-labs-taxi-data/2019/")
+#dataset = pyarrow.parquet.ParquetDataset(path, filesystem=s3)
+
+dataset = ds.dataset("s3://ursa-labs-taxi-data/2019/")
+
+dataset.schema
+
+dataset.files
+
+import pyarrow.compute as pc
+
+col_sum = 0
+count = 0
+
+for batch in dataset.to_batches(columns=["fare_amount"]):
+    col_sum += pc.sum(batch.column("fare_amount")).as_py()
+    count += batch.num_rows
+
+col_sum / count
+
+dataset_local = ds.dataset("/Users/rundel/Scratch/nyc_taxi/",  partitioning=["year", "month"])
+dataset_local.files
+
+dataset_local.schema
+
+col_sum = 0
+count = 0
+
+for batch in dataset_local.to_batches(columns=["fare_amount"]):
+    col_sum += pc.sum(batch.column("fare_amount")).as_py()
+    count += batch.num_rows
+
+col_sum / count
+
+dataset_local.to_table(filter = ds.field("fare_amount") > 100).to_pandas()
+
+dataset_local.to_table().to_pandas()
+
