@@ -1,0 +1,807 @@
+---
+title: "Lec 22 - pytorch"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightLines: true
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{python setup}
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+import scipy
+
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+
+
+import os
+import math
+
+plt.rcParams['figure.dpi'] = 200
+
+np.set_printoptions(
+  edgeitems=30, linewidth=200,
+  precision = 5, suppress=True
+  #formatter=dict(float=lambda x: "%.5g" % x)
+)
+
+pd.set_option("display.width", 130)
+pd.set_option("display.max_columns", 10)
+pd.set_option("display.precision", 6)
+```
+
+```{r r_setup}
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+
+library(lme4)
+```
+
+```{r hooks}
+local({
+  hook_err_old <- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    #x = stringr::str_wrap(x, width = 100)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old <- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("<string>:1: ", "", x)
+    #x = stringr::str_wrap(x, width = 100)
+    hook_warn_old(x, options)
+  })
+  
+  hook_msg_old <- knitr::knit_hooks$get("output")  # save the old hook
+  knitr::knit_hooks$set(output = function(x, options) {
+    x = stringr::str_replace(x, "(## ).* ([A-Za-z]+Warning:)", "\\1\\2")
+    x = stringr::str_split(x, "\n")[[1]]
+    #x = stringr::str_wrap(x, width = 120, exdent = 3)
+    x = stringr::str_remove_all(x, "\r")
+    x = stringi::stri_wrap(x, width=120, exdent = 3, normalize=FALSE)
+    x = paste(x, collapse="\n")
+    
+    #x = stringr::str_wrap(x, width = 100)
+    hook_msg_old(x, options)
+  })
+})
+```
+
+---
+
+## PyTorch
+
+> PyTorch is a Python package that provides two high-level features:
+>
+> * Tensor computation (like NumPy) with strong GPU acceleration
+> * Deep neural networks built on a tape-based autograd system
+
+--
+
+.pull-left[
+<br/><br/>
+```{r echo=FALSE}
+knitr::include_graphics("imgs/pytorch-tensor_illustration.png")
+```
+]
+
+--
+
+.pull-right[
+```{r echo=FALSE}
+knitr::include_graphics("imgs/pytorch-dynamic_graph.gif")
+```
+]
+
+--
+
+```{python}
+import torch
+torch.__version__
+```
+
+---
+
+## Tensors
+
+are the basic data abstraction in PyTorch and are implemented by the `torch.Tensor` class. The behave in much the same was as the other array libraries we've seen so far (`numpy`, `theano`, etc.)
+
+.pull-left[
+```{python}
+torch.zeros(3)
+torch.ones(3,2)
+torch.empty(2,2,2)
+```
+]
+
+.pull-right[
+```{python}
+torch.manual_seed(1234)
+torch.rand(2,2,2,2)
+```
+]
+
+---
+
+## Constant values
+
+As expected, tensors can be constructed from constant numeric values in lists or tuples.
+
+.pull-left[
+```{python}
+torch.tensor(1)
+torch.tensor((1,2))
+torch.tensor([[1,2,3], [4,5,6]])
+torch.tensor([(1,2,3), [4,5,6]])
+```
+]
+
+
+.pull-right[
+```{python error=TRUE}
+torch.tensor([(1,1,1), [4,5]])
+torch.tensor([["A"]])
+torch.tensor([[True]]).dtype
+```
+]
+
+
+.footnote[Note using `tensor()` in this way results in a full copy of the data.]
+
+---
+
+## Tensor Types
+
+| Data type                | `dtype`                   | `type()`         | Comment
+|--------------------------|---------------------------|------------------|--------------
+| 32-bit float             | `float32` or `float`      | `FloatTensor`    | Default float type
+| 64-bit float             | `float64` or `double`     | `DoubleTensor`   | 
+| 16-bit float             | `float16` or `half`       | `HalfTensor`     | 
+| 16-bit brain float       | `bfloat16`                | `BFloat16Tensor` | 
+| 64-bit complex float     | `complex64`               |                  | 
+| 128-bit complex float    | `complex128` or `cdouble` |                  | 
+| 8-bit integer (unsigned) | `uint8`                   | `ByteTensor`     | 
+| 8-bit integer (signed)   | `int8`                    | `CharTensor`     | 
+| 16-bit integer (signed)  | `int16` or `short`        | `ShortTensor`    | 
+| 32-bit integer (signed)  | `int32` or `int`          | `IntTensor`      | 
+| 64-bit integer (signed)  | `int64` or `long`         | `LongTensor`     | Default integer type
+| Boolean                  | `bool`                    | `BoolTensor`     | 
+
+.footnote[We've left off quantized integer types here]
+
+---
+
+## Specifying types
+
+Just like NumPy and Pandas, types are specified via the `dtype` argument and can be inspected via the dtype attribute.
+
+.pull-left[
+```{python}
+a = torch.tensor([1,2,3])
+a
+a.dtype
+
+b = torch.tensor([1,2,3], dtype=torch.float16)
+b
+b.dtype
+```
+]
+
+.pull-right[
+```{python}
+c = torch.tensor([1.,2.,3.])
+c
+c.dtype
+
+d = torch.tensor([1,2,3], dtype=torch.float64)
+d
+d.dtype
+```
+]
+
+---
+
+## Type precision
+
+When using types with less precision it is important to be careful about underflow and overflow (ints) and rounding errors (floats).
+
+
+.pull-left[
+```{python}
+torch.tensor([300], dtype=torch.int8)
+torch.tensor([-300]).to(torch.int8)
+torch.tensor([-300]).to(torch.uint8)
+torch.tensor([300]).to(torch.int16)
+```
+]
+
+.pull-right[
+```{python}
+torch.set_printoptions(precision=8)
+
+torch.tensor(1/3, dtype=torch.float16)
+torch.tensor(1/3, dtype=torch.float32)
+torch.tensor(1/3, dtype=torch.float64)
+```
+]
+
+---
+
+## NumPy conversion
+
+It is possible to easily move between NumPy arrays and Tensors via the `from_numpy()` function and `numpy()` method.
+
+
+```{python}
+a = np.eye(3,3)
+torch.from_numpy(a)
+
+b = np.array([1,2,3])
+torch.from_numpy(b)
+
+c = torch.rand(2,3)
+c.numpy()
+
+d = torch.ones(2,2, dtype=torch.int64)
+d.numpy()
+```
+
+
+---
+
+## Math & Logic
+
+Just like NumPy tensors support basic mathematical and logical operations with scalars and other tensors - the PyTorch library provides implementations of most commonly needed mathematical and related functions.
+
+.pull-left[
+```{python}
+torch.ones(2,2) * 7 -1
+
+torch.ones(2,2) + torch.tensor([[1,2], [3,4]])
+
+2 ** torch.tensor([[1,2], [3,4]])
+
+2 ** torch.tensor([[1,2], [3,4]]) > 5
+```
+]
+
+.pull-right[
+```{python}
+x = torch.rand(2,2)
+
+torch.ones(2,2) @ x
+torch.clamp(x*2-1, -0.5, 0.5)
+torch.mean(x)
+torch.sum(x)
+torch.min(x)
+```
+
+]
+
+
+---
+
+## Broadcasting
+
+Like NumPy in cases where tensor dimensions do not match, the broadcasting algorithm is used. The rules for broadcasting are:
+
+> * Each tensor must have at least one dimension - no empty tensors.
+> * Comparing the dimension sizes of the two tensors, going from last to first:
+>    * Each dimension must be equal, or
+>    * One of the dimensions must be of size 1, or
+>    * The dimension does not exist in one of the tensors
+
+---
+
+## Exercise 1
+
+Consider the following 6 tensors:
+
+```{python}
+a = torch.rand(4, 3, 2)
+b = torch.rand(3, 2)
+c = torch.rand(2, 3)
+d = torch.rand(0) 
+e = torch.rand(3, 1)
+f = torch.rand(1, 2)
+```
+
+which of the above could be multiplied together and produce a valid result via broadcasting (e.g. `a*b`, `a*c`, `a*d`, etc.). 
+
+Explain why or why not broadcasting was able to be applied in each case.
+
+---
+
+## Inplace modification
+
+In instances where we need to conserve memory it is possible to apply many functions in a way where a new tensor is not created but the original values are replaced. These functions share the same name with the original functions but have a `_` suffix.
+
+```{python}
+a = torch.rand(2,2)
+print(a)
+```
+
+--
+
+.pull-left[
+```{python}
+print(torch.exp(a))
+print(a)
+```
+]
+
+--
+
+.pull-right[
+```{python}
+print(torch.exp_(a))
+print(a)
+```
+]
+
+.footnote[For functions without a `_` variant, check if the have a `to` argument which can then be used instead - see `torch.matmul()`]
+
+---
+
+## Inplace arithmetic
+
+All arithmetic functions are available as methods of the Tensor class,
+
+```{python}
+a = torch.ones(2, 2)
+b = torch.rand(2, 2)
+```
+
+.pull-left[
+```{python}
+a+b
+print(a)
+print(b)
+```
+]
+
+.pull-right[
+```{python}
+a.add_(b)
+print(a)
+print(b)
+```
+]
+
+---
+
+## Changing tensor shapes
+
+The `shape` of a tensor can be changed using the `view()` or `reshape()` methods. The former guarantees that the result shares data with the original object (but requires contiguity),the latter may or may not copy the data.
+
+.pull-left[
+```{python}
+x = torch.zeros(3, 2)
+y = x.view(2, 3)
+y
+x.fill_(1)
+y
+```
+]
+
+.pull-right[
+```{python error=TRUE}
+x = torch.zeros(3, 2)
+y = x.t()
+z = y.view(6)
+z = y.reshape(6)
+x.fill_(1)
+y
+z
+```
+]
+
+---
+
+## Adding or removing dimensions
+
+The `squeeze()` and `unsqueeze()` methods can be used to remove or add length 1 dimension(s) to a tensor.
+
+
+.pull-left[
+```{python}
+x = torch.zeros(1,3,1)
+x.squeeze().shape
+x.squeeze(0).shape
+x.squeeze(1).shape
+x.squeeze(2).shape
+
+y = x.squeeze()
+x.fill_(1)
+y
+```
+]
+
+.pull-right[
+```{python}
+x = torch.zeros(3,2)
+x.unsqueeze(0).shape
+x.unsqueeze(1).shape
+x.unsqueeze(2).shape
+
+y = x.unsqueeze(1)
+x.fill_(1)
+y
+```
+]
+
+---
+
+```{r echo=FALSE}
+knitr::include_graphics("imgs/pytorch_squeeze.png")
+```
+
+.footnote[From stackoverflow [post](https://stackoverflow.com/questions/57237352/what-does-unsqueeze-do-in-pytorch) by iacob]
+
+
+---
+
+## Exercise 2
+
+Given the following tensors, 
+
+```{python}
+a = torch.ones(4,3,2)
+b = torch.rand(3)
+c = torch.rand(5,3)
+```
+
+what reshaping is needed to make it possible so that `a * b` and `a * c` can be calculated via broadcasting?
+
+
+---
+class: center, middle
+
+# Autograd
+
+---
+
+## Tensor expressions
+
+Gradient tracking can be enabled using the `requires_grad` argument at initialization, alternatively the `requires_grad` flag can be set on tensor or the `enable_grad()` context manager used.
+
+
+```{python}
+x = torch.linspace(0, 2, steps=21, requires_grad=True)
+x
+```
+
+--
+
+```{python}
+y = 3*x + 2
+y
+```
+
+---
+
+## Computational graph
+
+```{python}
+y.grad_fn
+y.grad_fn.next_functions
+y.grad_fn.next_functions[0][0].next_functions
+y.grad_fn.next_functions[0][0].next_functions[0][0].next_functions
+```
+
+---
+
+## Autogradient
+
+In order to calculate the gradients we use the `backward()` method on the calculation output tensor (must be a scalar), this then makes the grad attribute available for the input (leaf) tensors.
+
+
+```{python}
+out = y.sum()
+out.backward()
+out
+```
+
+--
+
+```{python}
+y.grad
+```
+
+--
+
+```{python}
+x.grad
+```
+
+---
+
+## A bit more complex
+
+```{python}
+n = 21 
+x = torch.linspace(0, 2, steps=n, requires_grad=True)
+m = torch.rand(n, requires_grad=True)
+
+y = m*x + 2
+
+y.backward(torch.ones(n))
+```
+
+--
+
+```{python}
+x.grad
+```
+
+```{python}
+m.grad
+```
+
+--
+
+<br/>
+
+In context you can interpret `x.grad` and `m.grad` as the gradient of `y` with respect to `x` and `y` (respectively).
+
+
+---
+
+## High-level autograd API
+
+This allows for the automatic calculation and evaluation of the jacobian and hessian for a function defined used tensors.
+
+```{python}
+def f(x, y):
+  return 3*x + 1 + 2*y**2 + x*y
+```
+
+
+.pull-left[
+```{python}
+for x in [0.,1.]:
+  for y in [0.,1.]:
+    print("x =",x, "y = ",y)
+    inputs = (torch.tensor([x]), torch.tensor([y]))
+    print(torch.autograd.functional.jacobian(f, inputs),"\n")
+```
+]
+
+.pull-right[
+```{python}
+inputs = (torch.tensor([0.]), torch.tensor([0.]))
+torch.autograd.functional.hessian(f, inputs)
+
+inputs = (torch.tensor([1.]), torch.tensor([1.]))
+torch.autograd.functional.hessian(f, inputs)
+```
+]
+
+---
+class: center, middle
+
+# Demo 1 - Linear Regression w/ PyTorch
+
+---
+
+## A basic model
+
+```{python}
+x = np.linspace(-math.pi, math.pi, 200)
+y = np.sin(x)
+```
+
+```{python}
+lm = smf.ols("y~x+I(x**2)+I(x**3)", data=pd.DataFrame({"x": x, "y": y})).fit()
+print(lm.summary())
+```
+
+---
+
+```{python fig.align="center", echo=FALSE}
+plt.figure(figsize=(8,6))
+plt.plot(x,y,"-b", label="sin(x)")
+plt.plot(x,lm.predict(), "--r", label="sm.ols")
+plt.show()
+```
+
+---
+
+## Making tensors
+
+```{python}
+yt = torch.tensor(y)
+Xt = torch.tensor(lm.model.exog)
+bt = torch.randn((Xt.shape[1], 1), dtype=torch.float64, requires_grad=True)
+```
+
+--
+
+```{python}
+yt_pred = (Xt @ bt).squeeze()
+```
+
+--
+
+```{python}
+loss = (yt_pred - yt).pow(2).sum()
+loss.item()
+```
+
+---
+
+## Gradient descent
+
+Going back to our discussion of optimization and gradient descent awhile back - we can update our guess for `b` / `bt` by moving in the direction of the negative gradient. The step size is refered to as the *learning rate* which we will pick a relatively small value for.
+
+```{python}
+learning_rate = 1e-6
+
+loss.backward() # Compute the backward pass
+
+with torch.no_grad():
+  bt -= learning_rate * bt.grad # Make the step
+
+  bt.grad = None # Reset the gradients
+```
+
+--
+
+```{python}
+yt_pred = (Xt @ bt).squeeze()
+loss = (yt_pred - yt).pow(2).sum()
+loss.item()
+```
+
+
+---
+
+## Putting it together
+
+```{python}
+yt = torch.tensor(y).unsqueeze(1)
+Xt = torch.tensor(lm.model.exog)
+bt = torch.randn((Xt.shape[1], 1), dtype=torch.float64, requires_grad=True)
+
+learning_rate = 1e-5
+for i in range(5000):
+  
+  yt_pred = Xt @ bt
+  
+  loss = (yt_pred - yt).pow(2).sum()
+  if i % 500 == 0:
+    print(i, loss.item())
+  
+  loss.backward()
+  
+  with torch.no_grad():
+    bt -= learning_rate * bt.grad
+    bt.grad = None
+
+print(bt)
+```
+
+---
+
+## Comparing results
+
+```{python}
+bt
+```
+
+```{python}
+lm.params
+```
+
+---
+
+```{python fig.align="center", echo=FALSE}
+plt.figure(figsize=(8,6))
+plt.plot(x, y,"-b", label="sin(x)")
+plt.plot(x, lm.predict(), "--r", label="sm.ols")
+plt.plot(x, yt_pred.detach(), "--g", label="torch")
+plt.legend()
+plt.show()
+```
+
+---
+class: center, middle
+
+# Demo 2 - Using a model
+
+---
+
+## A sample model
+
+```{python}
+class Model(torch.nn.Module):
+    def __init__(self, beta):
+        super().__init__()
+        beta.requires_grad = True
+        self.beta = torch.nn.Parameter(beta)
+        
+    def forward(self, X):
+        return X @ self.beta
+
+def training_loop(model, X, y, optimizer, n=1000):
+    losses = []
+    for i in range(n):
+        y_pred = model(X)
+        
+        loss = (y_pred.squeeze() - y.squeeze()).pow(2).sum()
+        loss.backward()
+        
+        optimizer.step()
+        optimizer.zero_grad()
+        
+        losses.append(loss.item())
+    
+    return losses
+```
+
+
+---
+
+## Fitting
+
+```{python}
+x = torch.linspace(-math.pi, math.pi, 200)
+y = torch.sin(x)
+
+X = torch.vstack((
+  torch.ones_like(x),
+  x,
+  x**2,
+  x**3
+)).T
+
+m = Model(beta = torch.zeros(4))
+opt = torch.optim.SGD(m.parameters(), lr=1e-5)
+
+losses = training_loop(m, X, y, opt, n=3000)
+```
+
+---
+
+## Results
+
+```{python}
+m.beta
+```
+
+```{python out.width="50%"}
+plt.figure(figsize=(8,6), layout="constrained")
+plt.plot(losses)
+plt.show()
+```
+
+---
+
+```{python fig.align="center", echo=FALSE}
+plt.figure(figsize=(8,6))
+plt.plot(x, y,"-b", label="sin(x)")
+plt.plot(x, m(X).detach(), "--y", label="torch (model)")
+plt.legend()
+plt.show()
+```
+
+

@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 22 - pytorch</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs-2.13/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 22 - pytorch
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+```python
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+import scipy
+
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+
+
+import os
+import math
+
+plt.rcParams['figure.dpi'] = 200
+
+np.set_printoptions(
+  edgeitems=30, linewidth=200,
+  precision = 5, suppress=True
+  #formatter=dict(float=lambda x: "%.5g" % x)
+)
+
+pd.set_option("display.width", 130)
+pd.set_option("display.max_columns", 10)
+pd.set_option("display.precision", 6)
+```
+
+
+```r
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+
+library(lme4)
+```
+
+```
+## Loading required package: Matrix
+```
+
+
+```r
+local({
+  hook_err_old &lt;- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    #x = stringr::str_wrap(x, width = 100)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old &lt;- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("&lt;string&gt;:1: ", "", x)
+    #x = stringr::str_wrap(x, width = 100)
+    hook_warn_old(x, options)
+  })
+  
+  hook_msg_old &lt;- knitr::knit_hooks$get("output")  # save the old hook
+  knitr::knit_hooks$set(output = function(x, options) {
+    x = stringr::str_replace(x, "(## ).* ([A-Za-z]+Warning:)", "\\1\\2")
+    x = stringr::str_split(x, "\n")[[1]]
+    #x = stringr::str_wrap(x, width = 120, exdent = 3)
+    x = stringr::str_remove_all(x, "\r")
+    x = stringi::stri_wrap(x, width=120, exdent = 3, normalize=FALSE)
+    x = paste(x, collapse="\n")
+    
+    #x = stringr::str_wrap(x, width = 100)
+    hook_msg_old(x, options)
+  })
+})
+```
+
+---
+
+## PyTorch
+
+&gt; PyTorch is a Python package that provides two high-level features:
+&gt;
+&gt; * Tensor computation (like NumPy) with strong GPU acceleration
+&gt; * Deep neural networks built on a tape-based autograd system
+
+--
+
+.pull-left[
+&lt;br/&gt;&lt;br/&gt;
+&lt;img src="imgs/pytorch-tensor_illustration.png" width="1659" style="display: block; margin: auto;" /&gt;
+]
+
+--
+
+.pull-right[
+&lt;img src="imgs/pytorch-dynamic_graph.gif" style="display: block; margin: auto;" /&gt;
+]
+
+--
+
+
+```python
+import torch
+torch.__version__
+```
+
+```
+## '1.11.0'
+```
+
+---
+
+## Tensors
+
+are the basic data abstraction in PyTorch and are implemented by the `torch.Tensor` class. The behave in much the same was as the other array libraries we've seen so far (`numpy`, `theano`, etc.)
+
+.pull-left[
+
+```python
+torch.zeros(3)
+```
+
+```
+## tensor([0., 0., 0.])
+```
+
+```python
+torch.ones(3,2)
+```
+
+```
+## tensor([[1., 1.],
+##         [1., 1.],
+##         [1., 1.]])
+```
+
+```python
+torch.empty(2,2,2)
+```
+
+```
+## tensor([[[ 0.0000e+00, -3.6893e+19],
+##          [ 4.2163e-29, -3.6893e+19]],
+##
+##         [[ 1.0000e+00,  1.0000e+00],
+##          [ 4.6725e+20,  1.4013e-45]]])
+```
+]
+
+.pull-right[
+
+```python
+torch.manual_seed(1234)
+```
+
+```
+## &lt;torch._C.Generator object at 0x2aef26c50&gt;
+```
+
+```python
+torch.rand(2,2,2,2)
+```
+
+```
+## tensor([[[[0.0290, 0.4019],
+##           [0.2598, 0.3666]],
+##
+##          [[0.0583, 0.7006],
+##           [0.0518, 0.4681]]],
+##
+##
+##         [[[0.6738, 0.3315],
+##           [0.7837, 0.5631]],
+##
+##          [[0.7749, 0.8208],
+##           [0.2793, 0.6817]]]])
+```
+]
+
+---
+
+## Constant values
+
+As expected, tensors can be constructed from constant numeric values in lists or tuples.
+
+.pull-left[
+
+```python
+torch.tensor(1)
+```
+
+```
+## tensor(1)
+```
+
+```python
+torch.tensor((1,2))
+```
+
+```
+## tensor([1, 2])
+```
+
+```python
+torch.tensor([[1,2,3], [4,5,6]])
+```
+
+```
+## tensor([[1, 2, 3],
+##         [4, 5, 6]])
+```
+
+```python
+torch.tensor([(1,2,3), [4,5,6]])
+```
+
+```
+## tensor([[1, 2, 3],
+##         [4, 5, 6]])
+```
+]
+
+
+.pull-right[
+
+```python
+torch.tensor([(1,1,1), [4,5]])
+```
+
+```
+## ValueError: expected sequence of length 3 at dim 1 (got 2)
+```
+
+```python
+torch.tensor([["A"]])
+```
+
+```
+## ValueError: too many dimensions 'str'
+```
+
+```python
+torch.tensor([[True]]).dtype
+```
+
+```
+## torch.bool
+```
+]
+
+
+.footnote[Note using `tensor()` in this way results in a full copy of the data.]
+
+---
+
+## Tensor Types
+
+| Data type                | `dtype`                   | `type()`         | Comment
+|--------------------------|---------------------------|------------------|--------------
+| 32-bit float             | `float32` or `float`      | `FloatTensor`    | Default float type
+| 64-bit float             | `float64` or `double`     | `DoubleTensor`   | 
+| 16-bit float             | `float16` or `half`       | `HalfTensor`     | 
+| 16-bit brain float       | `bfloat16`                | `BFloat16Tensor` | 
+| 64-bit complex float     | `complex64`               |                  | 
+| 128-bit complex float    | `complex128` or `cdouble` |                  | 
+| 8-bit integer (unsigned) | `uint8`                   | `ByteTensor`     | 
+| 8-bit integer (signed)   | `int8`                    | `CharTensor`     | 
+| 16-bit integer (signed)  | `int16` or `short`        | `ShortTensor`    | 
+| 32-bit integer (signed)  | `int32` or `int`          | `IntTensor`      | 
+| 64-bit integer (signed)  | `int64` or `long`         | `LongTensor`     | Default integer type
+| Boolean                  | `bool`                    | `BoolTensor`     | 
+
+.footnote[We've left off quantized integer types here]
+
+---
+
+## Specifying types
+
+Just like NumPy and Pandas, types are specified via the `dtype` argument and can be inspected via the dtype attribute.
+
+.pull-left[
+
+```python
+a = torch.tensor([1,2,3])
+a
+```
+
+```
+## tensor([1, 2, 3])
+```
+
+```python
+a.dtype
+```
+
+```
+## torch.int64
+```
+
+```python
+b = torch.tensor([1,2,3], dtype=torch.float16)
+b
+```
+
+```
+## tensor([1., 2., 3.], dtype=torch.float16)
+```
+
+```python
+b.dtype
+```
+
+```
+## torch.float16
+```
+]
+
+.pull-right[
+
+```python
+c = torch.tensor([1.,2.,3.])
+c
+```
+
+```
+## tensor([1., 2., 3.])
+```
+
+```python
+c.dtype
+```
+
+```
+## torch.float32
+```
+
+```python
+d = torch.tensor([1,2,3], dtype=torch.float64)
+d
+```
+
+```
+## tensor([1., 2., 3.], dtype=torch.float64)
+```
+
+```python
+d.dtype
+```
+
+```
+## torch.float64
+```
+]
+
+---
+
+## Type precision
+
+When using types with less precision it is important to be careful about underflow and overflow (ints) and rounding errors (floats).
+
+
+.pull-left[
+
+```python
+torch.tensor([300], dtype=torch.int8)
+```
+
+```
+## tensor([44], dtype=torch.int8)
+```
+
+```python
+torch.tensor([-300]).to(torch.int8)
+```
+
+```
+## tensor([-44], dtype=torch.int8)
+```
+
+```python
+torch.tensor([-300]).to(torch.uint8)
+```
+
+```
+## tensor([212], dtype=torch.uint8)
+```
+
+```python
+torch.tensor([300]).to(torch.int16)
+```
+
+```
+## tensor([300], dtype=torch.int16)
+```
+]
+
+.pull-right[
+
+```python
+torch.set_printoptions(precision=8)
+
+torch.tensor(1/3, dtype=torch.float16)
+```
+
+```
+## tensor(0.33325195, dtype=torch.float16)
+```
+
+```python
+torch.tensor(1/3, dtype=torch.float32)
+```
+
+```
+## tensor(0.33333334)
+```
+
+```python
+torch.tensor(1/3, dtype=torch.float64)
+```
+
+```
+## tensor(0.33333333, dtype=torch.float64)
+```
+]
+
+---
+
+## NumPy conversion
+
+It is possible to easily move between NumPy arrays and Tensors via the `from_numpy()` function and `numpy()` method.
+
+
+
+```python
+a = np.eye(3,3)
+torch.from_numpy(a)
+```
+
+```
+## tensor([[1., 0., 0.],
+##         [0., 1., 0.],
+##         [0., 0., 1.]], dtype=torch.float64)
+```
+
+```python
+b = np.array([1,2,3])
+torch.from_numpy(b)
+```
+
+```
+## tensor([1, 2, 3])
+```
+
+```python
+c = torch.rand(2,3)
+c.numpy()
+```
+
+```
+## array([[0.28367, 0.65673, 0.23876],
+##        [0.73128, 0.60122, 0.30433]], dtype=float32)
+```
+
+```python
+d = torch.ones(2,2, dtype=torch.int64)
+d.numpy()
+```
+
+```
+## array([[1, 1],
+##        [1, 1]])
+```
+
+
+---
+
+## Math &amp; Logic
+
+Just like NumPy tensors support basic mathematical and logical operations with scalars and other tensors - the PyTorch library provides implementations of most commonly needed mathematical and related functions.
+
+.pull-left[
+
+```python
+torch.ones(2,2) * 7 -1
+```
+
+```
+## tensor([[6., 6.],
+##         [6., 6.]])
+```
+
+```python
+torch.ones(2,2) + torch.tensor([[1,2], [3,4]])
+```
+
+```
+## tensor([[2., 3.],
+##         [4., 5.]])
+```
+
+```python
+2 ** torch.tensor([[1,2], [3,4]])
+```
+
+```
+## tensor([[ 2,  4],
+##         [ 8, 16]])
+```
+
+```python
+2 ** torch.tensor([[1,2], [3,4]]) &gt; 5
+```
+
+```
+## tensor([[False, False],
+##         [ True,  True]])
+```
+]
+
+.pull-right[
+
+```python
+x = torch.rand(2,2)
+
+torch.ones(2,2) @ x
+```
+
+```
+## tensor([[1.22126317, 1.36931109],
+##         [1.22126317, 1.36931109]])
+```
+
+```python
+torch.clamp(x*2-1, -0.5, 0.5)
+```
+
+```
+## tensor([[-0.49049568,  0.25872374],
+##         [ 0.50000000,  0.47989845]])
+```
+
+```python
+torch.mean(x)
+```
+
+```
+## tensor(0.64764357)
+```
+
+```python
+torch.sum(x)
+```
+
+```
+## tensor(2.59057426)
+```
+
+```python
+torch.min(x)
+```
+
+```
+## tensor(0.25475216)
+```
+
+]
+
+
+---
+
+## Broadcasting
+
+Like NumPy in cases where tensor dimensions do not match, the broadcasting algorithm is used. The rules for broadcasting are:
+
+&gt; * Each tensor must have at least one dimension - no empty tensors.
+&gt; * Comparing the dimension sizes of the two tensors, going from last to first:
+&gt;    * Each dimension must be equal, or
+&gt;    * One of the dimensions must be of size 1, or
+&gt;    * The dimension does not exist in one of the tensors
+
+---
+
+## Exercise 1
+
+Consider the following 6 tensors:
+
+
+```python
+a = torch.rand(4, 3, 2)
+b = torch.rand(3, 2)
+c = torch.rand(2, 3)
+d = torch.rand(0) 
+e = torch.rand(3, 1)
+f = torch.rand(1, 2)
+```
+
+which of the above could be multiplied together and produce a valid result via broadcasting (e.g. `a*b`, `a*c`, `a*d`, etc.). 
+
+Explain why or why not broadcasting was able to be applied in each case.
+
+---
+
+## Inplace modification
+
+In instances where we need to conserve memory it is possible to apply many functions in a way where a new tensor is not created but the original values are replaced. These functions share the same name with the original functions but have a `_` suffix.
+
+
+```python
+a = torch.rand(2,2)
+print(a)
+```
+
+```
+## tensor([[0.31861043, 0.29080772],
+##         [0.41960979, 0.37281448]])
+```
+
+--
+
+.pull-left[
+
+```python
+print(torch.exp(a))
+```
+
+```
+## tensor([[1.37521553, 1.33750737],
+##         [1.52136779, 1.45181501]])
+```
+
+```python
+print(a)
+```
+
+```
+## tensor([[0.31861043, 0.29080772],
+##         [0.41960979, 0.37281448]])
+```
+]
+
+--
+
+.pull-right[
+
+```python
+print(torch.exp_(a))
+```
+
+```
+## tensor([[1.37521553, 1.33750737],
+##         [1.52136779, 1.45181501]])
+```
+
+```python
+print(a)
+```
+
+```
+## tensor([[1.37521553, 1.33750737],
+##         [1.52136779, 1.45181501]])
+```
+]
+
+.footnote[For functions without a `_` variant, check if the have a `to` argument which can then be used instead - see `torch.matmul()`]
+
+---
+
+## Inplace arithmetic
+
+All arithmetic functions are available as methods of the Tensor class,
+
+
+```python
+a = torch.ones(2, 2)
+b = torch.rand(2, 2)
+```
+
+.pull-left[
+
+```python
+a+b
+```
+
+```
+## tensor([[1.37689185, 1.01077938],
+##         [1.94549370, 1.76611161]])
+```
+
+```python
+print(a)
+```
+
+```
+## tensor([[1., 1.],
+##         [1., 1.]])
+```
+
+```python
+print(b)
+```
+
+```
+## tensor([[0.37689191, 0.01077944],
+##         [0.94549364, 0.76611167]])
+```
+]
+
+.pull-right[
+
+```python
+a.add_(b)
+```
+
+```
+## tensor([[1.37689185, 1.01077938],
+##         [1.94549370, 1.76611161]])
+```
+
+```python
+print(a)
+```
+
+```
+## tensor([[1.37689185, 1.01077938],
+##         [1.94549370, 1.76611161]])
+```
+
+```python
+print(b)
+```
+
+```
+## tensor([[0.37689191, 0.01077944],
+##         [0.94549364, 0.76611167]])
+```
+]
+
+---
+
+## Changing tensor shapes
+
+The `shape` of a tensor can be changed using the `view()` or `reshape()` methods. The former guarantees that the result shares data with the original object (but requires contiguity),the latter may or may not copy the data.
+
+.pull-left[
+
+```python
+x = torch.zeros(3, 2)
+y = x.view(2, 3)
+y
+```
+
+```
+## tensor([[0., 0., 0.],
+##         [0., 0., 0.]])
+```
+
+```python
+x.fill_(1)
+```
+
+```
+## tensor([[1., 1.],
+##         [1., 1.],
+##         [1., 1.]])
+```
+
+```python
+y
+```
+
+```
+## tensor([[1., 1., 1.],
+##         [1., 1., 1.]])
+```
+]
+
+.pull-right[
+
+```python
+x = torch.zeros(3, 2)
+y = x.t()
+z = y.view(6)
+```
+
+```
+## RuntimeError: view size is not compatible with input tensor's size and stride (at least one dimension spans across two contiguous subspaces). Use .reshape(...) instead.
+```
+
+```python
+z = y.reshape(6)
+x.fill_(1)
+```
+
+```
+## tensor([[1., 1.],
+##         [1., 1.],
+##         [1., 1.]])
+```
+
+```python
+y
+```
+
+```
+## tensor([[1., 1., 1.],
+##         [1., 1., 1.]])
+```
+
+```python
+z
+```
+
+```
+## tensor([0., 0., 0., 0., 0., 0.])
+```
+]
+
+---
+
+## Adding or removing dimensions
+
+The `squeeze()` and `unsqueeze()` methods can be used to remove or add length 1 dimension(s) to a tensor.
+
+
+.pull-left[
+
+```python
+x = torch.zeros(1,3,1)
+x.squeeze().shape
+```
+
+```
+## torch.Size([3])
+```
+
+```python
+x.squeeze(0).shape
+```
+
+```
+## torch.Size([3, 1])
+```
+
+```python
+x.squeeze(1).shape
+```
+
+```
+## torch.Size([1, 3, 1])
+```
+
+```python
+x.squeeze(2).shape
+```
+
+```
+## torch.Size([1, 3])
+```
+
+```python
+y = x.squeeze()
+x.fill_(1)
+```
+
+```
+## tensor([[[1.],
+##          [1.],
+##          [1.]]])
+```
+
+```python
+y
+```
+
+```
+## tensor([1., 1., 1.])
+```
+]
+
+.pull-right[
+
+```python
+x = torch.zeros(3,2)
+x.unsqueeze(0).shape
+```
+
+```
+## torch.Size([1, 3, 2])
+```
+
+```python
+x.unsqueeze(1).shape
+```
+
+```
+## torch.Size([3, 1, 2])
+```
+
+```python
+x.unsqueeze(2).shape
+```
+
+```
+## torch.Size([3, 2, 1])
+```
+
+```python
+y = x.unsqueeze(1)
+x.fill_(1)
+```
+
+```
+## tensor([[1., 1.],
+##         [1., 1.],
+##         [1., 1.]])
+```
+
+```python
+y
+```
+
+```
+## tensor([[[1., 1.]],
+##
+##         [[1., 1.]],
+##
+##         [[1., 1.]]])
+```
+]
+
+---
+
+&lt;img src="imgs/pytorch_squeeze.png" width="1008" style="display: block; margin: auto;" /&gt;
+
+.footnote[From stackoverflow [post](https://stackoverflow.com/questions/57237352/what-does-unsqueeze-do-in-pytorch) by iacob]
+
+
+---
+
+## Exercise 2
+
+Given the following tensors, 
+
+
+```python
+a = torch.ones(4,3,2)
+b = torch.rand(3)
+c = torch.rand(5,3)
+```
+
+what reshaping is needed to make it possible so that `a * b` and `a * c` can be calculated via broadcasting?
+
+
+---
+class: center, middle
+
+# Autograd
+
+---
+
+## Tensor expressions
+
+Gradient tracking can be enabled using the `requires_grad` argument at initialization, alternatively the `requires_grad` flag can be set on tensor or the `enable_grad()` context manager used.
+
+
+
+```python
+x = torch.linspace(0, 2, steps=21, requires_grad=True)
+x
+```
+
+```
+## tensor([0.00000000, 0.10000000, 0.20000000, 0.30000001, 0.40000001, 0.50000000,
+##         0.60000002, 0.69999999, 0.80000001, 0.90000004, 1.00000000, 1.10000002,
+##         1.20000005, 1.30000007, 1.39999998, 1.50000000, 1.60000002, 1.70000005,
+##         1.79999995, 1.89999998, 2.00000000], requires_grad=True)
+```
+
+--
+
+
+```python
+y = 3*x + 2
+y
+```
+
+```
+## tensor([2.00000000, 2.29999995, 2.59999990, 2.90000010, 3.20000005, 3.50000000,
+##         3.80000019, 4.09999990, 4.40000010, 4.69999981, 5.00000000, 5.30000019,
+##         5.60000038, 5.90000010, 6.19999981, 6.50000000, 6.80000019, 7.10000038,
+##         7.39999962, 7.69999981, 8.00000000], grad_fn=&lt;AddBackward0&gt;)
+```
+
+---
+
+## Computational graph
+
+
+```python
+y.grad_fn
+```
+
+```
+## &lt;AddBackward0 object at 0x2b1c5d790&gt;
+```
+
+```python
+y.grad_fn.next_functions
+```
+
+```
+## ((&lt;MulBackward0 object at 0x2b1c5d250&gt;, 0), (None, 0))
+```
+
+```python
+y.grad_fn.next_functions[0][0].next_functions
+```
+
+```
+## ((&lt;AccumulateGrad object at 0x2b1c5d4f0&gt;, 0), (None, 0))
+```
+
+```python
+y.grad_fn.next_functions[0][0].next_functions[0][0].next_functions
+```
+
+```
+## ()
+```
+
+---
+
+## Autogradient
+
+In order to calculate the gradients we use the `backward()` method on the calculation output tensor (must be a scalar), this then makes the grad attribute available for the input (leaf) tensors.
+
+
+
+```python
+out = y.sum()
+out.backward()
+out
+```
+
+```
+## tensor(105., grad_fn=&lt;SumBackward0&gt;)
+```
+
+--
+
+
+```python
+y.grad
+```
+
+```
+## UserWarning: The .grad attribute of a Tensor that is not a leaf Tensor is being accessed. Its .grad attribute won't
+   be populated during autograd.backward(). If you indeed want the .grad field to be populated for a non-leaf Tensor,
+   use .retain_grad() on the non-leaf Tensor. If you access the non-leaf Tensor by mistake, make sure you access the
+   leaf Tensor instead. See github.com/pytorch/pytorch/pull/30531 for more informations. (Triggered internally at  /
+   Users/distiller/project/pytorch/build/aten/src/ATen/core/TensorBody.h:475.)
+##   return self._grad
+```
+
+--
+
+
+```python
+x.grad
+```
+
+```
+## tensor([3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3.,
+##         3., 3., 3.])
+```
+
+---
+
+## A bit more complex
+
+
+```python
+n = 21 
+x = torch.linspace(0, 2, steps=n, requires_grad=True)
+m = torch.rand(n, requires_grad=True)
+
+y = m*x + 2
+
+y.backward(torch.ones(n))
+```
+
+--
+
+
+```python
+x.grad
+```
+
+```
+## tensor([0.23227984, 0.72686875, 0.11874896, 0.39512146, 0.71987736, 0.75950843,
+##         0.53108865, 0.64494550, 0.72242016, 0.44158769, 0.36338443, 0.88182861,
+##         0.98741043, 0.73160070, 0.28143251, 0.06507802, 0.00649202, 0.50345892,
+##         0.30815977, 0.37417805, 0.42968810])
+```
+
+
+```python
+m.grad
+```
+
+```
+## tensor([0.00000000, 0.10000000, 0.20000000, 0.30000001, 0.40000001, 0.50000000,
+##         0.60000002, 0.69999999, 0.80000001, 0.90000004, 1.00000000, 1.10000002,
+##         1.20000005, 1.30000007, 1.39999998, 1.50000000, 1.60000002, 1.70000005,
+##         1.79999995, 1.89999998, 2.00000000])
+```
+
+--
+
+&lt;br/&gt;
+
+In context you can interpret `x.grad` and `m.grad` as the gradient of `y` with respect to `x` and `y` (respectively).
+
+
+---
+
+## High-level autograd API
+
+This allows for the automatic calculation and evaluation of the jacobian and hessian for a function defined used tensors.
+
+
+```python
+def f(x, y):
+  return 3*x + 1 + 2*y**2 + x*y
+```
+
+
+.pull-left[
+
+```python
+for x in [0.,1.]:
+  for y in [0.,1.]:
+    print("x =",x, "y = ",y)
+    inputs = (torch.tensor([x]), torch.tensor([y]))
+    print(torch.autograd.functional.jacobian(f, inputs),"\n")
+```
+
+```
+## x = 0.0 y =  0.0
+## (tensor([[3.]]), tensor([[0.]]))
+##
+## x = 0.0 y =  1.0
+## (tensor([[4.]]), tensor([[4.]]))
+##
+## x = 1.0 y =  0.0
+## (tensor([[3.]]), tensor([[1.]]))
+##
+## x = 1.0 y =  1.0
+## (tensor([[4.]]), tensor([[5.]]))
+```
+]
+
+.pull-right[
+
+```python
+inputs = (torch.tensor([0.]), torch.tensor([0.]))
+torch.autograd.functional.hessian(f, inputs)
+```
+
+```
+## ((tensor([[0.]]), tensor([[1.]])), (tensor([[1.]]), tensor([[4.]])))
+```
+
+```python
+inputs = (torch.tensor([1.]), torch.tensor([1.]))
+torch.autograd.functional.hessian(f, inputs)
+```
+
+```
+## ((tensor([[0.]]), tensor([[1.]])), (tensor([[1.]]), tensor([[4.]])))
+```
+]
+
+---
+class: center, middle
+
+# Demo 1 - Linear Regression w/ PyTorch
+
+---
+
+## A basic model
+
+
+```python
+x = np.linspace(-math.pi, math.pi, 200)
+y = np.sin(x)
+```
+
+
+```python
+lm = smf.ols("y~x+I(x**2)+I(x**3)", data=pd.DataFrame({"x": x, "y": y})).fit()
+print(lm.summary())
+```
+
+```
+##                             OLS Regression Results                           
+## ==============================================================================
+## Dep. Variable:                      y   R-squared:                       0.991
+## Model:                            OLS   Adj. R-squared:                  0.991
+## Method:                 Least Squares   F-statistic:                     7041.
+## Date:                Tue, 29 Mar 2022   Prob (F-statistic):          2.96e-199
+## Time:                        14:21:12   Log-Likelihood:                 254.95
+## No. Observations:                 200   AIC:                            -501.9
+## Df Residuals:                     196   BIC:                            -488.7
+## Df Model:                           3                                        
+## Covariance Type:            nonrobust                                        
+## ==============================================================================
+##                  coef    std err          t      P&gt;|t|      [0.025      0.975]
+## ------------------------------------------------------------------------------
+## Intercept   6.104e-17      0.007   8.42e-15      1.000      -0.014       0.014
+## x              0.8546      0.007    128.977      0.000       0.842       0.868
+## I(x ** 2)    4.93e-18      0.002   3.03e-15      1.000      -0.003       0.003
+## I(x ** 3)     -0.0928      0.001    -91.419      0.000      -0.095      -0.091
+## ==============================================================================
+## Omnibus:                        9.247   Durbin-Watson:                   0.013
+## Prob(Omnibus):                  0.010   Jarque-Bera (JB):                4.248
+## Skew:                           0.000   Prob(JB):                        0.120
+## Kurtosis:                       2.286   Cond. No.                         18.3
+## ==============================================================================
+##
+## Notes:
+## [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+```
+
+---
+
+&lt;img src="Lec22_files/figure-html/unnamed-chunk-42-1.png" width="768" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Making tensors
+
+
+```python
+yt = torch.tensor(y)
+Xt = torch.tensor(lm.model.exog)
+bt = torch.randn((Xt.shape[1], 1), dtype=torch.float64, requires_grad=True)
+```
+
+--
+
+
+```python
+yt_pred = (Xt @ bt).squeeze()
+```
+
+--
+
+
+```python
+loss = (yt_pred - yt).pow(2).sum()
+loss.item()
+```
+
+```
+## 8060.669052389756
+```
+
+---
+
+## Gradient descent
+
+Going back to our discussion of optimization and gradient descent awhile back - we can update our guess for `b` / `bt` by moving in the direction of the negative gradient. The step size is refered to as the *learning rate* which we will pick a relatively small value for.
+
+
+```python
+learning_rate = 1e-6
+
+loss.backward() # Compute the backward pass
+
+with torch.no_grad():
+  bt -= learning_rate * bt.grad # Make the step
+
+  bt.grad = None # Reset the gradients
+```
+
+--
+
+
+```python
+yt_pred = (Xt @ bt).squeeze()
+loss = (yt_pred - yt).pow(2).sum()
+loss.item()
+```
+
+```
+## 7380.58278232608
+```
+
+
+---
+
+## Putting it together
+
+
+```python
+yt = torch.tensor(y).unsqueeze(1)
+Xt = torch.tensor(lm.model.exog)
+bt = torch.randn((Xt.shape[1], 1), dtype=torch.float64, requires_grad=True)
+
+learning_rate = 1e-5
+for i in range(5000):
+  
+  yt_pred = Xt @ bt
+  
+  loss = (yt_pred - yt).pow(2).sum()
+  if i % 500 == 0:
+    print(i, loss.item())
+  
+  loss.backward()
+  
+  with torch.no_grad():
+    bt -= learning_rate * bt.grad
+    bt.grad = None
+```
+
+```
+## 0 257680.8304254537
+## 500 13.07780707986047
+## 1000 2.4863342128971935
+## 1500 1.1208859061116399
+## 2000 0.9423484068960166
+## 2500 0.9185767010862962
+## 3000 0.9153397067470397
+## 3500 0.9148870540430467
+## 4000 0.9148218389499752
+## 4500 0.9148121416511322
+```
+
+```python
+print(bt)
+```
+
+```
+## tensor([[ 4.79584652e-05],
+##         [ 8.54550246e-01],
+##         [-8.19655854e-06],
+##         [-9.28168699e-02]], dtype=torch.float64, requires_grad=True)
+```
+
+---
+
+## Comparing results
+
+
+```python
+bt
+```
+
+```
+## tensor([[ 4.79584652e-05],
+##         [ 8.54550246e-01],
+##         [-8.19655854e-06],
+##         [-9.28168699e-02]], dtype=torch.float64, requires_grad=True)
+```
+
+
+```python
+lm.params
+```
+
+```
+## Intercept    6.104058e-17
+## x            8.545770e-01
+## I(x ** 2)    4.929732e-18
+## I(x ** 3)   -9.282065e-02
+## dtype: float64
+```
+
+---
+
+&lt;img src="Lec22_files/figure-html/unnamed-chunk-51-3.png" width="768" style="display: block; margin: auto;" /&gt;
+
+---
+class: center, middle
+
+# Demo 2 - Using a model
+
+---
+
+## A sample model
+
+
+```python
+class Model(torch.nn.Module):
+    def __init__(self, beta):
+        super().__init__()
+        beta.requires_grad = True
+        self.beta = torch.nn.Parameter(beta)
+        
+    def forward(self, X):
+        return X @ self.beta
+
+def training_loop(model, X, y, optimizer, n=1000):
+    losses = []
+    for i in range(n):
+        y_pred = model(X)
+        
+        loss = (y_pred.squeeze() - y.squeeze()).pow(2).sum()
+        loss.backward()
+        
+        optimizer.step()
+        optimizer.zero_grad()
+        
+        losses.append(loss.item())
+    
+    return losses
+```
+
+
+---
+
+## Fitting
+
+
+```python
+x = torch.linspace(-math.pi, math.pi, 200)
+y = torch.sin(x)
+
+X = torch.vstack((
+  torch.ones_like(x),
+  x,
+  x**2,
+  x**3
+)).T
+
+m = Model(beta = torch.zeros(4))
+opt = torch.optim.SGD(m.parameters(), lr=1e-5)
+
+losses = training_loop(m, X, y, opt, n=3000)
+```
+
+---
+
+## Results
+
+
+```python
+m.beta
+```
+
+```
+## Parameter containing:
+## tensor([-8.40055758e-09,  8.52953434e-01,  2.83126012e-09, -9.25917700e-02],
+##        requires_grad=True)
+```
+
+
+```python
+plt.figure(figsize=(8,6), layout="constrained")
+plt.plot(losses)
+plt.show()
+```
+
+&lt;img src="Lec22_files/figure-html/unnamed-chunk-55-5.png" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+
+&lt;img src="Lec22_files/figure-html/unnamed-chunk-56-7.png" width="768" style="display: block; margin: auto;" /&gt;
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightLines": true,
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
