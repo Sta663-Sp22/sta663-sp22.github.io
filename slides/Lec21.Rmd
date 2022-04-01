@@ -23,9 +23,6 @@ import pandas as pd
 import seaborn as sns
 import scipy
 
-import pymc3 as pm
-import arviz as az
-
 import os
 
 plt.rcParams['figure.dpi'] = 200

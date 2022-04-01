@@ -152,7 +152,7 @@ num
 ```
 
 ```
-## &lt;pyarrow.lib.Int8Array object at 0x2ab6a9fa0&gt;
+## &lt;pyarrow.lib.Int8Array object at 0x2a2f7d880&gt;
 ## [
 ##   1,
 ##   2,
@@ -167,7 +167,7 @@ year
 ```
 
 ```
-## &lt;pyarrow.lib.Int64Array object at 0x2ab6bc1c0&gt;
+## &lt;pyarrow.lib.Int64Array object at 0x2a2f7da60&gt;
 ## [
 ##   2019,
 ##   2020,
@@ -190,7 +190,7 @@ name
 ```
 
 ```
-## &lt;pyarrow.lib.StringArray object at 0x2ab6bc220&gt;
+## &lt;pyarrow.lib.StringArray object at 0x2a2f7dac0&gt;
 ## [
 ##   "Alice",
 ##   "Bob",
@@ -251,7 +251,7 @@ name[0:3]
 ```
 
 ```
-## &lt;pyarrow.lib.StringArray object at 0x2ab6bc340&gt;
+## &lt;pyarrow.lib.StringArray object at 0x2a2f7dbe0&gt;
 ## [
 ##   "Alice",
 ##   "Bob",
@@ -264,7 +264,7 @@ name[:]
 ```
 
 ```
-## &lt;pyarrow.lib.StringArray object at 0x2ab6bc2e0&gt;
+## &lt;pyarrow.lib.StringArray object at 0x2a2f7db80&gt;
 ## [
 ##   "Alice",
 ##   "Bob",
@@ -291,7 +291,7 @@ name[::-1]
 ```
 
 ```
-## &lt;pyarrow.lib.StringArray object at 0x2ab6bc400&gt;
+## &lt;pyarrow.lib.StringArray object at 0x2a2f7dca0&gt;
 ## [
 ##   "Dave",
 ##   "Carol",
@@ -424,7 +424,7 @@ pa.array([1,2,None,3])
 ```
 
 ```
-## &lt;pyarrow.lib.Int64Array object at 0x2ab6bc400&gt;
+## &lt;pyarrow.lib.Int64Array object at 0x2a2f7dca0&gt;
 ## [
 ##   1,
 ##   2,
@@ -438,7 +438,7 @@ pa.array([1.,2.,None,3.])
 ```
 
 ```
-## &lt;pyarrow.lib.DoubleArray object at 0x2ab6bc2e0&gt;
+## &lt;pyarrow.lib.DoubleArray object at 0x2a2f7db80&gt;
 ## [
 ##   1,
 ##   2,
@@ -455,7 +455,7 @@ pa.array(["alice","bob",None,"dave"])
 ```
 
 ```
-## &lt;pyarrow.lib.StringArray object at 0x2ab6bc400&gt;
+## &lt;pyarrow.lib.StringArray object at 0x2a2f7dca0&gt;
 ## [
 ##   "alice",
 ##   "bob",
@@ -469,7 +469,7 @@ pa.array([1,2,np.nan,3])
 ```
 
 ```
-## &lt;pyarrow.lib.DoubleArray object at 0x2ab6bc280&gt;
+## &lt;pyarrow.lib.DoubleArray object at 0x2a2f7db20&gt;
 ## [
 ##   1,
 ##   2,
@@ -535,7 +535,7 @@ pa.array([[1,2], [3,4], None, [5,None]])
 ```
 
 ```
-## &lt;pyarrow.lib.ListArray object at 0x2ab6bc2e0&gt;
+## &lt;pyarrow.lib.ListArray object at 0x2a2f7db80&gt;
 ## [
 ##   [
 ##     1,
@@ -568,7 +568,7 @@ pa.array([
 ```
 
 ```
-## &lt;pyarrow.lib.StructArray object at 0x2ab6bc400&gt;
+## &lt;pyarrow.lib.StructArray object at 0x2a2f7dca0&gt;
 ## -- is_valid: all not null
 ## -- child 0 type: int64
 ##   [
@@ -609,7 +609,7 @@ dict_array
 ```
 
 ```
-## &lt;pyarrow.lib.DictionaryArray object at 0x2ab5e2f20&gt;
+## &lt;pyarrow.lib.DictionaryArray object at 0x2a2f25970&gt;
 ##
 ## -- dictionary:
 ##   [
@@ -647,7 +647,7 @@ dict_array.dictionary_decode()
 ```
 
 ```
-## &lt;pyarrow.lib.StringArray object at 0x2ab6bc400&gt;
+## &lt;pyarrow.lib.StringArray object at 0x2a2f7ddc0&gt;
 ## [
 ##   "sun",
 ##   "sun",
@@ -663,7 +663,7 @@ levels.dictionary_encode()
 ```
 
 ```
-## &lt;pyarrow.lib.DictionaryArray object at 0x2ab5e2d60&gt;
+## &lt;pyarrow.lib.DictionaryArray object at 0x2a2f257b0&gt;
 ##
 ## -- dictionary:
 ##   [
@@ -758,7 +758,7 @@ batch[0]
 ```
 
 ```
-## &lt;pyarrow.lib.Int8Array object at 0x2ab6bc580&gt;
+## &lt;pyarrow.lib.Int8Array object at 0x2a2f7de80&gt;
 ## [
 ##   1,
 ##   2,
@@ -772,7 +772,7 @@ batch["name"]
 ```
 
 ```
-## &lt;pyarrow.lib.StringArray object at 0x2ab6bc460&gt;
+## &lt;pyarrow.lib.StringArray object at 0x2a2f7de20&gt;
 ## [
 ##   "Alice",
 ##   "Bob",
@@ -887,7 +887,7 @@ table["name"]
 ```
 
 ```
-## &lt;pyarrow.lib.ChunkedArray object at 0x2ab6ff4f0&gt;
+## &lt;pyarrow.lib.ChunkedArray object at 0x2a2fbcd60&gt;
 ## [
 ##   [
 ##     "Alice",
@@ -918,7 +918,7 @@ table[1]
 ```
 
 ```
-## &lt;pyarrow.lib.ChunkedArray object at 0x2ab6ff540&gt;
+## &lt;pyarrow.lib.ChunkedArray object at 0x2a2fbce50&gt;
 ## [
 ##   [
 ##     2019,
@@ -962,7 +962,7 @@ pa.array( np.linspace(0,1,6) )
 ```
 
 ```
-## &lt;pyarrow.lib.DoubleArray object at 0x2ab6bcfa0&gt;
+## &lt;pyarrow.lib.DoubleArray object at 0x2a2fa8880&gt;
 ## [
 ##   0,
 ##   0.2,
@@ -1248,7 +1248,7 @@ pa.Table.from_pandas(df)
 ## y: string
 ## z: int64
 ## ----
-## x: [[2.162287020685431,-0.15333869233915953,-0.5066520482523756,1.6405363001055555,1.8972603527511311]]
+## x: [[0.7312616306514687,0.7492374224202655,0.016214128758116807,-0.11221364659471317,-1.068060983676372]]
 ## y: [["A","A","B","C","C"]]
 ## z: [[1,2,3,4,5]]
 ```

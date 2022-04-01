@@ -1,0 +1,960 @@
+---
+title: "Lec 23 - pytorch - optim & nn"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightLines: true
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{python setup}
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+import scipy
+
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+
+import torch
+
+import os
+import math
+
+plt.rcParams['figure.dpi'] = 200
+
+np.set_printoptions(
+  edgeitems=30, linewidth=200,
+  precision = 5, suppress=True
+  #formatter=dict(float=lambda x: "%.5g" % x)
+)
+
+pd.set_option("display.width", 130)
+pd.set_option("display.max_columns", 10)
+pd.set_option("display.precision", 6)
+```
+
+```{r r_setup}
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+
+library(lme4)
+```
+
+```{r hooks}
+local({
+  hook_err_old <- knitr::knit_hooks$get("error")  # save the old hook
+  knitr::knit_hooks$set(error = function(x, options) {
+    # now do whatever you want to do with x, and pass
+    # the new x to the old hook
+    x = sub("## \n## Detailed traceback:\n.*$", "", x)
+    x = sub("Error in py_call_impl\\(.*?\\)\\: ", "", x)
+    #x = stringr::str_wrap(x, width = 100)
+    hook_err_old(x, options)
+  })
+  
+  hook_warn_old <- knitr::knit_hooks$get("warning")  # save the old hook
+  knitr::knit_hooks$set(warning = function(x, options) {
+    x = sub("<string>:1: ", "", x)
+    #x = stringr::str_wrap(x, width = 100)
+    hook_warn_old(x, options)
+  })
+  
+  hook_msg_old <- knitr::knit_hooks$get("output")  # save the old hook
+  knitr::knit_hooks$set(output = function(x, options) {
+    x = stringr::str_replace(x, "(## ).* ([A-Za-z]+Warning:)", "\\1\\2")
+    x = stringr::str_split(x, "\n")[[1]]
+    #x = stringr::str_wrap(x, width = 120, exdent = 3)
+    x = stringr::str_remove_all(x, "\r")
+    x = stringi::stri_wrap(x, width=120, exdent = 3, normalize=FALSE)
+    x = paste(x, collapse="\n")
+    
+    #x = stringr::str_wrap(x, width = 100)
+    hook_msg_old(x, options)
+  })
+})
+```
+
+---
+class: center, middle
+
+# Demo 2 - Using a model
+
+---
+
+## A sample model
+
+```{python}
+class Model(torch.nn.Module):
+    def __init__(self, X, y, beta=None):
+        super().__init__()
+        
+        self.X = X
+        self.y = y
+        
+        if beta is None:
+          beta = torch.zeros(X.shape[1])
+        
+        beta.requires_grad = True
+        self.beta = torch.nn.Parameter(beta)
+        
+    def forward(self, X):
+        return X @ self.beta
+    
+    def fit(self, opt, n=1000, loss_fn = torch.nn.MSELoss()):
+      losses = []
+      
+      for i in range(n):
+          loss = loss_fn(self(self.X).squeeze(), self.y.squeeze())
+          loss.backward()
+          
+          opt.step()
+          opt.zero_grad()
+          
+          losses.append(loss.item())
+      
+      return losses
+```
+
+
+---
+
+## Fitting
+
+.pull-left[
+```{python}
+x = torch.linspace(-math.pi, math.pi, 200)
+y = torch.sin(x)
+
+X = torch.vstack((
+  torch.ones_like(x),
+  x,
+  x**2,
+  x**3
+)).T
+
+m = Model(X, y)
+opt = torch.optim.SGD(m.parameters(), lr=1e-3)
+losses = m.fit(opt, n=10000)
+
+m.beta.detach()
+```
+]
+
+.pull-right[
+```{python}
+plt.figure(figsize=(8,6), layout="constrained")
+plt.plot(losses)
+plt.show()
+```
+]
+
+---
+
+## Learning rate and convergence
+
+.pull-left[
+```{python lr_plot, eval=FALSE}
+plt.figure(figsize=(8,6), layout="constrained")
+
+for lr in [1e-3, 1e-4, 1e-5, 1e-6]:
+  m = Model(X, y)
+  opt = torch.optim.SGD(m.parameters(), lr=lr)
+  losses = m.fit(opt, n=10000)
+  
+  plt.plot(losses, label=f"lr = {lr}")
+
+plt.legend()
+plt.show()
+```
+]
+
+.pull-right[
+```{python echo=FALSE}
+<<lr_plot>>
+```
+]
+
+---
+
+## Momentum and convergence
+
+.pull-left[
+```{python moment_plot, eval=FALSE}
+plt.figure(figsize=(8,6), layout="constrained")
+
+for mt in [0, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99]:
+  m = Model(X, y)
+  opt = torch.optim.SGD(m.parameters(), lr=1e-4, momentum=mt)
+  losses = m.fit(opt, n=10000)
+  
+  plt.plot(losses, label=f"momentum = {mt}")
+
+plt.legend()
+plt.show()
+```
+]
+
+.pull-right[
+```{python echo=FALSE}
+<<moment_plot>>
+```
+]
+
+---
+
+## Optimizers and convergence
+
+.pull-left[
+```{python opt_plot, eval=FALSE}
+plt.figure(figsize=(8,6), layout="constrained")
+
+opts = (torch.optim.SGD, 
+        torch.optim.Adam, 
+        torch.optim.Adagrad)
+
+for opt_fn in opts:
+  m = Model(X, y)
+  opt = opt_fn(m.parameters(), lr=1e-4)
+  losses = m.fit(opt, n=10000)
+  
+  plt.plot(losses, label=f"opt = {opt_fn}")
+
+plt.legend()
+plt.show()
+```
+]
+
+.pull-right[
+```{python echo=FALSE}
+<<opt_plot>>
+```
+]
+
+---
+class: center, middle
+
+## MNIST & Logistic models
+
+---
+
+## MNIST handwritten digits - simplified
+
+```{python}
+from sklearn.datasets import load_digits
+
+digits = load_digits()
+```
+
+
+.pull-left[ .small[
+```{python}
+X = digits.data
+X.shape
+X[0:3]
+```
+] ]
+
+.pull-right[ .small[ 
+```{python}
+y = digits.target
+y.shape
+y[0:10]
+```
+] ]
+
+---
+
+## Example digits
+
+```{python echo=FALSE, out.width="85%"}
+fig, axes = plt.subplots(nrows=5, ncols=10, figsize=(10, 6), layout="constrained")
+axes2 = [ax for row in axes for ax in row]
+
+for ax, image, label in zip(axes2, digits.images, digits.target):
+    ax.set_axis_off()
+    img = ax.imshow(image, cmap=plt.cm.gray_r, interpolation="nearest")
+    txt = ax.set_title(f"{label}")
+    
+plt.show()
+```
+
+---
+
+## Test train split
+
+```{python}
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, shuffle=True, random_state=1234
+)
+```
+
+.pull-left[
+```{python}
+X_train.shape
+y_train.shape
+
+X_test.shape
+y_test.shape
+```
+]
+
+--
+
+.pull-right[
+```{python}
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+lr = LogisticRegression(penalty='none').fit(X_train, y_train)
+
+accuracy_score(y_train, lr.predict(X_train))
+accuracy_score(y_test, lr.predict(X_test))
+```
+]
+
+
+
+---
+
+## As Tensors
+
+.pull-left[
+```{python}
+X_train = torch.from_numpy(X_train).float()
+y_train = torch.from_numpy(y_train)
+X_test = torch.from_numpy(X_test).float()
+y_test = torch.from_numpy(y_test)
+```
+]
+
+.pull-right[
+```{python}
+X_train.shape
+y_train.shape
+
+X_test.shape
+y_test.shape
+```
+]
+
+---
+
+## PyTorch Model
+
+```{python}
+class mnist_model(torch.nn.Module):
+    def __init__(self, input_dim, output_dim):
+        super().__init__()
+        
+        self.beta = torch.nn.Parameter(
+          torch.randn(input_dim, output_dim, requires_grad=True)  
+        )
+        self.intercept = torch.nn.Parameter(
+          torch.randn(output_dim, requires_grad=True)  
+        )
+        
+    def forward(self, X):
+        return (X @ self.beta + self.intercept).squeeze()
+    
+    def fit(self, X_train, y_train, X_test, y_test, lr=0.001, n=1000):
+      opt = torch.optim.SGD(self.parameters(), lr=lr, momentum=0.9) 
+      losses = []
+      
+      for i in range(n):
+          opt.zero_grad()
+          loss = torch.nn.CrossEntropyLoss()(self(X_train), y_train)
+          loss.backward()
+          opt.step()
+          
+          losses.append(loss.item())
+      
+      return losses
+```
+
+---
+
+## Cross entropy loss
+
+```{python}
+m = mnist_model(64, 10)
+l = m.fit(X_train, y_train, X_test, y_test)
+```
+
+```{python out.width="45%"}
+plt.figure(figsize=(8,6), layout="constrained")
+plt.plot(l)
+plt.show()
+```
+
+---
+
+## Out of sample accuracy
+
+.pull-left[
+```{python}
+m(X_test)
+val, index = torch.max(m(X_test), dim=1)
+```
+
+```{python}
+index
+```
+]
+
+.pull-right[
+```{python}
+(index == y_test).sum()
+(index == y_test).sum() / len(y_test)
+```
+]
+
+
+---
+
+## Calculating Accuracy
+
+.small[
+```{python}
+class mnist_model(torch.nn.Module):
+    def __init__(self, input_dim, output_dim):
+        super().__init__()
+        
+        self.beta = torch.nn.Parameter(
+          torch.randn(input_dim, output_dim, requires_grad=True)  
+        )
+        self.intercept = torch.nn.Parameter(
+          torch.randn(output_dim, requires_grad=True)  
+        )
+        
+    def forward(self, X):
+        return (X @ self.beta + self.intercept).squeeze()
+    
+    def fit(self, X_train, y_train, X_test, y_test, lr=0.001, n=1000, acc_step=10):
+      opt = torch.optim.SGD(self.parameters(), lr=lr, momentum=0.9) 
+      losses, train_acc, test_acc = [], [], []
+      
+      for i in range(n):
+          opt.zero_grad()
+          loss = torch.nn.CrossEntropyLoss()(self(X_train), y_train)
+          loss.backward()
+          opt.step()
+          losses.append(loss.item())
+          
+          if (i+1) % acc_step == 0:
+            val, train_pred = torch.max(self(X_train), dim=1)
+            val, test_pred  = torch.max(self(X_test), dim=1)
+            
+            train_acc.append( (train_pred == y_train).sum() / len(y_train) )
+            test_acc.append( (test_pred == y_test).sum() / len(y_test) )
+            
+      return (losses, train_acc, test_acc)
+```
+]
+
+---
+
+## Performance
+
+```{python}
+loss, train_acc, test_acc = mnist_model(64, 10).fit(X_train, y_train, X_test, y_test,acc_step=10, n=3000)
+```
+
+
+```{python out.width="45%"}
+plt.figure(figsize=(8,6), layout="constrained")
+plt.plot(train_acc, label="train accuracy")
+plt.plot(test_acc, label="test accuracy")
+plt.legend()
+plt.show()
+```
+
+---
+
+## NN Layers
+
+```{python}
+class mnist_nn_model(torch.nn.Module):
+    def __init__(self, input_dim, output_dim):
+        super().__init__()
+        self.linear = torch.nn.Linear(input_dim, output_dim)
+        
+    def forward(self, X):
+        return self.linear(X)
+    
+    def fit(self, X_train, y_train, X_test, y_test, lr=0.001, n=1000, acc_step=10):
+      opt = torch.optim.SGD(self.parameters(), lr=lr, momentum=0.9) 
+      losses, train_acc, test_acc = [], [], []
+      
+      for i in range(n):
+          opt.zero_grad()
+          loss = torch.nn.CrossEntropyLoss()(self(X_train), y_train)
+          loss.backward()
+          opt.step()
+          losses.append(loss.item())
+          
+          if (i+1) % acc_step == 0:
+            val, train_pred = torch.max(self(X_train), dim=1)
+            val, test_pred  = torch.max(self(X_test), dim=1)
+            
+            train_acc.append( (train_pred == y_train).sum() / len(y_train) )
+            test_acc.append( (test_pred == y_test).sum() / len(y_test) )
+            
+      return (losses, train_acc, test_acc)
+```
+
+---
+
+## Linear layer parameters
+
+```{python}
+m = mnist_nn_model(64, 10)
+
+m.parameters()
+
+len(list(m.parameters()))
+list(m.parameters())[0].shape
+list(m.parameters())[1].shape
+```
+
+--
+
+Applies a linear transform to the incoming data:
+$$y = x A^T+b$$
+
+
+---
+
+## Performance
+
+```{python}
+loss, train_acc, test_acc = m.fit(X_train, y_train, X_test, y_test, n=1500)
+```
+
+```{python echo=FALSE}
+plt.figure(figsize=(12,6))
+plt.subplot(121)
+plt.plot(loss, label="loss")
+plt.legend()
+
+plt.subplot(122)
+plt.plot(train_acc, label="train accuracy")
+plt.plot(test_acc, label="test accuracy")
+plt.legend()
+
+plt.show()
+```
+
+---
+class: center, middle
+
+## Feedforward Neural Network
+
+---
+
+## FNN Model
+
+.small[
+```{python}
+class mnist_fnn_model(torch.nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim, nl_step = torch.nn.ReLU(), seed=1234):
+        super().__init__()
+        self.l1 = torch.nn.Linear(input_dim, hidden_dim)
+        self.nl = nl_step
+        self.l2 = torch.nn.Linear(hidden_dim, output_dim)
+        
+    def forward(self, X):
+        out = self.l1(X)
+        out = self.nl(out)
+        out = self.l2(out)
+        return out
+    
+    def fit(self, X_train, y_train, X_test, y_test, lr=0.001, n=1000, acc_step=10):
+      opt = torch.optim.SGD(self.parameters(), lr=lr, momentum=0.9) 
+      losses, train_acc, test_acc = [], [], []
+      
+      for i in range(n):
+          opt.zero_grad()
+          loss = torch.nn.CrossEntropyLoss()(self(X_train), y_train)
+          loss.backward()
+          opt.step()
+          
+          losses.append(loss.item())
+          
+          if (i+1) % acc_step == 0:
+            val, train_pred = torch.max(self(X_train), dim=1)
+            val, test_pred  = torch.max(self(X_test), dim=1)
+            
+            train_acc.append( (train_pred == y_train).sum() / len(y_train) )
+            test_acc.append( (test_pred == y_test).sum() / len(y_test) )
+            
+      return (losses, train_acc, test_acc)
+```
+]
+
+---
+
+## Model parameters
+
+```{python}
+m = mnist_fnn_model(64,64,10)
+
+len(list(m.parameters()))
+
+for i, p in enumerate(m.parameters()):
+  print("Param", i, p.shape)
+```
+
+---
+
+## Performance - ReLU
+
+```{python}
+loss, train_acc, test_acc = mnist_fnn_model(64,64,10).fit(
+  X_train, y_train, X_test, y_test, n=2000
+)
+test_acc[-5:]
+```
+
+```{python echo=FALSE, out.width="75%"}
+plt.figure(figsize=(12,6))
+plt.subplot(121)
+plt.plot(loss, label="loss")
+plt.legend()
+
+plt.subplot(122)
+plt.plot(train_acc, label="train accuracy")
+plt.plot(test_acc, label="test accuracy")
+plt.legend()
+
+plt.show()
+```
+
+---
+
+## Non-linear activation functions
+
+.pull-left[ .small[
+$$\text{Tanh}(x) = \frac{\exp(x)-\exp(-x)}{\exp(x) + \exp(-x)}$$
+
+```{r echo=FALSE, out.width="55%"}
+knitr::include_graphics("imgs/torch_Tanh.png")
+```
+
+$$\text{Sigmoid}(x) = \frac{1}{1+\exp(-x)}$$
+```{r echo=FALSE, out.width="55%"}
+knitr::include_graphics("imgs/torch_Sigmoid.png")
+```
+] ]
+
+.pull-right[ .small[
+$$\text{ReLU}(x) = \max(0,x)$$
+```{r echo=FALSE, out.width="55%"}
+knitr::include_graphics("imgs/torch_ReLU.png")
+```
+] ]
+
+---
+
+## Performance - tanh
+
+```{python}
+loss, train_acc, test_acc = mnist_fnn_model(64,64,10, nl_step=torch.nn.Tanh()).fit(
+  X_train, y_train, X_test, y_test, n=2000
+)
+test_acc[-5:]
+```
+
+```{python echo=FALSE, out.width="75%"}
+plt.figure(figsize=(12,6))
+plt.subplot(121)
+plt.plot(loss, label="loss")
+plt.legend()
+
+plt.subplot(122)
+plt.plot(train_acc, label="train accuracy")
+plt.plot(test_acc, label="test accuracy")
+plt.legend()
+
+plt.show()
+```
+
+---
+
+## Performance - Sigmoid
+
+```{python}
+loss, train_acc, test_acc = mnist_fnn_model(64,64,10, nl_step=torch.nn.Sigmoid()).fit(
+  X_train, y_train, X_test, y_test, n=2000
+)
+test_acc[-5:]
+```
+
+```{python echo=FALSE, out.width="75%"}
+plt.figure(figsize=(12,6))
+plt.subplot(121)
+plt.plot(loss, label="loss")
+plt.legend()
+
+plt.subplot(122)
+plt.plot(train_acc, label="train accuracy")
+plt.plot(test_acc, label="test accuracy")
+plt.legend()
+
+plt.show()
+```
+
+---
+
+## Multilayer FNN Model
+
+.small[
+```{python}
+class mnist_fnn2_model(torch.nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim, nl_step = torch.nn.ReLU(), seed=1234):
+        super().__init__()
+        self.l1 = torch.nn.Linear(input_dim, hidden_dim)
+        self.nl = nl_step
+        self.l2 = torch.nn.Linear(hidden_dim, hidden_dim)
+        self.nl = nl_step
+        self.l3 = torch.nn.Linear(hidden_dim, output_dim)
+        
+    def forward(self, X):
+        out = self.l1(X)
+        out = self.nl(out)
+        out = self.l2(out)
+        out = self.nl(out)
+        out = self.l3(out)
+        return out
+    
+    def fit(self, X_train, y_train, X_test, y_test, lr=0.001, n=1000, acc_step=10):
+      loss_fn = torch.nn.CrossEntropyLoss()
+      opt = torch.optim.SGD(self.parameters(), lr=lr, momentum=0.9) 
+      losses, train_acc, test_acc = [], [], []
+      
+      for i in range(n):
+          opt.zero_grad()
+          loss = loss_fn(self(X_train), y_train)
+          loss.backward()
+          opt.step()
+          
+          losses.append(loss.item())
+          
+          if (i+1) % acc_step == 0:
+            val, train_pred = torch.max(self(X_train), dim=1)
+            val, test_pred  = torch.max(self(X_test), dim=1)
+            
+            train_acc.append( (train_pred == y_train).sum() / len(y_train) )
+            test_acc.append( (test_pred == y_test).sum() / len(y_test) )
+            
+      return (losses, train_acc, test_acc)
+```
+]
+
+---
+
+## Performance
+
+```{python}
+loss, train_acc, test_acc = mnist_fnn2_model(64,64,10, nl_step=torch.nn.ReLU()).fit(
+  X_train, y_train, X_test, y_test, n=1000
+)
+test_acc[-5:]
+```
+
+```{python echo=FALSE, out.width="75%"}
+plt.figure(figsize=(12,6))
+plt.subplot(121)
+plt.plot(loss, label="loss")
+plt.legend()
+
+plt.subplot(122)
+plt.plot(train_acc, label="train accuracy")
+plt.plot(test_acc, label="test accuracy")
+plt.legend()
+
+plt.show()
+```
+
+---
+class: center, middle
+
+## Convolutional NN
+
+---
+
+## 2d convolutions
+
+.footnote[[Source](https://towardsdatascience.com/intuitively-understanding-convolutions-for-deep-learning-1f6f42faee1)]
+
+.pull-left[
+```{r echo=FALSE}
+knitr::include_graphics("imgs/tds_2dconv.gif")
+```
+]
+
+--
+
+.pull-right[
+```{r echo=FALSE}
+knitr::include_graphics("imgs/tds_2dconv2.gif")
+```
+]
+
+---
+
+## `nn.Conv2d()`
+
+```{python}
+cv = torch.nn.Conv2d(
+  in_channels=1, out_channels=4, 
+  kernel_size=3, 
+  stride=1, padding=1
+)
+```
+
+--
+
+```{python}
+list(cv.parameters())
+```
+
+---
+
+## Applying `Conv2d()`
+
+```{python, error=TRUE}
+X_train[[0]]
+X_train[[0]].shape
+```
+
+--
+
+```{python, error=TRUE}
+cv(X_train[[0]])
+```
+
+--
+
+```{python, error=TRUE}
+cv(X_train[[0]].view(1,8,8))
+```
+
+---
+
+## Pooling
+
+```{python}
+x = torch.tensor(
+  [[[0,0,0,0],
+    [0,1,2,0],
+    [0,3,4,0],
+    [0,0,0,0]]],
+  dtype=torch.float
+)
+x.shape
+```
+
+.pull-left[
+```{python}
+p = torch.nn.MaxPool2d(kernel_size=2, stride=1)
+p(x)
+
+p = torch.nn.MaxPool2d(kernel_size=3, stride=1, padding=1)
+p(x)
+```
+]
+
+.pull-right[
+```{python}
+p = torch.nn.AvgPool2d(kernel_size=2)
+p(x)
+
+p = torch.nn.AvgPool2d(kernel_size=2, padding=1)
+p(x)
+```
+]
+
+---
+
+## Convolutional model
+
+```{python}
+class mnist_conv_model(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.cnn  = torch.nn.Conv2d(
+          in_channels=1, out_channels=8,
+          kernel_size=3, stride=1, padding=1
+        )
+        self.relu = torch.nn.ReLU()
+        self.pool = torch.nn.MaxPool2d(kernel_size=2)
+        self.lin  = torch.nn.Linear(8 * 4 * 4, 10)
+        
+    def forward(self, X):
+        out = self.cnn(X.view(-1, 1, 8, 8))
+        out = self.relu(out)
+        out = self.pool(out)
+        out = self.lin(out.view(-1, 8 * 4 * 4))
+        return out
+    
+    def fit(self, X_train, y_train, X_test, y_test, lr=0.001, n=1000, acc_step=10):
+      opt = torch.optim.SGD(self.parameters(), lr=lr, momentum=0.9) 
+      losses, train_acc, test_acc = [], [], []
+      
+      for i in range(n):
+          opt.zero_grad()
+          loss = torch.nn.CrossEntropyLoss()(self(X_train), y_train)
+          loss.backward()
+          opt.step()
+          
+          losses.append(loss.item())
+          
+          if (i+1) % acc_step == 0:
+            val, train_pred = torch.max(self(X_train), dim=1)
+            val, test_pred  = torch.max(self(X_test), dim=1)
+            
+            train_acc.append( (train_pred == y_train).sum() / len(y_train) )
+            test_acc.append( (test_pred == y_test).sum() / len(y_test) )
+            
+      return (losses, train_acc, test_acc)
+```
+
+---
+
+## Performance
+
+```{python}
+loss, train_acc, test_acc = mnist_conv_model().fit(
+  X_train, y_train, X_test, y_test, n=1000
+)
+test_acc[-5:]
+```
+
+```{python echo=FALSE, out.width="75%"}
+plt.figure(figsize=(12,6))
+plt.subplot(121)
+plt.plot(loss, label="loss")
+plt.legend()
+
+plt.subplot(122)
+plt.plot(train_acc, label="train accuracy")
+plt.plot(test_acc, label="test accuracy")
+plt.legend()
+
+plt.show()
+```
