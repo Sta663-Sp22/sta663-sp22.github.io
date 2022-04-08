@@ -1,0 +1,1302 @@
+---
+title: "Lec 25 - Basic linux system administration"
+subtitle: "<br/> Statistical Computing and Computation"
+author: "Sta 663 | Spring 2022"
+date: "<br/> Dr. Colin Rundel"
+output:
+  xaringan::moon_reader:
+    css: ["slides.css"]
+    lib_dir: libs
+    nature:
+      highlightLines: true
+      highlightStyle: solarized-light
+      countIncrementalSlides: false
+      ratio: "16:9"
+---
+exclude: true
+
+```{r r_setup}
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+```
+
+
+---
+background-image: url(imgs/Lec25/linux_tree.png)
+background-size: contain
+background-position: center
+background-repeat: no-repeat
+
+---
+class: center, middle
+count: false
+
+# Duke Virtual Computing Manager
+
+---
+class: center, middle
+
+![](imgs/Lec25/vcm1.png)
+
+<br/><br/>
+
+### https://vcm.duke.edu/
+
+---
+class: center, middle
+
+![](imgs/Lec25/vcm2.png)
+
+---
+class: center, middle
+
+![](imgs/Lec25/vcm3.png)
+
+---
+class: center, middle
+count: false
+
+# Getting Started
+
+---
+
+## Connecting
+
+```shell
+rundel@tbBook [~]$ ssh cr173@vcm-26406.vm.duke.edu
+```
+
+--
+
+```shell
+The authenticity of host 'vcm-26406.vm.duke.edu (67.159.94.29)' can't be established.
+ED25519 key fingerprint is SHA256:7Ukmob4JBk3K3Vd2PnlZjy8vgZFN90lmUvs5961kePA.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'vcm-26406.vm.duke.edu' (ED25519) to the list of known hosts.
+
+cr173@vcm-26406.vm.duke.edu's password:
+```
+
+--
+
+```shell
+Welcome to Ubuntu 20.04.4 LTS (GNU/Linux 5.4.0-107-generic x86_64)
+
+...
+...
+...
+
+Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
+applicable law.
+
+cr173@vcm-26406:~$
+```
+
+
+---
+
+## Determining Distribution
+
+This does not work 100% of the time but is generally pretty reliable,
+
+```shell
+cat /etc/*-release
+```
+
+--
+
+.small[ .pull-left[
+
+.ubuntu[
+```
+*cr173@vcm-26406:~$ ls -l /etc/*-release
+-rw-r--r-- 1 root root 105 Aug 19 19:43 /etc/lsb-release
+lrwxrwxrwx 1 root root  21 Aug 19 19:44 /etc/os-release -> ../usr/lib/os-release
+```
+
+```
+*cr173@vcm-26406:~$ cat /etc/*-release
+DISTRIB_ID=Ubuntu
+DISTRIB_RELEASE=18.04
+DISTRIB_CODENAME=bionic
+DISTRIB_DESCRIPTION="Ubuntu 18.04.1 LTS"
+NAME="Ubuntu"
+VERSION="18.04.1 LTS (Bionic Beaver)"
+ID=ubuntu
+ID_LIKE=debian
+PRETTY_NAME="Ubuntu 18.04.1 LTS"
+VERSION_ID="18.04"
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+VERSION_CODENAME=bionic
+UBUNTU_CODENAME=bionic
+```
+] ]
+
+.pull-right[ .fedora[
+```
+*cr173@algebra2 [~]$ ls -l /etc/*-release
+lrwxrwxrwx 1 root root 25 Nov 25 02:36 /etc/fedora-release -> ../usr/lib/fedora-release
+lrwxrwxrwx 1 root root 21 Nov 25 02:36 /etc/os-release -> ../usr/lib/os-release
+lrwxrwxrwx 1 root root 14 Nov 25 02:36 /etc/redhat-release -> fedora-release
+lrwxrwxrwx 1 root root 14 Nov 25 02:36 /etc/system-release -> fedora-release
+```
+
+```
+*cr173@algebra2 [~]$ cat /etc/os-release
+NAME="Fedora Linux"
+VERSION="35 (MATE-Compiz)"
+ID=fedora
+VERSION_ID=35
+VERSION_CODENAME=""
+PLATFORM_ID="platform:f35"
+PRETTY_NAME="Fedora Linux 35 (MATE-Compiz)"
+ANSI_COLOR="0;38;2;60;110;180"
+LOGO=fedora-logo-icon
+CPE_NAME="cpe:/o:fedoraproject:fedora:35"
+HOME_URL="https://fedoraproject.org/"
+DOCUMENTATION_URL="https://docs.fedoraproject.org/en-US/fedora/f35/system-administrators-guide/"
+SUPPORT_URL="https://ask.fedoraproject.org/"
+BUG_REPORT_URL="https://bugzilla.redhat.com/"
+REDHAT_BUGZILLA_PRODUCT="Fedora"
+REDHAT_BUGZILLA_PRODUCT_VERSION=35
+REDHAT_SUPPORT_PRODUCT="Fedora"
+REDHAT_SUPPORT_PRODUCT_VERSION=35
+PRIVACY_POLICY_URL="https://fedoraproject.org/wiki/Legal:PrivacyPolicy"
+VARIANT="MATE-Compiz"
+VARIANT_ID=matecompiz
+```
+]
+] ]
+
+---
+background-image: url(imgs/Lec25/unixpermissions.png)
+background-size: contain
+background-position: center
+background-repeat: no-repeat
+
+---
+class: middle center
+count: false
+
+# System Details
+
+---
+
+## Filesystem Hierarchy Standard - `/`
+
+.footnote[https://en.wikipedia.org/wiki/Filesystem_Hierarchy_Standard]
+
+.tiny[ .pull-left[
+
+.ubuntu[ 
+```
+cr173@vcm-26406:~$ tree -d -L 1 /
+/
+├── bin
+├── boot
+├── dev
+*├── etc
+├── home
+*├── lib
+*├── lib64
+├── media
+├── mnt
+├── opt
+├── proc
+├── root
+├── run
+├── sbin
+├── srv
+├── sys
+├── tmp
+*├── usr
+*└── var
+```
+] ]
+
+.pull-right[ .fedora[ 
+```
+cr173@algebra2 [~]$ tree -d -L 1 /
+/
+├── bibtex
+├── bin -> usr/bin
+├── boot
+├── custom-bib
+├── data
+├── dev
+├── doc
+├── dvips
+*├── etc
+├── fonts
+├── geometry
+├── home
+*├── lib -> usr/lib
+*├── lib64 -> usr/lib64
+├── lost+found
+├── media
+├── mnt
+├── opt
+├── pdftex
+├── proc
+├── proj
+├── root
+├── run
+├── sbin -> usr/sbin
+├── source
+├── srv
+├── sys
+├── tex
+├── tmp
+*├── usr
+*├── var
+├── web
+└── xdvi
+```
+] ]
+]
+
+
+---
+
+## Secondary, Tertiarty, etc.
+
+
+.small[ 
+
+.pull-left[ .fedora[
+```
+*cr173@algebra2 [~]$ tree -d -L 1 /usr
+/usr
+├── bin
+├── etc
+├── games
+├── include
+├── lib
+├── lib64
+├── libexec
+├── local
+├── sbin
+├── share
+├── src
+└── tmp -> ../var/tmp
+```
+] ]
+
+.pull-right[ .fedora[
+```
+*cr173@algebra2 [~]$ tree -d -L 1 /usr/local
+/usr/local
+├── bin
+├── etc
+├── games
+├── include
+├── lib
+├── lib64
+├── libexec
+├── sbin
+├── share
+└── src
+```
+] ]
+]
+
+
+
+---
+class: middle center
+
+# Installing packages with `apt`
+
+---
+
+## Update the package list
+
+.small[ .ubuntu[
+```
+*cr173@vcm-26406:~$ apt update
+Reading package lists... Done
+E: Could not open lock file /var/lib/apt/lists/lock - open (13: Permission denied)
+E: Unable to lock directory /var/lib/apt/lists/
+W: Problem unlinking the file /var/cache/apt/pkgcache.bin - RemoveCaches (13: Permission denied)
+W: Problem unlinking the file /var/cache/apt/srcpkgcache.bin - RemoveCaches (13: Permission denied)```
+] ]
+
+--
+
+<br/>
+
+.center[
+![](https://imgs.xkcd.com/comics/sandwich.png) <br/>
+[xkcd 149 - Sandwich](https://xkcd.com/149/)
+]
+
+---
+
+## Update the package list
+
+.small[ .ubuntu[
+```
+*cr173@vcm-26406:~$ sudo apt update
+Hit:1 http://archive.linux.duke.edu/ubuntu focal InRelease
+Get:2 http://archive.linux.duke.edu/ubuntu focal-updates InRelease [114 kB]
+Hit:3 https://falcon-dl.oit.duke.edu/ubuntu focal InRelease
+Get:4 http://archive.linux.duke.edu/ubuntu focal-backports InRelease [108 kB]
+Get:5 http://archive.linux.duke.edu/ubuntu focal-security InRelease [114 kB]
+Get:6 http://archive.linux.duke.edu/ubuntu focal-updates/main amd64 Packages [1,711 kB]
+Get:7 http://archive.linux.duke.edu/ubuntu focal-updates/main i386 Packages [628 kB]
+Get:8 http://archive.linux.duke.edu/ubuntu focal-updates/main Translation-en [320 kB]
+Get:9 http://archive.linux.duke.edu/ubuntu focal-updates/restricted amd64 Packages [917 kB]
+Get:10 http://archive.linux.duke.edu/ubuntu focal-updates/restricted Translation-en [131 kB]
+Get:11 http://archive.linux.duke.edu/ubuntu focal-updates/universe amd64 Packages [916 kB]
+Get:12 http://archive.linux.duke.edu/ubuntu focal-updates/universe i386 Packages [676 kB]
+Get:13 http://archive.linux.duke.edu/ubuntu focal-updates/universe Translation-en [204 kB]
+Get:14 http://archive.linux.duke.edu/ubuntu focal-updates/universe amd64 c-n-f Metadata [20.4 kB]
+Get:15 http://archive.linux.duke.edu/ubuntu focal-security/main i386 Packages [416 kB]
+Get:16 http://archive.linux.duke.edu/ubuntu focal-security/main amd64 Packages [1,383 kB]
+Get:17 http://archive.linux.duke.edu/ubuntu focal-security/main Translation-en [239 kB]
+Get:18 http://archive.linux.duke.edu/ubuntu focal-security/restricted amd64 Packages [859 kB]
+Get:19 http://archive.linux.duke.edu/ubuntu focal-security/restricted Translation-en [122 kB]
+Get:20 http://archive.linux.duke.edu/ubuntu focal-security/universe i386 Packages [547 kB]
+Get:21 http://archive.linux.duke.edu/ubuntu focal-security/universe amd64 Packages [696 kB]
+Get:22 http://archive.linux.duke.edu/ubuntu focal-security/universe Translation-en [122 kB]
+Get:23 http://archive.linux.duke.edu/ubuntu focal-security/universe amd64 c-n-f Metadata [14.1 kB]
+Fetched 10.3 MB in 3s (4,100 kB/s)
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+1 package can be upgraded. Run 'apt list --upgradable' to see it.
+```
+] ]
+
+
+---
+
+## Installing R
+
+.tiny[ .ubuntu[
+```
+*cr173@vcm-26406:~$ sudo apt install r-base
+[sudo] password for cr173:
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+The following additional packages will be installed:
+  build-essential bzip2-doc cpp cpp-9 dpkg-dev fakeroot fontconfig fontconfig-config fonts-dejavu-core g++ g++-9 gcc gcc-9 gcc-9-base gfortran gfortran-9 icu-devtools
+  libalgorithm-diff-perl libalgorithm-diff-xs-perl libalgorithm-merge-perl libasan5 libatomic1 libauthen-sasl-perl libblas-dev libblas3 libbz2-dev libcairo2 libcc1-0
+  libdata-dump-perl libdatrie1 libdpkg-perl libdrm-amdgpu1 libdrm-intel1 libdrm-nouveau2 libdrm-radeon1 libencode-locale-perl libfakeroot libfile-basedir-perl
+  libfile-desktopentry-perl libfile-fcntllock-perl libfile-listing-perl libfile-mimeinfo-perl libfont-afm-perl libfontconfig1 libfontenc1 libgcc-9-dev libgfortran-9-dev
+  libgfortran5 libgl1 libgl1-mesa-dri libglapi-mesa libglvnd0 libglx-mesa0 libglx0 libgomp1 libgraphite2-3 libharfbuzz0b libhtml-form-perl libhtml-format-perl
+  libhtml-parser-perl libhtml-tagset-perl libhtml-tree-perl libhttp-cookies-perl libhttp-daemon-perl libhttp-date-perl libhttp-message-perl libhttp-negotiate-perl libice6
+  libicu-dev libio-html-perl libio-socket-ssl-perl libio-stringy-perl libipc-system-simple-perl libisl22 libitm1 libjbig0 libjpeg-dev libjpeg-turbo8 libjpeg-turbo8-dev libjpeg8
+  libjpeg8-dev liblapack-dev liblapack3 libllvm12 liblsan0 liblwp-mediatypes-perl liblwp-protocol-https-perl liblzma-dev libmailtools-perl libmpc3 libmpfr6 libncurses-dev
+  libncurses5-dev libnet-dbus-perl libnet-http-perl libnet-smtp-ssl-perl libnet-ssleay-perl libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 libpaper-utils libpaper1
+  libpciaccess0 libpcre16-3 libpcre2-16-0 libpcre2-32-0 libpcre2-dev libpcre2-posix2 libpcre3-dev libpcre32-3 libpcrecpp0v5 libpixman-1-0 libpng-dev libpng-tools libquadmath0
+  libreadline-dev libsensors-config libsensors5 libsm6 libstdc++-9-dev libtcl8.6 libthai-data libthai0 libtie-ixhash-perl libtiff5 libtimedate-perl libtk8.6 libtry-tiny-perl
+  libtsan0 libubsan1 liburi-perl libvulkan1 libwayland-client0 libwebp6 libwww-perl libwww-robotrules-perl libx11-protocol-perl libx11-xcb1 libxaw7 libxcb-dri2-0 libxcb-dri3-0
+  libxcb-glx0 libxcb-present0 libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcomposite1 libxcursor1 libxfixes3 libxft2 libxi6
+  libxinerama1 libxkbfile1 libxml-parser-perl libxml-twig-perl libxml-xpathengine-perl libxmu6 libxpm4 libxrandr2 libxrender1 libxshmfence1 libxss1 libxt6 libxtst6 libxv1
+  libxxf86dga1 libxxf86vm1 make mesa-vulkan-drivers perl-openssl-defaults pkg-config r-base-core r-base-dev r-base-html r-cran-boot r-cran-class r-cran-cluster r-cran-codetools
+  r-cran-foreign r-cran-kernsmooth r-cran-lattice r-cran-mass r-cran-matrix r-cran-mgcv r-cran-nlme r-cran-nnet r-cran-rpart r-cran-spatial r-cran-survival r-doc-html
+  r-recommended unzip x11-common x11-utils x11-xserver-utils xdg-utils zip zlib1g-dev
+Suggested packages:
+  cpp-doc gcc-9-locales debian-keyring g++-multilib g++-9-multilib gcc-9-doc gcc-multilib autoconf automake libtool flex bison gdb gcc-doc gcc-9-multilib gfortran-multilib
+  gfortran-doc gfortran-9-multilib gfortran-9-doc libcoarrays-dev libdigest-hmac-perl libgssapi-perl liblapack-doc bzr icu-doc libcrypt-ssleay-perl liblzma-doc ncurses-doc
+  readline-doc lm-sensors libstdc++-9-doc tcl8.6 tk8.6 libauthen-ntlm-perl libunicode-map8-perl libunicode-string-perl xml-twig-tools make-doc elpa-ess r-doc-info | r-doc-pdf
+  r-mathlib texlive-base texlive-latex-base texlive-plain-generic texlive-fonts-recommended texlive-fonts-extra texlive-extra-utils texlive-latex-recommended texlive-latex-extra
+  texinfo mozilla | www-browser mesa-utils nickle cairo-5c xorg-docs-core
+The following NEW packages will be installed:
+  build-essential bzip2-doc cpp cpp-9 dpkg-dev fakeroot fontconfig fontconfig-config fonts-dejavu-core g++ g++-9 gcc gcc-9 gcc-9-base gfortran gfortran-9 icu-devtools
+  libalgorithm-diff-perl libalgorithm-diff-xs-perl libalgorithm-merge-perl libasan5 libatomic1 libauthen-sasl-perl libblas-dev libblas3 libbz2-dev libcairo2 libcc1-0
+  libdata-dump-perl libdatrie1 libdpkg-perl libdrm-amdgpu1 libdrm-intel1 libdrm-nouveau2 libdrm-radeon1 libencode-locale-perl libfakeroot libfile-basedir-perl
+  libfile-desktopentry-perl libfile-fcntllock-perl libfile-listing-perl libfile-mimeinfo-perl libfont-afm-perl libfontconfig1 libfontenc1 libgcc-9-dev libgfortran-9-dev
+  libgfortran5 libgl1 libgl1-mesa-dri libglapi-mesa libglvnd0 libglx-mesa0 libglx0 libgomp1 libgraphite2-3 libharfbuzz0b libhtml-form-perl libhtml-format-perl
+  libhtml-parser-perl libhtml-tagset-perl libhtml-tree-perl libhttp-cookies-perl libhttp-daemon-perl libhttp-date-perl libhttp-message-perl libhttp-negotiate-perl libice6
+  libicu-dev libio-html-perl libio-socket-ssl-perl libio-stringy-perl libipc-system-simple-perl libisl22 libitm1 libjbig0 libjpeg-dev libjpeg-turbo8 libjpeg-turbo8-dev libjpeg8
+  libjpeg8-dev liblapack-dev liblapack3 libllvm12 liblsan0 liblwp-mediatypes-perl liblwp-protocol-https-perl liblzma-dev libmailtools-perl libmpc3 libmpfr6 libncurses-dev
+  libncurses5-dev libnet-dbus-perl libnet-http-perl libnet-smtp-ssl-perl libnet-ssleay-perl libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 libpaper-utils libpaper1
+  libpciaccess0 libpcre16-3 libpcre2-16-0 libpcre2-32-0 libpcre2-dev libpcre2-posix2 libpcre3-dev libpcre32-3 libpcrecpp0v5 libpixman-1-0 libpng-dev libpng-tools libquadmath0
+  libreadline-dev libsensors-config libsensors5 libsm6 libstdc++-9-dev libtcl8.6 libthai-data libthai0 libtie-ixhash-perl libtiff5 libtimedate-perl libtk8.6 libtry-tiny-perl
+  libtsan0 libubsan1 liburi-perl libvulkan1 libwayland-client0 libwebp6 libwww-perl libwww-robotrules-perl libx11-protocol-perl libx11-xcb1 libxaw7 libxcb-dri2-0 libxcb-dri3-0
+  libxcb-glx0 libxcb-present0 libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcomposite1 libxcursor1 libxfixes3 libxft2 libxi6
+  libxinerama1 libxkbfile1 libxml-parser-perl libxml-twig-perl libxml-xpathengine-perl libxmu6 libxpm4 libxrandr2 libxrender1 libxshmfence1 libxss1 libxt6 libxtst6 libxv1
+  libxxf86dga1 libxxf86vm1 make mesa-vulkan-drivers perl-openssl-defaults pkg-config r-base r-base-core r-base-dev r-base-html r-cran-boot r-cran-class r-cran-cluster
+  r-cran-codetools r-cran-foreign r-cran-kernsmooth r-cran-lattice r-cran-mass r-cran-matrix r-cran-mgcv r-cran-nlme r-cran-nnet r-cran-rpart r-cran-spatial r-cran-survival
+  r-doc-html r-recommended unzip x11-common x11-utils x11-xserver-utils xdg-utils zip zlib1g-dev
+0 upgraded, 202 newly installed, 0 to remove and 0 not upgraded.
+Need to get 158 MB of archives.
+After this operation, 914 MB of additional disk space will be used.
+Do you want to continue? [Y/n]
+```
+]]
+
+---
+
+## Removing R
+
+.tiny[ .ubuntu[
+```
+*cr173@vcm-26406:~$ sudo apt remove r-base
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+The following packages were automatically installed and are no longer required:
+  fontconfig fontconfig-config fonts-dejavu-core gfortran gfortran-9 icu-devtools libblas-dev libblas3 libbz2-dev libcairo2 libdatrie1 libdrm-amdgpu1 libdrm-intel1
+  libdrm-nouveau2 libdrm-radeon1 libfile-basedir-perl libfile-desktopentry-perl libfile-mimeinfo-perl libfontconfig1 libfontenc1 libgfortran-9-dev libgfortran5 libgl1
+  libgl1-mesa-dri libglapi-mesa libglvnd0 libglx-mesa0 libglx0 libgraphite2-3 libharfbuzz0b libice6 libicu-dev libio-stringy-perl libipc-system-simple-perl libjbig0 libjpeg-dev
+  libjpeg-turbo8 libjpeg-turbo8-dev libjpeg8 libjpeg8-dev liblapack-dev liblapack3 libllvm12 liblzma-dev libncurses-dev libncurses5-dev libnet-dbus-perl libpango-1.0-0
+  libpangocairo-1.0-0 libpangoft2-1.0-0 libpaper-utils libpaper1 libpciaccess0 libpcre16-3 libpcre2-16-0 libpcre2-32-0 libpcre2-dev libpcre2-posix2 libpcre3-dev libpcre32-3
+  libpcrecpp0v5 libpixman-1-0 libpng-dev libpng-tools libreadline-dev libsensors-config libsensors5 libsm6 libtcl8.6 libthai-data libthai0 libtie-ixhash-perl libtiff5 libtk8.6
+  libvulkan1 libwayland-client0 libwebp6 libx11-protocol-perl libx11-xcb1 libxaw7 libxcb-dri2-0 libxcb-dri3-0 libxcb-glx0 libxcb-present0 libxcb-randr0 libxcb-render0
+  libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcomposite1 libxcursor1 libxfixes3 libxft2 libxi6 libxinerama1 libxkbfile1 libxml-parser-perl libxml-twig-perl
+  libxml-xpathengine-perl libxmu6 libxpm4 libxrandr2 libxrender1 libxshmfence1 libxss1 libxt6 libxtst6 libxv1 libxxf86dga1 libxxf86vm1 mesa-vulkan-drivers pkg-config r-base-core
+  r-base-dev r-base-html r-cran-boot r-cran-class r-cran-cluster r-cran-codetools r-cran-foreign r-cran-kernsmooth r-cran-lattice r-cran-mass r-cran-matrix r-cran-mgcv
+  r-cran-nlme r-cran-nnet r-cran-rpart r-cran-spatial r-cran-survival r-doc-html r-recommended unzip x11-common x11-utils x11-xserver-utils xdg-utils zip zlib1g-dev
+Use 'sudo apt autoremove' to remove them.
+The following packages will be REMOVED:
+  r-base
+0 upgraded, 0 newly installed, 1 to remove and 1 not upgraded.
+After this operation, 62.5 kB disk space will be freed.
+```
+] ]
+
+--
+
+.small[ and all of its dependencies, ]
+
+.tiny[ .ubuntu[
+```
+*cr173@vcm-26406:~$ sudo apt autoremove
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+The following packages will be REMOVED:
+  fontconfig fontconfig-config fonts-dejavu-core gfortran gfortran-9 icu-devtools libblas-dev libblas3 libbz2-dev libcairo2 libdatrie1 libdrm-amdgpu1 libdrm-intel1
+  libdrm-nouveau2 libdrm-radeon1 libfile-basedir-perl libfile-desktopentry-perl libfile-mimeinfo-perl libfontconfig1 libfontenc1 libgfortran-9-dev libgfortran5 libgl1
+  libgl1-mesa-dri libglapi-mesa libglvnd0 libglx-mesa0 libglx0 libgraphite2-3 libharfbuzz0b libice6 libicu-dev libio-stringy-perl libipc-system-simple-perl libjbig0 libjpeg-dev
+  libjpeg-turbo8 libjpeg-turbo8-dev libjpeg8 libjpeg8-dev liblapack-dev liblapack3 libllvm12 liblzma-dev libncurses-dev libncurses5-dev libnet-dbus-perl libpango-1.0-0
+  libpangocairo-1.0-0 libpangoft2-1.0-0 libpaper-utils libpaper1 libpciaccess0 libpcre16-3 libpcre2-16-0 libpcre2-32-0 libpcre2-dev libpcre2-posix2 libpcre3-dev libpcre32-3
+  libpcrecpp0v5 libpixman-1-0 libpng-dev libpng-tools libreadline-dev libsensors-config libsensors5 libsm6 libtcl8.6 libthai-data libthai0 libtie-ixhash-perl libtiff5 libtk8.6
+  libvulkan1 libwayland-client0 libwebp6 libx11-protocol-perl libx11-xcb1 libxaw7 libxcb-dri2-0 libxcb-dri3-0 libxcb-glx0 libxcb-present0 libxcb-randr0 libxcb-render0
+  libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcomposite1 libxcursor1 libxfixes3 libxft2 libxi6 libxinerama1 libxkbfile1 libxml-parser-perl libxml-twig-perl
+  libxml-xpathengine-perl libxmu6 libxpm4 libxrandr2 libxrender1 libxshmfence1 libxss1 libxt6 libxtst6 libxv1 libxxf86dga1 libxxf86vm1 mesa-vulkan-drivers pkg-config r-base-core
+  r-base-dev r-base-html r-cran-boot r-cran-class r-cran-cluster r-cran-codetools r-cran-foreign r-cran-kernsmooth r-cran-lattice r-cran-mass r-cran-matrix r-cran-mgcv
+  r-cran-nlme r-cran-nnet r-cran-rpart r-cran-spatial r-cran-survival r-doc-html r-recommended unzip x11-common x11-utils x11-xserver-utils xdg-utils zip zlib1g-dev
+0 upgraded, 0 newly installed, 140 to remove and 1 not upgraded.
+After this operation, 749 MB disk space will be freed.
+Do you want to continue? [Y/n]
+```
+] ]
+
+---
+
+## Updating & Upgrading
+
+.tiny[ .ubuntu[
+```
+*cr173@vcm-26406:~$ sudo apt update
+Hit:1 http://archive.linux.duke.edu/ubuntu focal InRelease
+Hit:2 http://archive.linux.duke.edu/ubuntu focal-updates InRelease
+Hit:3 http://archive.linux.duke.edu/ubuntu focal-backports InRelease
+Hit:4 http://archive.linux.duke.edu/ubuntu focal-security InRelease
+Hit:5 https://falcon-dl.oit.duke.edu/ubuntu focal InRelease
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+1 package can be upgraded. Run 'apt list --upgradable' to see it.
+```
+] ] 
+
+--
+
+<br/>
+
+.tiny[ .ubuntu[
+```
+*cr173@vcm-26406:~$ sudo apt upgrade
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+Calculating upgrade... Done
+The following packages will be upgraded:
+  libfribidi0
+1 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+1 standard security update
+Need to get 24.2 kB of archives.
+After this operation, 0 B of additional disk space will be used.
+Do you want to continue? [Y/n]
+```
+] ]
+
+---
+
+## Aside - Conflicts
+
+.small[ .ubuntu[
+```
+...
+
+update-initramfs: deferring update (trigger activated)
+amd64-microcode: microcode will be updated at next boot
+Setting up intel-microcode (3.20180807a.0ubuntu0.18.04.1) ...
+update-initramfs: deferring update (trigger activated)
+intel-microcode: microcode will be updated at next boot
+Setting up kmod (24-1ubuntu3.1) ...
+
+*Configuration file '/etc/modprobe.d/blacklist.conf'
+* ==> Modified (by you or by a script) since installation.
+* ==> Package distributor has shipped an updated version.
+*   What would you like to do about it ?  Your options are:
+*    Y or I  : install the package maintainer's version
+*    N or O  : keep your currently-installed version
+*      D     : show the differences between the versions
+*      Z     : start a shell to examine the situation
+* The default action is to keep your current version.
+**** blacklist.conf (Y/I/N/O/D/Z) [default=N] ?
+Setting up initramfs-tools-core (0.130ubuntu3.6) ...
+Setting up linux-headers-4.15.0-43-generic (4.15.0-43.46) ...
+Setting up initramfs-tools (0.130ubuntu3.6) ...
+
+...
+```
+] ]
+
+---
+
+## Package Contents & Details
+
+
+.small[ .ubuntu[
+```
+*cr173@vcm-26406:~$ apt show r-base
+Package: r-base
+Version: 3.6.3-2
+Priority: optional
+Section: universe/math
+Origin: Ubuntu
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+Original-Maintainer: Dirk Eddelbuettel <edd@debian.org>
+Bugs: https://bugs.launchpad.net/ubuntu/+filebug
+Installed-Size: 62.5 kB
+Depends: r-base-core (>= 3.6.3-2), r-recommended (= 3.6.3-2)
+Recommends: r-base-html, r-doc-html
+Suggests: elpa-ess, r-doc-info | r-doc-pdf
+Homepage: http://www.r-project.org/
+Download-Size: 9,308 B
+APT-Manual-Installed: yes
+APT-Sources: http://archive.linux.duke.edu/ubuntu focal/universe amd64 Packages
+Description: GNU R statistical computation and graphics system
+ R is a system for statistical computation and graphics.  It consists
+ of a language plus a run-time environment with graphics, a debugger,
+ access to certain system functions, and the ability to run programs
+ stored in script files.
+...
+```
+] ]
+
+--
+
+.small[ .ubuntu[
+```
+*cr173@vcm-26406:~$ dpkg -L r-base
+/.
+/usr
+/usr/share
+/usr/share/doc
+/usr/share/doc/r-base
+/usr/share/doc/r-base/README.Debian
+/usr/share/doc/r-base/copyright
+/usr/share/doc/r-base/changelog.Debian.gz
+```
+] ]
+
+
+---
+
+## File -> Package
+
+.small[ .ubuntu[
+
+```
+*cr173@vcm-26406:~$ dpkg -S /usr/bin/R
+r-base-core: /usr/bin/R
+```
+] ]
+
+--
+
+.small[ .ubuntu[
+```
+*cr173@vcm-26406:~$ dpkg -L r-base-core
+/.
+/etc
+/etc/R
+/etc/R/Makeconf
+/etc/R/Renviron.site
+/etc/R/Rprofile.site
+/etc/R/ldpaths
+/etc/R/repositories
+/etc/ld.so.conf.d
+/usr
+/usr/bin
+/usr/bin/R
+/usr/bin/Rscript
+/usr/lib
+/usr/lib/R
+/usr/lib/R/SVN-REVISION
+/usr/lib/R/bin
+/usr/lib/R/bin/BATCH
+/usr/lib/R/bin/COMPILE
+/usr/lib/R/bin/INSTALL
+/usr/lib/R/bin/LINK
+/usr/lib/R/bin/R
+/usr/lib/R/bin/REMOVE
+/usr/lib/R/bin/Rcmd
+/usr/lib/R/bin/Rd2pdf
+/usr/lib/R/bin/Rdconv
+/usr/lib/R/bin/Rdiff
+...
+```
+] ]
+
+
+---
+
+## Package Manager Comparison
+
+.small[ 
+
+|                       | Ubuntu / Debian                        | RHEL                  | Fedora                                | Requires root  |
+|:----------------------|:---------------------------------------|:----------------------|:--------------------------------------|:--------------:|
+| Install Package       | `apt install`                          | `yum install`         | `dnf install`                         | Yes            |
+| Install Local Package | `dpkg -i pkg.deb`                      | `yum install pkg.rpm` | `dnf install pkg.rpm`                 | Yes            |
+| Remove Package        | `apt remove`                           | `yum remove`          | `dnf remove`                          | Yes            |
+| Update Package List   | `apt update`                           | `yum check-update`    | `dnf check-update`                    | Yes            |
+| Upgrade Packages      | `apt upgrade` <br/> `apt full-upgrade` | `yum upgrade`         | `dnf upgrade`                         | Yes            |
+| Clean Dependencies    | `apt autoremove`                       | `yum autoremove`      | `dnf autoremove`                      | Yes            |
+| Reinstall Package     | `apt install --reinstall`              | `yum reinstall`       | `dnf reinstall`                       | Yes            |
+| Package Details       | `apt show`                             | `yum info`            | `dnf info`                            | No             |
+| Package Dependencies  | `apt show`                             | `yum deplist`         | `dnf repoquery` <br/> `--requires`    | No             |
+| Package -> Files      | `dpkg -L`                              | `rpm -qf`             | `rpm -qf`                             | No             |
+| Files -> Package      | `dpkg -S`                              | `rpm -ql`             | `rpm -ql` or <br/> `dnf repoquery -l` | No             |
+
+]
+
+---
+
+## Upgrading R
+
+The R project maintains separate package repositories with the latest version of R - see distribution specific instructions here: https://cran.r-project.org/bin/linux/
+
+.small[ .ubuntu[
+```
+sudo apt update -qq
+sudo apt install --no-install-recommends -y software-properties-common dirmngr
+wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | sudo tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
+sudo add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
+```
+] ]
+
+--
+
+.small[ .ubuntu[
+```
+*cr173@vcm-26406:~$ cat /etc/apt/sources.list
+
+...
+deb https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/
+# deb-src https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/
+```
+] ]
+
+--
+
+.small[ .ubuntu[
+```
+*cr173@vcm-26406:~$ sudo apt update
+Hit:1 http://archive.linux.duke.edu/ubuntu focal InRelease
+Get:2 http://archive.linux.duke.edu/ubuntu focal-updates InRelease [114 kB]
+Hit:3 http://archive.linux.duke.edu/ubuntu focal-backports InRelease
+Get:4 http://archive.linux.duke.edu/ubuntu focal-security InRelease [114 kB]
+Hit:5 https://falcon-dl.oit.duke.edu/ubuntu focal InRelease
+Hit:6 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ InRelease
+Get:7 http://archive.linux.duke.edu/ubuntu focal-updates/main amd64 Packages [1,711 kB]
+Get:8 http://archive.linux.duke.edu/ubuntu focal-updates/universe amd64 Packages [916 kB]
+Fetched 2,854 kB in 1s (2,551 kB/s)
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+22 packages can be upgraded. Run 'apt list --upgradable' to see them.
+```
+] ]
+
+---
+
+.small[ .ubuntu[
+```
+*cr173@vcm-26406:~$ sudo apt upgrade
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+Calculating upgrade... Done
+The following packages will be upgraded:
+  libfribidi0 r-base r-base-core r-base-dev r-base-html r-cran-boot r-cran-class r-cran-cluster r-cran-codetools r-cran-foreign r-cran-kernsmooth r-cran-lattice r-cran-mass
+  r-cran-matrix r-cran-mgcv r-cran-nlme r-cran-nnet r-cran-rpart r-cran-spatial r-cran-survival r-doc-html r-recommended
+22 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+1 standard security update
+Need to get 47.9 MB of archives.
+After this operation, 3,829 kB of additional disk space will be used.
+Do you want to continue? [Y/n] y
+Get:1 http://archive.linux.duke.edu/ubuntu focal-updates/main amd64 libfribidi0 amd64 1.0.8-2ubuntu0.1 [24.2 kB]
+Get:2 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-lattice 0.20-45-1.2004.0 [1,134 kB]
+Get:3 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-matrix 1.4-1-1.2004.0 [4,303 kB]
+Get:4 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-survival 3.2-13-1cran1.2004.0 [6,614 kB]
+Get:5 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-spatial 7.3-11-2focal0 [127 kB]
+Get:6 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-rpart 4.1.16-1.2004.0 [910 kB]
+Get:7 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-nnet 7.3-17-1.2004.0 [112 kB]
+Get:8 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-nlme 3.1.157-1.2004.0 [2,250 kB]
+Get:9 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-mgcv 1.8-40-1cran1.2004.0 [3,021 kB]
+Get:10 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-mass 7.3-56-1.2004.0 [1,117 kB]
+Get:11 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-kernsmooth 2.23-20-1cran1.2004.0 [89.7 kB]
+Get:12 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-foreign 0.8.82-1.2004.0 [238 kB]
+Get:13 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-codetools 0.2-18-1cran1.2004.0 [90.0 kB]
+Get:14 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-cluster 2.1.3-1.2004.0 [543 kB]
+Get:15 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-class 7.3-20-1.2004.0 [87.8 kB]
+Get:16 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-cran-boot 1.3-28-1cran1.2004.0 [619 kB]
+*Get:17 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-base-core 4.1.3-1.2004.0 [25.9 MB]
+*Get:18 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-base 4.1.3-1.2004.0 [44.6 kB]
+Get:19 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-recommended 4.1.3-1.2004.0 [2,780 B]
+Get:20 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-base-dev 4.1.3-1.2004.0 [4,484 B]
+Get:21 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-base-html 4.1.3-1.2004.0 [91.8 kB]
+Get:22 https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/ r-doc-html 4.1.3-1.2004.0 [582 kB]
+...
+```
+] ]
+
+---
+class: middle, center
+
+# System dependencies
+
+---
+
+.small[
+
+.ubuntu[
+```
+cr173@vcm-26406:~$ R
+
+R version 4.1.3 (2022-03-10) -- "One Push-Up"
+Copyright (C) 2022 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+...
+
+> install.packages("curl")
+  Installing package into ‘/usr/local/lib/R/site-library’
+  (as ‘lib’ is unspecified)
+  trying URL 'https://cloud.r-project.org/src/contrib/curl_4.3.2.tar.gz'
+  Content type 'application/x-gzip' length 793345 bytes (774 KB)
+  ==================================================
+  downloaded 774 KB
+  
+  * installing *source* package ‘curl’ ...
+  ** package ‘curl’ successfully unpacked and MD5 sums checked
+  ** using staged installation
+  Package libcurl was not found in the pkg-config search path.
+  Perhaps you should add the directory containing `libcurl.pc'
+  to the PKG_CONFIG_PATH environment variable
+  No package 'libcurl' found
+  Package libcurl was not found in the pkg-config search path.
+  Perhaps you should add the directory containing `libcurl.pc'
+  to the PKG_CONFIG_PATH environment variable
+  No package 'libcurl' found
+  Using PKG_CFLAGS=
+  Using PKG_LIBS=-lcurl
+* ------------------------- ANTICONF ERROR ---------------------------
+* Configuration failed because libcurl was not found. Try installing:
+*  * deb: libcurl4-openssl-dev (Debian, Ubuntu, etc)
+*  * rpm: libcurl-devel (Fedora, CentOS, RHEL)
+*  * csw: libcurl_dev (Solaris)
+* If libcurl is already installed, check that 'pkg-config' is in your
+* PATH and PKG_CONFIG_PATH contains a libcurl.pc file. If pkg-config
+* is unavailable you can set INCLUDE_DIR and LIB_DIR manually via:
+* R CMD INSTALL --configure-vars='INCLUDE_DIR=... LIB_DIR=...'
+* --------------------------------------------------------------------
+  ERROR: configuration failed for package ‘curl’
+  * removing ‘/home/cr173/R/x86_64-pc-linux-gnu-library/4.1/curl’
+
+```
+] ]
+
+
+---
+
+## Installing libcurl4-openssl-dev
+
+.small[ .ubuntu[
+```
+*cr173@vcm-26406:~$ sudo apt install libcurl4-openssl-dev
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+Suggested packages:
+  libcurl4-doc libidn11-dev libkrb5-dev libldap2-dev librtmp-dev libssh2-1-dev libssl-dev
+The following NEW packages will be installed:
+  libcurl4-openssl-dev
+0 upgraded, 1 newly installed, 0 to remove and 0 not upgraded.
+Need to get 321 kB of archives.
+After this operation, 1,541 kB of additional disk space will be used.
+Get:1 http://archive.linux.duke.edu/ubuntu focal-updates/main amd64 libcurl4-openssl-dev amd64 7.68.0-1ubuntu2.7 [321 kB]
+Fetched 321 kB in 0s (2,051 kB/s)
+Selecting previously unselected package libcurl4-openssl-dev:amd64.
+(Reading database ... 126123 files and directories currently installed.)
+Preparing to unpack .../libcurl4-openssl-dev_7.68.0-1ubuntu2.7_amd64.deb ...
+Unpacking libcurl4-openssl-dev:amd64 (7.68.0-1ubuntu2.7) ...
+Setting up libcurl4-openssl-dev:amd64 (7.68.0-1ubuntu2.7) ...
+Processing triggers for man-db (2.9.1-1) ...
+```
+] ]
+
+---
+
+.tiny[ .ubuntu[
+```
+cr173@vcm-26406:~$ R
+...
+> install.packages("curl")
+ Installing package into ‘/home/cr173/R/x86_64-pc-linux-gnu-library/4.1’
+ (as ‘lib’ is unspecified)
+ trying URL 'https://cloud.r-project.org/src/contrib/curl_4.3.2.tar.gz'
+ Content type 'application/x-gzip' length 793345 bytes (774 KB)
+ ==================================================
+ downloaded 774 KB
+ 
+ * installing *source* package ‘curl’ ...
+ ** package ‘curl’ successfully unpacked and MD5 sums checked
+ ** using staged installation
+ Found pkg-config cflags and libs!
+ Using PKG_CFLAGS=-I/usr/include/x86_64-linux-gnu
+ Using PKG_LIBS=-lcurl
+ ** libs
+ rm -f curl.so callbacks.o curl.o download.o escape.o fetch.o form.o getdate.o handle.o ieproxy.o init.o interrupt.o multi.o nslookup.o reflist.o split.o ssl.o typechecking.o utils.o version.o winidn.o writer.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c callbacks.c -o callbacks.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c curl.c -o curl.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c download.c -o download.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c escape.c -o escape.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c fetch.c -o fetch.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c form.c -o form.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c getdate.c -o getdate.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c handle.c -o handle.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c ieproxy.c -o ieproxy.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c init.c -o init.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c interrupt.c -o interrupt.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c multi.c -o multi.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c nslookup.c -o nslookup.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c reflist.c -o reflist.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c split.c -o split.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c ssl.c -o ssl.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c typechecking.c -o typechecking.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c utils.c -o utils.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c version.c -o version.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c winidn.c -o winidn.o
+ gcc -I"/usr/share/R/include" -DNDEBUG -I/usr/include/x86_64-linux-gnu -DSTRICT_R_HEADERS    -fvisibility=hidden -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-lENDSu/r-base-4.1.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -g  -c writer.c -o writer.o
+ gcc -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -Wl,-z,relro -o curl.so callbacks.o curl.o download.o escape.o fetch.o form.o getdate.o handle.o ieproxy.o init.o interrupt.o multi.o nslookup.o reflist.o split.o ssl.o typechecking.o utils.o version.o winidn.o writer.o -lcurl -L/usr/lib/R/lib -lR
+ installing to /home/cr173/R/x86_64-pc-linux-gnu-library/4.1/00LOCK-curl/00new/curl/libs
+ ** R
+ ** inst
+ ** byte-compile and prepare package for lazy loading
+ ** help
+ *** installing help indices
+ ** building package indices
+ ** installing vignettes
+ ** testing if installed package can be loaded from temporary location
+ ** checking absolute paths in shared objects and dynamic libraries
+ ** testing if installed package can be loaded from final location
+ ** testing if installed package keeps a record of temporary installation path
+ * DONE (curl)
+```
+] ]
+
+---
+
+## What is `libcurl4-openssl-dev`?
+
+.tiny[ .ubuntu[ 
+```
+*cr173@vcm-26406:~$ apt show libcurl4-openssl-dev
+Package: libcurl4-openssl-dev
+Version: 7.68.0-1ubuntu2.7
+Priority: optional
+Section: libdevel
+Source: curl
+Origin: Ubuntu
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+Original-Maintainer: Alessandro Ghedini <ghedo@debian.org>
+Bugs: https://bugs.launchpad.net/ubuntu/+filebug
+Installed-Size: 1,541 kB
+Provides: libcurl-dev, libcurl-ssl-dev, libcurl3-dev, libcurl3-openssl-dev, libcurl4-dev
+Depends: libcurl4 (= 7.68.0-1ubuntu2.7)
+Suggests: libcurl4-doc, libidn11-dev, libkrb5-dev, libldap2-dev, librtmp-dev, libssh2-1-dev, libssl-dev (>= 1.1), pkg-config, zlib1g-dev
+Conflicts: libcurl4-gnutls-dev, libcurl4-nss-dev, libssl-dev (<< 1.1), libssl1.0-dev
+Homepage: http://curl.haxx.se
+Download-Size: 321 kB
+APT-Manual-Installed: yes
+APT-Sources: http://archive.linux.duke.edu/ubuntu focal-updates/main amd64 Packages
+*Description: development files and documentation for libcurl (OpenSSL flavour)
+* libcurl is an easy-to-use client-side URL transfer library, supporting DICT,
+* FILE, FTP, FTPS, GOPHER, HTTP, HTTPS, IMAP, IMAPS, LDAP, LDAPS, POP3, POP3S,
+* RTMP, RTSP, SCP, SFTP, SMTP, SMTPS, TELNET and TFTP.
+ .
+ libcurl supports SSL certificates, HTTP POST, HTTP PUT, FTP uploading, HTTP
+ form based upload, proxies, cookies, user+password authentication (Basic,
+ Digest, NTLM, Negotiate, Kerberos), file transfer resume, http proxy tunneling
+ and more!
+ .
+ libcurl is free, thread-safe, IPv6 compatible, feature rich, well supported,
+ fast, thoroughly documented and is already used by many known, big and
+ successful companies and numerous applications.
+ .
+ This package provides the development files (ie. includes, static library,
+ manual pages) that allow one to build software which uses libcurl.
+ .
+ SSL support is provided by OpenSSL.
+```
+] ]
+
+---
+
+## What is in `libcurl4-openssl-dev`?
+
+.tiny[ .ubuntu[
+```
+*cr173@vcm-26406:~$ dpkg -L libcurl4-openssl-dev
+/.
+/usr
+/usr/bin
+/usr/bin/curl-config
+/usr/include
+/usr/include/x86_64-linux-gnu
+/usr/include/x86_64-linux-gnu/curl
+/usr/include/x86_64-linux-gnu/curl/curl.h
+/usr/include/x86_64-linux-gnu/curl/curlver.h
+/usr/include/x86_64-linux-gnu/curl/easy.h
+/usr/include/x86_64-linux-gnu/curl/mprintf.h
+/usr/include/x86_64-linux-gnu/curl/multi.h
+/usr/include/x86_64-linux-gnu/curl/stdcheaders.h
+/usr/include/x86_64-linux-gnu/curl/system.h
+/usr/include/x86_64-linux-gnu/curl/typecheck-gcc.h
+/usr/include/x86_64-linux-gnu/curl/urlapi.h
+/usr/lib
+/usr/lib/x86_64-linux-gnu
+/usr/lib/x86_64-linux-gnu/libcurl.a
+/usr/lib/x86_64-linux-gnu/libcurl.la
+/usr/lib/x86_64-linux-gnu/pkgconfig
+/usr/lib/x86_64-linux-gnu/pkgconfig/libcurl.pc
+/usr/share
+/usr/share/aclocal
+/usr/share/aclocal/libcurl.m4
+/usr/share/doc
+/usr/share/doc/libcurl4-openssl-dev
+/usr/share/doc/libcurl4-openssl-dev/copyright
+/usr/share/man
+/usr/share/man/man1
+/usr/share/man/man1/curl-config.1.gz
+/usr/lib/x86_64-linux-gnu/libcurl.so
+/usr/share/doc/libcurl4-openssl-dev/NEWS.Debian.gz
+/usr/share/doc/libcurl4-openssl-dev/changelog.Debian.gz
+```
+] ]
+
+---
+
+## Lets try `sf`
+
+.tiny[ .ubuntu[
+```
+*cr173@vcm-26406:~$ R
+...
+ > install.packages("sf")
+ Installing package into ‘/home/cr173/R/x86_64-pc-linux-gnu-library/4.1’
+ (as ‘lib’ is unspecified)
+ trying URL 'https://cloud.r-project.org/src/contrib/sf_1.0-7.tar.gz'
+ Content type 'application/x-gzip' length 3529597 bytes (3.4 MB)
+ ==================================================
+ downloaded 3.4 MB
+ 
+ * installing *source* package ‘sf’ ...
+ ** package ‘sf’ successfully unpacked and MD5 sums checked
+ ** using staged installation
+ configure: CC: gcc
+ configure: CXX: g++ -std=gnu++11
+ checking for gdal-config... no
+ no
+ configure: error: gdal-config not found or not executable.
+ ERROR: configuration failed for package ‘sf’
+ * removing ‘/home/cr173/R/x86_64-pc-linux-gnu-library/4.1/sf’
+ 
+ The downloaded source packages are in
+ 	‘/tmp/RtmpAt7DId/downloaded_packages’
+ Warning message:
+ In install.packages("sf") :
+   installation of package ‘sf’ had non-zero exit status
+```
+] ]
+
+--
+
+<br/>
+
+.center[.large[What next?]]
+
+.footnote[https://packagemanager.rstudio.com/]
+
+---
+class: middle center
+
+# A bit about libraries
+
+---
+
+## System libraries
+
+These are shared common components that are used by a variety of software on a linux system. For the most part they are a collection of compiled code (typically C / C++) that are stored in a single file.
+
+* Allows for code reuse
+
+* Allows for multiple (concurrent) versions
+
+* Avoids reinventing the wheel
+
+* Installed in `/lib`, `/usr/lib`, `/usr/local/lib`, etc.
+
+* Two flavors: static (`.a`) and dynamic (`.so`)
+
+---
+
+## `libcurl`
+
+.small[ 
+.ubuntu[
+```
+cr173@vcm-26406:~$ ls -la /usr/lib/x86_64-linux-gnu/libcurl*
+-rw-r--r-- 1 root root 1057632 Oct 29 08:10 /usr/lib/x86_64-linux-gnu/libcurl.a
+lrwxrwxrwx 1 root root      19 Oct 29 08:10 /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.3 -> libcurl-gnutls.so.4
+lrwxrwxrwx 1 root root      23 Oct 29 08:10 /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4 -> libcurl-gnutls.so.4.5.0
+-rw-r--r-- 1 root root  510408 Oct 29 08:10 /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4.5.0
+-rw-r--r-- 1 root root     951 Oct 29 08:10 /usr/lib/x86_64-linux-gnu/libcurl.la
+lrwxrwxrwx 1 root root      16 Oct 29 08:10 /usr/lib/x86_64-linux-gnu/libcurl.so -> libcurl.so.4.5.0
+lrwxrwxrwx 1 root root      16 Oct 29 08:10 /usr/lib/x86_64-linux-gnu/libcurl.so.4 -> libcurl.so.4.5.0
+-rw-r--r-- 1 root root  518600 Oct 29 08:10 /usr/lib/x86_64-linux-gnu/libcurl.so.4.5.0
+```
+]
+
+.rhel[
+```
+[cr173@vcm-8157 ~]$ ls -la /usr/lib64/libcurl*
+lrwxrwxrwx. 1 root root     16 Jan 14 12:05 /usr/lib64/libcurl.so -> libcurl.so.4.3.0
+lrwxrwxrwx. 1 root root     16 Jan 10 07:45 /usr/lib64/libcurl.so.4 -> libcurl.so.4.3.0
+-rwxr-xr-x. 1 root root 435176 Aug  8 09:28 /usr/lib64/libcurl.so.4.3.0
+```
+]
+
+]
+
+---
+
+## Getting what you want
+
+The following is a basic heuristic of library package naming schemes for these distro families, there are exceptions and edge cases.
+
+These are the names that would then be used with something like `apt install` or `yum install` respectively.
+
+<br/>
+
+|                       | Debian          | Redhat          |
+|-----------------------|-----------------|-----------------|
+| Dynamic library (.so) | `lib{name}`     | `{name}`        |
+| Headers               | `lib{name}-dev` | `{name}-devel`  |
+| Static library (.a)   | `lib{name}-dev` | `{name}-static` |
+| Documentation         | `lib{name}-doc` | `{name}-devel`  | 
+
+---
+
+## Troubleshooting dynamic libraries
+
+.tiny[ .ubuntu[
+```
+*cr173@vcm-26406:~$ ldd /usr/lib/x86_64-linux-gnu/libcurl.so
+	linux-vdso.so.1 (0x00007ffd98176000)
+	libnghttp2.so.14 => /usr/lib/x86_64-linux-gnu/libnghttp2.so.14 (0x00007f1e3dc60000)
+	libidn2.so.0 => /usr/lib/x86_64-linux-gnu/libidn2.so.0 (0x00007f1e3da43000)
+	librtmp.so.1 => /usr/lib/x86_64-linux-gnu/librtmp.so.1 (0x00007f1e3d827000)
+	libpsl.so.5 => /usr/lib/x86_64-linux-gnu/libpsl.so.5 (0x00007f1e3d619000)
+	libssl.so.1.1 => /usr/lib/x86_64-linux-gnu/libssl.so.1.1 (0x00007f1e3d3af000)
+	libcrypto.so.1.1 => /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 (0x00007f1e3cf37000)
+	libgssapi_krb5.so.2 => /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so.2 (0x00007f1e3ccec000)
+	libldap_r-2.4.so.2 => /usr/lib/x86_64-linux-gnu/libldap_r-2.4.so.2 (0x00007f1e3ca9a000)
+	liblber-2.4.so.2 => /usr/lib/x86_64-linux-gnu/liblber-2.4.so.2 (0x00007f1e3c88c000)
+	libz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f1e3c66f000)
+	libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007f1e3c450000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f1e3c05f000)
+	libunistring.so.2 => /usr/lib/x86_64-linux-gnu/libunistring.so.2 (0x00007f1e3bce1000)
+	libgnutls.so.30 => /usr/lib/x86_64-linux-gnu/libgnutls.so.30 (0x00007f1e3b97c000)
+	libhogweed.so.4 => /usr/lib/x86_64-linux-gnu/libhogweed.so.4 (0x00007f1e3b748000)
+	libnettle.so.6 => /usr/lib/x86_64-linux-gnu/libnettle.so.6 (0x00007f1e3b512000)
+	libgmp.so.10 => /usr/lib/x86_64-linux-gnu/libgmp.so.10 (0x00007f1e3b291000)
+	libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f1e3b08d000)
+	libkrb5.so.3 => /usr/lib/x86_64-linux-gnu/libkrb5.so.3 (0x00007f1e3adb7000)
+	libk5crypto.so.3 => /usr/lib/x86_64-linux-gnu/libk5crypto.so.3 (0x00007f1e3ab85000)
+	libcom_err.so.2 => /lib/x86_64-linux-gnu/libcom_err.so.2 (0x00007f1e3a981000)
+	libkrb5support.so.0 => /usr/lib/x86_64-linux-gnu/libkrb5support.so.0 (0x00007f1e3a776000)
+	libresolv.so.2 => /lib/x86_64-linux-gnu/libresolv.so.2 (0x00007f1e3a55b000)
+	libsasl2.so.2 => /usr/lib/x86_64-linux-gnu/libsasl2.so.2 (0x00007f1e3a340000)
+	libgssapi.so.3 => /usr/lib/x86_64-linux-gnu/libgssapi.so.3 (0x00007f1e3a0ff000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007f1e3e104000)
+	libp11-kit.so.0 => /usr/lib/x86_64-linux-gnu/libp11-kit.so.0 (0x00007f1e39dd0000)
+	libtasn1.so.6 => /usr/lib/x86_64-linux-gnu/libtasn1.so.6 (0x00007f1e39bbd000)
+	libkeyutils.so.1 => /lib/x86_64-linux-gnu/libkeyutils.so.1 (0x00007f1e399b9000)
+	libheimntlm.so.0 => /usr/lib/x86_64-linux-gnu/libheimntlm.so.0 (0x00007f1e397b0000)
+	libkrb5.so.26 => /usr/lib/x86_64-linux-gnu/libkrb5.so.26 (0x00007f1e39523000)
+	libasn1.so.8 => /usr/lib/x86_64-linux-gnu/libasn1.so.8 (0x00007f1e39281000)
+	libhcrypto.so.4 => /usr/lib/x86_64-linux-gnu/libhcrypto.so.4 (0x00007f1e3904b000)
+	libroken.so.18 => /usr/lib/x86_64-linux-gnu/libroken.so.18 (0x00007f1e38e35000)
+	libffi.so.6 => /usr/lib/x86_64-linux-gnu/libffi.so.6 (0x00007f1e38c2d000)
+	libwind.so.0 => /usr/lib/x86_64-linux-gnu/libwind.so.0 (0x00007f1e38a04000)
+	libheimbase.so.1 => /usr/lib/x86_64-linux-gnu/libheimbase.so.1 (0x00007f1e387f5000)
+	libhx509.so.5 => /usr/lib/x86_64-linux-gnu/libhx509.so.5 (0x00007f1e385ab000)
+	libsqlite3.so.0 => /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 (0x00007f1e382a2000)
+	libcrypt.so.1 => /lib/x86_64-linux-gnu/libcrypt.so.1 (0x00007f1e3806a000)
+	libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f1e37ccc000)
+```
+] ]
+
+---
+
+## Python management
+
+.ubuntu[
+```
+*cr173@vcm-26406:~$ pip install torch
+
+Command 'pip' not found, but can be installed with:
+
+apt install python3-pip
+Please ask your administrator.
+```
+]
+
+--
+
+.ubuntu[
+```
+*cr173@vcm-26406:~$ sudo apt install python3-pip
+[sudo] password for cr173:
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+The following additional packages will be installed:
+  libexpat1-dev libpython3-dev libpython3.8-dev python-pip-whl python3-dev python3-wheel python3.8-dev
+The following NEW packages will be installed:
+  libexpat1-dev libpython3-dev libpython3.8-dev python-pip-whl python3-dev python3-pip python3-wheel python3.8-dev
+0 upgraded, 8 newly installed, 0 to remove and 0 not upgraded.
+Need to get 6,651 kB of archives.
+After this operation, 25.0 MB of additional disk space will be used.
+Do you want to continue? [Y/n]
+```
+]
+
+---
+
+## Package manager vs pip
+
+.small[ .ubuntu[
+```
+*cr173@vcm-26406:~$ sudo apt install python3-numpy
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+python3-numpy is already the newest version (1:1.17.4-5ubuntu3).
+python3-numpy set to manually installed.
+0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+```
+] ]
+
+--
+
+.small[ .ubuntu[
+```
+*cr173@vcm-26406:~$ sudo pip install numpy --upgrade
+Collecting numpy
+  Downloading numpy-1.22.3-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (16.8 MB)
+     |████████████████████████████████| 16.8 MB 3.6 MB/s
+Installing collected packages: numpy
+  Attempting uninstall: numpy
+    Found existing installation: numpy 1.17.4
+    Not uninstalling numpy at /usr/lib/python3/dist-packages, outside environment /usr
+    Can't uninstall 'numpy'. No files were found to uninstall.
+Successfully installed numpy-1.22.3
+```
+] ]
+
+--
+
+.small[ .ubuntu[
+```
+*cr173@vcm-26406:~$ sudo pip install numpy --upgrade --ignore-installed
+Collecting numpy
+  Using cached numpy-1.22.3-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (16.8 MB)
+Installing collected packages: numpy
+Successfully installed numpy-1.22.3
+```
+] ]
+
+---
+
+## Outdated python libraries
+
+.small[ .ubuntu[ 
+```
+*cr173@vcm-26406:~$ sudo pip list --outdated
+Package             Version     Latest    Type
+------------------- ----------- --------- -----
+ansible             2.9.6       5.6.0     sdist
+apache-libcloud     2.8.0       3.5.1     wheel
+argcomplete         1.8.1       2.0.0     wheel
+certifi             2019.11.28  2021.10.8 wheel
+chardet             3.0.4       4.0.0     wheel
+cryptography        2.8         36.0.2    wheel
+dbus-python         1.2.16      1.2.18    sdist
+distro              1.4.0       1.7.0     wheel
+distro-info         0.23ubuntu1 1.0       wheel
+dnspython           1.16.0      2.2.1     wheel
+entrypoints         0.3         0.4       wheel
+GDAL                3.0.4       3.4.2     sdist
+httplib2            0.14.0      0.20.4    wheel
+idna                2.8         3.3       wheel
+Jinja2              2.10.1      3.1.1     wheel
+jmespath            0.9.4       1.0.0     wheel
+keyring             18.0.1      23.5.0    wheel
+launchpadlib        1.10.13     1.10.16   wheel
+lazr.restfulclient  0.14.2      0.14.4    sdist
+lazr.uri            1.0.3       1.0.6     sdist
+MarkupSafe          1.1.0       2.1.1     wheel
+netaddr             0.7.19      0.8.0     wheel
+netifaces           0.10.4      0.11.0    wheel
+ntlm-auth           1.1.0       1.5.0     wheel
+oauthlib            3.1.0       3.2.0     wheel
+pip                 20.0.2      22.0.4    wheel
+PyGObject           3.36.0      3.42.0    sdist
+PyJWT               1.7.1       2.3.0     wheel
+pykerberos          1.1.14      1.2.4     sdist
+PyNaCl              1.3.0       1.5.0     wheel
+pywinrm             0.3.0       0.4.2     wheel
+PyYAML              5.3.1       6.0       wheel
+...
+```
+] ]
