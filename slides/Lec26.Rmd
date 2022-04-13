@@ -717,3 +717,14 @@ REPOSITORY          TAG                 IMAGE ID            CREATED             
 ubuntu              18.10               d4452947e3fa        3 weeks ago         73.7MB
 ubuntu              latest              1d9c17228a9e        3 weeks ago         86.7MB
 ```
+
+---
+
+## Course docker image
+
+<br/><br/><br/><br/><br/><br/>
+
+
+.center[
+### [github.com/Sta663-Sp22/docker-base](https://github.com/Sta663-Sp22/docker-base)
+]
