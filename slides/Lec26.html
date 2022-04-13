@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lec 26 - Docker</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sta 663 | Spring 2022" />
+    <script src="libs/header-attrs-2.13/header-attrs.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lec 26 - Docker
+## <br/> Statistical Computing and Computation
+### Sta 663 | Spring 2022
+### <br/> Dr. Colin Rundel
+
+---
+
+exclude: true
+
+
+```r
+knitr::opts_chunk$set(
+  fig.align="center",
+  cache=FALSE
+)
+```
+
+---
+
+## Docker
+
+&gt; Docker can package an application and its dependencies in a virtual container that can run on any Linux, Windows, or macOS computer. This enables the application to run in a variety of locations, such as on-premises, in the public or private cloud. When running on Linux, Docker uses the resource isolation features of the Linux kernel (such as cgroups and kernel namespaces) and a union-capable file system to allow containers to run within a single Linux instance, avoiding the overhead of starting and maintaining virtual machines. 
+&gt;
+&gt;From [Wikipedia](https://en.wikipedia.org/wiki/Docker_%28software%29)
+
+.pull-left[
+&lt;img src="imgs/Lec26/docker1.webp" width="75%" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+&lt;img src="imgs/Lec26/docker2.webp" width="75%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Installation - Ubuntu / Debian
+
+.ubuntu[
+```
+# Remove system packages
+sudo apt-get remove docker docker-engine docker.io containerd runc
+
+# Utililty Packages
+sudo apt-get update
+sudo apt-get install \
+   ca-certificates \
+   curl \
+   gnupg \
+   lsb-release
+
+# Add apt repo signing key
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+# Add apt repo
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list &gt; /dev/null
+   
+# Install Docker
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+```
+]
+
+
+.footnote[See [docs](https://docs.docker.com/engine/install/ubuntu/)]
+
+---
+
+## Troubleshooting - daemon
+
+```shell
+$ sudo docker run hello-world
+docker: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?.
+See 'docker run --help'.
+```
+
+--
+
+This occurs when the docker daemon is not running, this can be fixed by enabling the docker service / daemon, 
+
+```shell
+# Make sure the daemon runs automatically in the future
+$ sudo systemctl enable docker
+
+# Start the daemon
+$ sudo systemctl start docker
+```
+
+--
+
+```shell
+$ sudo docker run hello-world
+Unable to find image 'hello-world:latest' locally
+latest: Pulling from library/hello-world
+1b930d010525: Pull complete 
+Digest: sha256:2557e3c07ed1e38f26e389462d03ed943586f744621577a99efb77324b0fe535
+Status: Downloaded newer image for hello-world:latest
+
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+    (amd64)
+ 3. The Docker daemon created a new container from that image which runs the
+    executable that produces the output you are currently reading.
+ 4. The Docker daemon streamed that output to the Docker client, which sent it
+    to your terminal.
+
+To try something more ambitious, you can run an Ubuntu container with:
+ $ docker run -it ubuntu bash
+
+Share images, automate workflows, and more with a free Docker ID:
+ https://hub.docker.com/
+
+For more examples and ideas, visit:
+ https://docs.docker.com/get-started/
+```
+
+
+---
+
+## Troubleshoot - permissions
+
+.smaller[
+```shell
+$ docker run hello-world
+docker: Got permission denied while trying to connect to the Docker daemon socket at 
+unix:///var/run/docker.sock: Post http://%2Fvar%2Frun%2Fdocker.sock/v1.39/containers/create: 
+dial unix /var/run/docker.sock: connect: permission denied.
+See 'docker run --help'.
+```
+]
+
+--
+
+You must either be root or be a member of the docker group to use docker. Currently, your VM may or may not have a docker group and your account is likely not a member. If you are tired of typing sudo + your password there is an easy fix,
+
+--
+
+.smaller[
+```shell
+# Make sure the docker group exists
+$ sudo groupadd docker
+
+# Add your user to the docker group
+$ sudo usermod -aG docker $USER
+
+# Check memberships
+$ groups
+# If docker is not listed you should log off and log back in
+```
+]
+
+--
+
+```shell
+$ docker run hello-world
+
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+    (amd64)
+ 3. The Docker daemon created a new container from that image which runs the
+    executable that produces the output you are currently reading.
+ 4. The Docker daemon streamed that output to the Docker client, which sent it
+    to your terminal.
+
+To try something more ambitious, you can run an Ubuntu container with:
+ $ docker run -it ubuntu bash
+
+Share images, automate workflows, and more with a free Docker ID:
+ https://hub.docker.com/
+
+For more examples and ideas, visit:
+ https://docs.docker.com/get-started/
+```
+
+
+---
+class: middle
+
+# Getting Started
+
+---
+background-image: url(imgs/Lec26/docker_sketch.png)
+background-position: center
+background-size: contain
+
+---
+
+## Getting images
+
+```shell
+$ docker pull ubuntu
+Using default tag: latest
+latest: Pulling from library/ubuntu
+84ed7d2f608f: Pull complete 
+be2bf1c4a48d: Pull complete 
+a5bdc6303093: Pull complete 
+e9055237d68d: Pull complete 
+Digest: sha256:868fd30a0e47b8d8ac485df174795b5e2fe8a6c8f056cc707b232d65b8a1ab68
+Status: Downloaded newer image for ubuntu:latest
+```
+
+--
+
+```shell
+$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+hello-world         latest              fce289e99eb9        2 weeks ago         1.84kB
+ubuntu              latest              1d9c17228a9e        3 weeks ago         86.7MB
+```
+
+---
+background-image: url(imgs/Lec26/dockerhub_ubuntu.png)
+background-position: center
+background-size: contain
+
+---
+
+## Versions / tags
+
+```shell
+$ docker pull ubuntu:18.10
+18.10: Pulling from library/ubuntu
+d222a4da264e: Pull complete 
+fc8aef08d7f5: Pull complete 
+dc25173478e9: Pull complete 
+860140c5e05a: Pull complete 
+Digest: sha256:79c90229315b26cf37b577db41418874de1c22fb80c3827c80ea624dd993d905
+Status: Downloaded newer image for ubuntu:18.10
+
+$ docker pull ubuntu:18.04
+18.04: Pulling from library/ubuntu
+Digest: sha256:868fd30a0e47b8d8ac485df174795b5e2fe8a6c8f056cc707b232d65b8a1ab68
+Status: Downloaded newer image for ubuntu:18.04
+```
+
+```shell
+$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+hello-world         latest              fce289e99eb9        2 weeks ago         1.84kB
+ubuntu              18.10               d4452947e3fa        3 weeks ago         73.7MB
+ubuntu              18.04               1d9c17228a9e        3 weeks ago         86.7MB
+ubuntu              latest              1d9c17228a9e        3 weeks ago         86.7MB
+```
+
+---
+
+## Other sources
+
+DockerHub is not the only source of images - their are many other possible hosts and all you need to provide is a URL along with the image name.
+
+--
+
+&lt;img src="imgs/Lec26/github_docker.png" width="50%" style="display: block; margin: auto;" /&gt;
+
+
+
+
+.footnote[See on [GitHub](https://github.com/orgs/Sta663-Sp22/packages/container/package/sta663-base)]
+
+---
+
+```shell
+$ docker pull ghcr.io/sta663-sp22/sta663-base:main
+main: Pulling from sta663-sp22/sta663-base
+7c3b88808835: Pull complete
+912f6b2ba154: Pull complete
+dd644c73e3f7: Pull complete
+443b00f2b587: Pull complete
+7eed48b59675: Pull complete
+aaf570891e1e: Pull complete
+2b816b5489a9: Pull complete
+15173f034c8a: Pull complete
+abec7c76a54d: Pull complete
+bc643c87ba6a: Pull complete
+05c705c824a9: Pull complete
+d8d2591a295c: Pull complete
+b11dc49aa06d: Pull complete
+eac230728938: Pull complete
+37972a8150df: Pull complete
+Digest: sha256:7c769800b08d698cf4e08dfa48f44eb411486e319a9a195a940304ca078b40cb
+Status: Downloaded newer image for ghcr.io/sta663-sp22/sta663-base:main
+ghcr.io/sta663-sp22/sta663-base:main
+```
+
+--
+
+```shell
+$ docker images
+REPOSITORY                        TAG       IMAGE ID       CREATED       SIZE
+ubuntu                            latest    825d55fb6340   7 days ago    72.8MB
+ghcr.io/sta663-sp22/sta663-base   main      246d20145b5a   3 weeks ago   4.29GB
+```
+
+
+---
+
+## Running something
+
+```shell
+$ docker run --rm ubuntu cat /etc/os-release
+
+NAME="Ubuntu"
+VERSION="18.04.1 LTS (Bionic Beaver)"
+ID=ubuntu
+ID_LIKE=debian
+PRETTY_NAME="Ubuntu 18.04.1 LTS"
+VERSION_ID="18.04"
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+VERSION_CODENAME=bionic
+UBUNTU_CODENAME=bionic
+```
+
+--
+
+```shell
+$ docker run --rm ubuntu:18.10 cat /etc/os-release
+
+NAME="Ubuntu"
+VERSION="18.10 (Cosmic Cuttlefish)"
+ID=ubuntu
+ID_LIKE=debian
+PRETTY_NAME="Ubuntu 18.10"
+VERSION_ID="18.10"
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+VERSION_CODENAME=cosmic
+UBUNTU_CODENAME=cosmic
+```
+
+
+---
+
+```shell
+$ docker run --rm fedora cat /etc/os-release
+
+Unable to find image 'fedora:latest' locally
+latest: Pulling from library/fedora
+0be2a68855d7: Pull complete 
+Digest: sha256:7b921a4a008ee83c06d2cde9f21d3aa8de4635b0c4ec159f31caee83ad220b21
+Status: Downloaded newer image for fedora:latest
+NAME=Fedora
+VERSION="29 (Container Image)"
+ID=fedora
+VERSION_ID=29
+VERSION_CODENAME=""
+PLATFORM_ID="platform:f29"
+PRETTY_NAME="Fedora 29 (Container Image)"
+ANSI_COLOR="0;34"
+LOGO=fedora-logo-icon
+CPE_NAME="cpe:/o:fedoraproject:fedora:29"
+HOME_URL="https://fedoraproject.org/"
+DOCUMENTATION_URL="https://docs.fedoraproject.org/en-US/fedora/f29/system-administrators-guide/"
+SUPPORT_URL="https://fedoraproject.org/wiki/Communicating_and_getting_help"
+BUG_REPORT_URL="https://bugzilla.redhat.com/"
+REDHAT_BUGZILLA_PRODUCT="Fedora"
+REDHAT_BUGZILLA_PRODUCT_VERSION=29
+REDHAT_SUPPORT_PRODUCT="Fedora"
+REDHAT_SUPPORT_PRODUCT_VERSION=29
+PRIVACY_POLICY_URL="https://fedoraproject.org/wiki/Legal:PrivacyPolicy"
+VARIANT="Container Image"
+VARIANT_ID=container
+```
+
+---
+class: middle
+
+# Demo
+
+---
+
+## docker run
+
+```shell
+$ docker run [OPTIONS] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]
+```
+
+### Important options:
+
+| Option         | Description                                                      |         
+|----------------|:-----------------------------------------------------------------|
+| `--name`       | Give your container a name                                       |
+| `--rm`         | Automatically remove the container when it exits                 |
+| `-i -t`        | Allow for interaction with container (STDIN &amp; tty specifically)  |
+| `-p host:cont` | Publish a container's port                                       |
+| `-v host:cont` | Share filesystems                                                |
+| `-e "VAR=VAL"` | Define environmental variables                                   |
+
+.footnote[See https://docs.docker.com/engine/reference/run/ for more details]
+
+---
+
+## Other docker commands
+
+| command                             | Description                                  |         
+|-------------------------------------|:---------------------------------------------|
+| `docker pull NAME[:TAG]`            | Pull docker image (usually from DockerHub)   |
+| `docker images`                     | List docker images                           |
+| `docker rmi IMAGE`                  | Remove an image                              |
+| `docker container ls [--all]`       | List (all) docker containers                 |
+| `docker rm CONTAINER`               | Remove a container                           |
+| `docker stop CONTAINER`             | Stop a running container                     |
+| `docker start CONTAINER`            | Start a stopped container                    |
+| `docker attach CONTAINER`           | Attach to a running container                |
+| `docker commit CONTAINER REPO[:TAG]`| Create an image from a container             |
+| `docker rename CONTAINER NAME`      | Rename a container                           |
+
+---
+
+## rocker
+
+.center[
+  .large[&lt;svg viewBox="0 0 640 512" style="height:1em;position:relative;display:inline-block;top:.1em;" xmlns="http://www.w3.org/2000/svg"&gt;  &lt;path d="M349.9 236.3h-66.1v-59.4h66.1v59.4zm0-204.3h-66.1v60.7h66.1V32zm78.2 144.8H362v59.4h66.1v-59.4zm-156.3-72.1h-66.1v60.1h66.1v-60.1zm78.1 0h-66.1v60.1h66.1v-60.1zm276.8 100c-14.4-9.7-47.6-13.2-73.1-8.4-3.3-24-16.7-44.9-41.1-63.7l-14-9.3-9.3 14c-18.4 27.8-23.4 73.6-3.7 103.8-8.7 4.7-25.8 11.1-48.4 10.7H2.4c-8.7 50.8 5.8 116.8 44 162.1 37.1 43.9 92.7 66.2 165.4 66.2 157.4 0 273.9-72.5 328.4-204.2 21.4.4 67.6.1 91.3-45.2 1.5-2.5 6.6-13.2 8.5-17.1l-13.3-8.9zm-511.1-27.9h-66v59.4h66.1v-59.4zm78.1 0h-66.1v59.4h66.1v-59.4zm78.1 0h-66.1v59.4h66.1v-59.4zm-78.1-72.1h-66.1v60.1h66.1v-60.1z"&gt;&lt;/path&gt;&lt;/svg&gt; + &lt;svg viewBox="0 0 581 512" style="height:1em;position:relative;display:inline-block;top:.1em;" xmlns="http://www.w3.org/2000/svg"&gt;  &lt;path d="M581 226.6C581 119.1 450.9 32 290.5 32S0 119.1 0 226.6C0 322.4 103.3 402 239.4 418.1V480h99.1v-61.5c24.3-2.7 47.6-7.4 69.4-13.9L448 480h112l-67.4-113.7c54.5-35.4 88.4-84.9 88.4-139.7zm-466.8 14.5c0-73.5 98.9-133 220.8-133s211.9 40.7 211.9 133c0 50.1-26.5 85-70.3 106.4-2.4-1.6-4.7-2.9-6.4-3.7-10.2-5.2-27.8-10.5-27.8-10.5s86.6-6.4 86.6-92.7-90.6-87.9-90.6-87.9h-199V361c-74.1-21.5-125.2-67.1-125.2-119.9zm225.1 38.3v-55.6c57.8 0 87.8-6.8 87.8 27.3 0 36.5-38.2 28.3-87.8 28.3zm-.9 72.5H365c10.8 0 18.9 11.7 24 19.2-16.1 1.9-33 2.8-50.6 2.9v-22.1z"&gt;&lt;/path&gt;&lt;/svg&gt;] = [Rocker](https://www.rocker-project.org/)
+]
+
+&gt; The rocker project provides a collection of containers suited for different needs. find a base image to extend or images with popular software and optimized libraries pre-installed. Get the latest version or a reproducibly fixed environment.
+
+
+
+.pull-left[
+&lt;img src="imgs/Lec26/rocker1.png" width="1264" style="display: block; margin: auto;" /&gt;
+]
+.pull-right[
+&lt;img src="imgs/Lec26/rocker2.png" width="1317" style="display: block; margin: auto;" /&gt;
+]
+
+&lt;div&gt;.small[
+.pull-left[
+https://github.com/rocker-org/rocker-versioned2
+]
+.pull-right[
+https://github.com/rocker-org/rocker
+]
+]
+&lt;/div&gt;
+
+---
+background-image: url(imgs/Lec26/rocker_ver_sketch.png)
+background-position: center
+background-size: contain
+
+---
+
+## rocker + rstudio
+
+```shell
+$ docker pull rocker/rstudio
+Using default tag: latest
+latest: Pulling from rocker/rstudio
+54f7e8ac135a: Pull complete
+021dd68904f6: Pull complete
+8d3e964cf18d: Pull complete
+81bbbedbef33: Pull complete
+c7878d347b3f: Pull complete
+a7aae3dbd958: Pull complete
+da950bb11a69: Pull complete
+Digest: sha256:b9e6acea945ca28ec14b3de9925372bdd6c5e3828a8575b34d4247f619b66dd5
+Status: Downloaded newer image for rocker/rstudio:latest
+```
+
+--
+
+```shell
+$ docker run -e PASSWORD=SECRET --rm -p 8787:8787 rocker/rstudio
+...
+```
+.center[ http://vcm-26406.vm.duke.edu:8787 ]
+
+
+---
+
+## rocker + rstudio + tidyverse + latex + sf
+
+```shell
+$ docker pull rocker/geospatial
+Using default tag: latest
+latest: Pulling from rocker/geospatial
+54f7e8ac135a: Already exists
+021dd68904f6: Already exists
+8d3e964cf18d: Already exists
+81bbbedbef33: Already exists
+c7878d347b3f: Already exists
+a7aae3dbd958: Already exists
+da950bb11a69: Already exists
+9802011fbe26: Pull complete
+334f65727953: Pull complete
+e506f9195a59: Pull complete
+Digest: sha256:c3158846628b07d4616fafa30ef1d97cdc1b706d1c9aa30d62e7862ffd75703e
+Status: Downloaded newer image for rocker/geospatial:latest34d4247f619b66dd5
+Status: Downloaded newer image for rocker/rstudio:latest
+```
+
+--
+
+```shell
+$ docker run -e PASSWORD=SECRET --rm -p 8787:8787 rocker/geospatial
+...
+```
+
+.center[ http://vcm-26406.vm.duke.edu:8787 ]
+
+---
+class: middle
+
+# Dockerfile(s)
+
+---
+
+## Common commands
+
+| command   | Description                                                     |
+|-----------|:----------------------------------------------------------------|
+| `FROM`    | specify a base image                                            |
+| `RUN`     | run commands (e.g. apt or yum), changes saved to image          |
+| `COPY`    | copy a local file into the image                                |
+| `ENV`     | set environment variables for Dockerfile and image              |
+| `USER`    | set user to use (affects subsequent `RUN`, `CMD`, `ENDPOINT`)   |
+| `WORKDIR` | set the working directory                                       |
+| `EXPOSE`  | specify which ports will be used (not published automatically)  |
+| `CMD`     | specify what (default) action should run when running the image |
+| ...       |
+
+---
+
+## A tidy example
+
+`tidy1/Dockerfile`:
+```docker
+FROM ubuntu:21.10
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt update
+RUN apt install -y r-base
+RUN Rscript -e "install.packages('tibble')"
+
+CMD ["R"]
+```
+---
+
+## Building
+
+.small[
+```shell
+*$ docker build -t tidy1 .
+Sending build context to Docker daemon  2.048kB
+Step 1/6 : FROM ubuntu:18.10
+ ---&gt; d4452947e3fa
+Step 2/6 : ENV DEBIAN_FRONTEND=noninteractive
+ ---&gt; Using cache
+ ---&gt; e0d77908f64a
+Step 3/6 : RUN apt update
+ ---&gt; Running in fa6969a427d9
+...
+ ---&gt; 979edce6cc0b
+Step 4/6 : RUN apt install -y r-base
+ ---&gt; Running in 1cc3e97a8258
+...
+ ---&gt; 87a882be95d7
+Step 5/6 : RUN Rscript -e "install.packages('tibble')"
+ ---&gt; Running in e9de97c98208
+...
+Removing intermediate container e9de97c98208
+ ---&gt; 5f1666e4e342
+Step 6/6 : CMD ["R"]
+ ---&gt; Running in 07f9ea769466
+...
+ ---&gt; 67b0f0ee7f5c
+Successfully built 67b0f0ee7f5c
+Successfully tagged tidy1:latest
+```
+]
+
+---
+
+```shell
+*$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+tidy1               latest              b29115e0a5d2        29 seconds ago      697MB
+ubuntu              18.10               d4452947e3fa        3 weeks ago         73.7MB
+ubuntu              latest              1d9c17228a9e        3 weeks ago         86.7MB
+
+*$ docker images -a
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+&lt;none&gt;              &lt;none&gt;              598100ea4878        25 seconds ago      697MB
+tidy1               latest              b29115e0a5d2        25 seconds ago      697MB
+&lt;none&gt;              &lt;none&gt;              75296565d476        56 seconds ago      690MB
+&lt;none&gt;              &lt;none&gt;              d82af2f4083b        2 minutes ago       96.3MB
+&lt;none&gt;              &lt;none&gt;              6bb4e2b36ade        2 minutes ago       73.7MB
+ubuntu              18.10               d4452947e3fa        3 weeks ago         73.7MB
+ubuntu              latest              1d9c17228a9e        3 weeks ago         86.7MB
+```
+
+---
+
+## A better tidy example
+
+`tidy2/Dockerfile`:
+```docker
+FROM ubuntu:21.10
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt update \
+ &amp;&amp; apt install -y r-base \
+ &amp;&amp; Rscript -e "install.packages('tibble')"
+
+CMD ["R"]
+```
+
+---
+
+## Building
+
+```shell
+*$ docker build -t tidy2 .
+Sending build context to Docker daemon  2.048kB
+Step 1/4 : FROM ubuntu:18.10
+ ---&gt; d4452947e3fa
+Step 2/4 : ENV DEBIAN_FRONTEND=noninteractive
+ ---&gt; Running in be9c52bb8db9
+Removing intermediate container be9c52bb8db9
+ ---&gt; e0d77908f64a
+Step 3/4 : RUN apt update  &amp;&amp; apt install -y r-base  &amp;&amp; Rscript -e "install.packages('tibble')"
+...
+Step 4/4 : CMD ["R"]
+ ---&gt; Running in d98129eb112c
+Removing intermediate container d98129eb112c
+ ---&gt; be418f99be82
+Successfully built be418f99be82
+Successfully tagged tidy2:latest
+```
+
+--
+
+```shell
+*$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+tidy2               latest              be418f99be82        7 seconds ago       697MB
+ubuntu              18.10               d4452947e3fa        3 weeks ago         73.7MB
+ubuntu              latest              1d9c17228a9e        3 weeks ago         86.7MB
+*$ docker images -a
+REPOSITORY          TAG                 IMAGE ID            CREATED              SIZE
+tidy2               latest              be418f99be82        9 seconds ago        697MB
+&lt;none&gt;              &lt;none&gt;              7869e0549108        10 seconds ago       697MB
+&lt;none&gt;              &lt;none&gt;              e0d77908f64a        About a minute ago   73.7MB
+ubuntu              18.10               d4452947e3fa        3 weeks ago          73.7MB
+ubuntu              latest              1d9c17228a9e        3 weeks ago          86.7MB
+```
+]
+
+---
+
+## Dangling images
+
+```shell
+*$ docker images -a
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+&lt;none&gt;              &lt;none&gt;              83384d4f0d1c        14 minutes ago      714MB
+&lt;none&gt;              &lt;none&gt;              b656b4674ab9        15 minutes ago      209MB
+&lt;none&gt;              &lt;none&gt;              c02c49f3aed2        15 minutes ago      96.3MB
+&lt;none&gt;              &lt;none&gt;              cff3a89309ff        15 minutes ago      73.7MB
+ubuntu              18.10               d4452947e3fa        3 weeks ago         73.7MB
+ubuntu              latest              1d9c17228a9e        3 weeks ago         86.7MB
+```
+
+--
+
+```shell
+*$ docker image prune
+WARNING! This will remove all dangling images.
+Are you sure you want to continue? [y/N] y
+Deleted Images:
+deleted: sha256:83384d4f0d1c6989ad492aee44dd44ca0a6aa013c0b80a78294d2d63e13c6d0c
+deleted: sha256:ada707994b5f0aacd91d44b221e78fb4674c2f53afed87ac9c8f3db39b993d48
+deleted: sha256:b656b4674ab989f57e1dc3dab682bcbfe6b8634206935cb630e09cfcecf5f645
+deleted: sha256:8769da78ba480413ba7b3ee505008b88e549214a96238744bc328901367c38c1
+deleted: sha256:c02c49f3aed2b3131f4e636745f713aab28ba870e9ec2ac2c0b13b008e9a2fd3
+deleted: sha256:095edb1ee39242ed717542420ab9a4911f7cd805713bfd94b321d52d25091eda
+deleted: sha256:cff3a89309ffcc08fe80a3558e1c6715574a4ec3ac926bbd49cd90519aa62241
+
+Total reclaimed space: 640.4MB
+```
+
+--
+
+```shell
+*$ docker images -a
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+ubuntu              18.10               d4452947e3fa        3 weeks ago         73.7MB
+ubuntu              latest              1d9c17228a9e        3 weeks ago         86.7MB
+```
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightLines": true,
+"highlightStyle": "solarized-light",
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
